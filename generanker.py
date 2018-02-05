@@ -2,7 +2,7 @@ import time
 import networkx as nx
 from operator import itemgetter
 
-iterations=1000
+iterations=5
 
 GWASoverlap=open('GeneOverlap.txt','r')
 
@@ -137,7 +137,7 @@ for line in GIANTbrain:
     line=line.split('\t')
     line[2]=float(line[2][:len(line[2])-2])
 
-    if line[2]>0.2:
+    if line[2]>0.5:
 
         G.add_edge(line[0],line[1], weight=line[2])
 
@@ -154,12 +154,22 @@ for node in G.nodes():
     if 'name' not in G.nodes[node]:
         G.nodes[node]['name']='no name'
 
-
+start=time.time()
 
 for iteration in range(iterations):
     print('iteration', iteration+1)
     dicv={}
     nodes=G.nodes()
+
+
+    timepassedSinceStart=time.time()-start
+    x=x+1
+    done=x*100.0/float(iterations)
+
+    print() 
+    print(done, 'percent completed')
+    print('time remaining:', (100-done)*timepassedSinceStart/done, 'seconds')
+
     
     for node in nodes:
         
@@ -178,8 +188,7 @@ for iteration in range(iterations):
             newConfidence=newConfidence+datadict['weight']*G.nodes[neighbor]['SZconfidence']
             sumofweights=sumofweights+datadict['weight']
         if sumofweights>0:
-            if G.nodes[node]['positive']==False:
-                G.nodes[node]['SZconfidence']=float(newConfidence)/float(sumofweights)
+            G.nodes[node]['SZconfidence']=float(newConfidence)/float(sumofweights)
 
 print('initializing list')
 nodeValues=set()
@@ -192,13 +201,15 @@ nodeValues=sorted(nodeValues, key=itemgetter(1))
 
 
 x=open('gene_rankings.txt', 'w')
+y=open('gene_rankings_no_pos.txt', 'w')
 for node in nodeValues:
     # if G.nodes[node]['positive']==False:
     #     print(node)
     entrez,value,positive,name=node
+    x.write(str(node)+'\n')
     if not positive:
         print(node)
-        x.write(str(node)+'\n')
+        y.write(str(node)+'\n')
 
 
 
