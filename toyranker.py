@@ -7,7 +7,7 @@ graphspace = GraphSpace('mirbern@reed.edu', 'pumpkin')
 
 def main():
 
-    timesteps = 3
+    timesteps = 27
 
     G = nx.Graph()
 
@@ -25,9 +25,10 @@ def main():
         print("t = " + str(t+1))
         iterativeMethod(G,t)
 
+    plot_network(graphspace, G)
+
 
     return
-
 
 
 #Adds an edge to networkx graph with weight attribute
@@ -65,6 +66,8 @@ def read_label_file(infile, Graph):
 
 #Takes as input a networkx graph
 def iterativeMethod(Graph, t):
+    #Note: Graph.nodes() is a list of all the nodes
+    #Graph.nodes[node] is a dictionary of that node's attributes
     nodes = Graph.nodes()
     for node in nodes:
         #Want to keep positive scores at 1 and negative scores at 0 (or -1)
@@ -73,6 +76,9 @@ def iterativeMethod(Graph, t):
         else:
             newConfidence = 0
             sumofWeights = 0
+            #Note: Graph.adj[node].items() gives a list of tuples. Each tuple includes one of the
+            #node's neighbors and a dictionary of the attributes that their shared edge contains
+            #neighbor is the node's neighbor, datadict is the dictionary of the 
             for neighbor, datadict in Graph.adj[node].items(): 
                 newConfidence = newConfidence + datadict['weight']*nodes[neighbor]['prev_score'] #use t-1 score
                 sumofWeights = sumofWeights + datadict['weight']
@@ -100,7 +106,7 @@ def rgb_to_hex(red,green,blue):
     return '#'+RR+GG+BB
 
 
-#Posts EGFR network to graphspace
+#Posts iterative method on toy example network to graphspace
 def plot_network(graphspace, G):
     ITR = GSGraph()
     ITR.set_name('Toy Example Iterative Method' + ' ' + str(datetime.now()))
@@ -108,36 +114,22 @@ def plot_network(graphspace, G):
 
     #The code below colors the nodes according to their scores
     for node in G.nodes():
-        count = walk_dict[node]
-        ratio = float(count)/float(count_max)
-        node_color = rgb_to_hex(1-ratio, 0, ratio)
+        score = G.nodes[node]['score']
+        node_color = rgb_to_hex(1-score, 0, score)
+        label = G.nodes[node]['label']
         
-        EGFR.add_node(node, label=node)
-        EGFR.add_node_style(node, color=node_color)
+        ITR.add_node(node, label=node, popup=label)
+        ITR.add_node_style(node, color=node_color)
 
-    for i in range(len(edge_list)):
-        edge = edge_list[i]
-        EGFR.add_edge(edge[0], edge[1], directed=True)
+    for edge in G.edges():
+        weight = G.edges[edge]['weight']
 
-        edge_type = type_dict[i] #the index of an edge in the edge list is the key in the edge type dictionary 
+        ITR.add_edge(edge[0], edge[1])
+        ITR.add_edge_style(edge[0], edge[1], width=weight)
     
-        #Edges are colored based on the type of interaction 
-        if edge_type == 'Interaction':
-            edge_color = 'black'
-        elif edge_type == 'protein_cleavage':
-            edge_color = 'cyan'
-        elif edge_type == 'Phosphorylation':
-            edge_color = 'yellow'
-        elif edge_type == 'Ubiquitination':
-            edge_color = 'red'
-        elif edge_type == 'Ligand_Binding':
-            edge_color = 'blue'
-        elif edge_type == 'Dephosphorylation':
-            edge_color = 'green'
 
-        EGFR.add_edge_style(edge[0], edge[1], directed=True, edge_style='dotted', color=edge_color)
-
-    graphspace.post_graph(EGFR)
+    graphspace.post_graph(ITR)
+    print("Graph posted!")
 
     return
 
