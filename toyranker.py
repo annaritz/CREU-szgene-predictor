@@ -32,10 +32,8 @@ def main():
 
 
 #Adds an edge to networkx graph with weight attribute
-#Adds nodes to the networkx graph with attributes for their score and label
+#Adds nodes to the networkx graph with attributes for their previous score (t-1) score (t) and label
 #Initializes all nodes to be unlabeled and have scores of 0.5
-#Initializes a probability dictionary that will keep track of every node's score at each time step
-#Probability dictionary key:value = node:[scores], prob_dict[node][0] = score at t=0
 def read_edge_file(infile, Graph):
     nodeset = set()
     with open(infile, 'r') as f:
@@ -77,8 +75,8 @@ def iterativeMethod(Graph, t):
             newConfidence = 0
             sumofWeights = 0
             #Note: Graph.adj[node].items() gives a list of tuples. Each tuple includes one of the
-            #node's neighbors and a dictionary of the attributes that their shared edge contains
-            #neighbor is the node's neighbor, datadict is the dictionary of the 
+            #node's neighbors and a dictionary of the attributes that their shared edge has i.e. weight
+            #neighbor is the node's neighbor, datadict is the dictionary of attributes
             for neighbor, datadict in Graph.adj[node].items(): 
                 newConfidence = newConfidence + datadict['weight']*nodes[neighbor]['prev_score'] #use t-1 score
                 sumofWeights = sumofWeights + datadict['weight']
