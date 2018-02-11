@@ -1,215 +1,284 @@
+print('Initializing Modules')
 import time
 import networkx as nx
 from operator import itemgetter
 
-iterations=5
 
-GWASoverlap=open('GeneOverlap.txt','r')
+def main():
+    timesteps = 6
+    print('Opening Files')
+    SZpositiveFile=open('SZpositives.txt','r')
+    SZnegativeFile=open('SZnegatives.csv','r')
+    GeneMapfile=open('hugogenelist.txt','r')
+    G = nx.Graph()
+    GeneMap, nodeset=read_gene_map_file(GeneMapfile,G)
+    positiveReader(SZpositiveFile, G, nodeset)
+    negativeReader(SZnegativeFile, G, nodeset)
+    edgeFile=open('brain_top_geq_0.150.txt','r')
+    read_edge_file(edgeFile,G, nodeset)
+    edgeFile.close()
+    print(G.number_of_edges(), 'edges')
+    print(G.number_of_nodes(), 'nodes')
 
-GeneMapfile=open('hugogenelist.txt','r')
+    start=time.time()
+    for t in range(0,timesteps):
+        print('\n\n')
+        print("t = " + str(t+1))
+        iterativeMethod(G,t)
 
-GeneMap=[]
-allgenenames=[]
-DataCombos=[]
+        done=float(t)/float(timesteps)
+        print('Time Elapsed:', time.time()-start)
+        if done!=0:
+            print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
 
-posEntrez={}
-posEntrez=set()
-
-G = nx.Graph()
-
-# class Gene:
-#     def __init__(self, name, aliases=None, entrez=None, UID=None, ens=None):
-#         self.name=name
-#         self.aliases=aliases
-#         self.entrez=entrez
-#         self.UID=UID
-#         self.ens=ens
-#         if self.ens==None:
-#             self.ens=''
-
-class DataCombo:
-    def __init__(self, name, genes=None):
-        self.name=name
-        self.genes=genes
-
-for i in GeneMapfile:
-
-    i=i.split('\t')
-    iname=i[0]
-
-    if iname!='Approved Symbol':
-        iUID=i[4]
-        ientrez=i[3]
-
-        ialiases=i[1]+','+i[2]
-
-        ialiases=ialiases.split(',')
-        for j in range(len(ialiases)):
-            if ialiases[j]!='':
-                if ialiases[j][0]==' ':
-                    ialiases[j]=ialiases[j][1:]
-        if ialiases[0]=='' and ialiases[1]=='':
-            ialiases=['']
-        if len(ialiases)>1:
-            if ialiases[0]=='' and ialiases[1]!='':
-                ialiases=ialiases[1:]
-        iens=i[5]
-
-
-        print(iname,ialiases,ientrez,iUID, iens)
-        igene=[iname,ientrez]
-        GeneMap.append(igene)
-        G.add_node(ientrez, SZconfidence=0, positive=False, name=iname)
-
-
-print(len(GeneMap))
-def geneLister(superstring):
-    length=len(superstring)
-    superstring=superstring[1:length-2]
-    superstring=superstring.replace('\'','')
-    superstring=superstring.split(',')
-    GeneList=superstring
-    return GeneList
-
-def geneobjectifier(GeneList):
-    SuperGeneList=[]
-    for i in range(len(GeneList)):
-        found=False
-        if GeneList[i]=='':
-            continue
-
-        if GeneList[i][0]==' ':
-            GeneList[i]=GeneList[i][1:]
-        for supergene in GeneMap:
-            if supergene[0]==GeneList[i]:
-                found=True
-                GeneList[i]=supergene
-                posEntrez.add(supergene[1])
-                G.nodes[supergene[1]]['SZconfidence']=1
-                G.nodes[supergene[1]]['positive']=True
-
-    return GeneList
+    print('Writing Output File')
+    write_output(G, GeneMap)
 
 
 
 
-for combo in GWASoverlap:
-    combo=combo.split(';')
-    comboname=combo[0]
-    print('----------------')
-    print(comboname)
-    genes=combo[1]
-    # print genes
-    genes=geneLister(genes)
-    genes=geneobjectifier(genes)
-    DataCombos.append(DataCombo(comboname,genes))
-
-for DataCombo in DataCombos:
-    print(DataCombo.name)
-    print(DataCombo.genes)
-
-GIANTbrain=open('brain_top.txt','r')
-
-start=time.time()
-# GIANTentrez={}
-# GIANTentrez=set()
-# GIANTentrez5={}
-# GIANTentrez5=set()
-# GIANTentrez75={}
-# GIANTentrez75=set()
-# GIANTentrez9={}
-# GIANTentrez9=set()
-# GIANTentrez25={}
-# GIANTentrez25=set()
-# GIANTentrez10={}
-# GIANTentrez10=set()
-x=0
-for line in GIANTbrain:
-
-    timepassedSinceStart=time.time()-start
-    x=x+1
-    done=x*100.0/41668864.0
-    if x%100000==0:
-        print() 
-        print(done, 'percent completed')
-        print('time remaining:', (100-done)*timepassedSinceStart/done, 'seconds')
-
-    line=line.split('\t')
-    line[2]=float(line[2][:len(line[2])-2])
-
-    if line[2]>0.5:
-
-        G.add_edge(line[0],line[1], weight=line[2])
+    return
 
 
-GIANTbrain.close()
-
-print(G.number_of_edges())
-print(G.number_of_nodes())
-print()
-
-for node in G.nodes():
-    if 'positive' not in G.nodes[node]:
-        G.nodes[node]['positive']=False
-    if 'name' not in G.nodes[node]:
-        G.nodes[node]['name']='no name'
-
-start=time.time()
-
-for iteration in range(iterations):
-    print('iteration', iteration+1)
-    dicv={}
-    nodes=G.nodes()
 
 
-    timepassedSinceStart=time.time()-start
-    x=x+1
-    done=x*100.0/float(iterations)
+def read_gene_map_file(GeneMapfile, Graph):
+    GeneMap=[]
+    nodeset=set()
+    for i in GeneMapfile:
 
-    print() 
-    print(done, 'percent completed')
-    print('time remaining:', (100-done)*timepassedSinceStart/done, 'seconds')
+        i=i.split('\t')
+        iname=i[0]
 
-    
+        if iname!='Approved Symbol':
+            iUID=i[4]
+            ientrez=i[3]
+
+            ialiases=i[1]+','+i[2]
+
+            ialiases=ialiases.split(',')
+            for j in range(len(ialiases)):
+                if ialiases[j]!='':
+                    if ialiases[j][0]==' ':
+                        ialiases[j]=ialiases[j][1:]
+            if ialiases[0]=='' and ialiases[1]=='':
+                ialiases=['']
+            if len(ialiases)>1:
+                if ialiases[0]=='' and ialiases[1]!='':
+                    ialiases=ialiases[1:]
+            iens=i[5]
+            # print(iname,ialiases,ientrez,iUID, iens)
+            igene=[iname,ientrez]
+            GeneMap.append(igene)
+            nodeset.add(ientrez)
+            Graph.add_node(ientrez, score=0.5, prev_score=0.5, label='Unlabeled', name=iname)
+    print(len(GeneMap))
+    return GeneMap, nodeset
+
+
+def positiveReader(GeneFile, Graph, all_nodes):
+    threshold=300
+    x=0
+    for line in GeneFile:
+        x=x+1
+        if x<threshold:
+            entrezNumber=line.split('\t')
+            entrezNumber=entrezNumber[0]
+            if entrezNumber not in all_nodes:
+                Graph.add_node(entrezNumber, prev_score=1.0, score=1.0, label='Positive')
+            Graph.nodes[entrezNumber]['score']=1.0
+            Graph.nodes[entrezNumber]['prev_score']=1.0
+            Graph.nodes[entrezNumber]['label']='Positive'
+
+def negativeReader(GeneFile, Graph, all_nodes):
+    for line in GeneFile:
+        line=line.split(',')
+        entrezNumber=line[0]
+        if entrezNumber not in all_nodes:
+            Graph.add_node(entrezNumber, prev_score=0.0, score=0.0, label='Negative')
+        Graph.nodes[entrezNumber]['score']=0.0
+        Graph.nodes[entrezNumber]['prev_score']=0.0
+        Graph.nodes[entrezNumber]['label']='Negative'
+
+
+def read_edge_file(infile, Graph, all_nodes):
+
+    start=time.time()
+
+    x=0
+    for line in infile:
+
+        timepassedSinceStart=time.time()-start
+        x=x+1
+        done=x/3362057.0
+        if x%100000==0:
+            print() 
+            print(done, 'percent completed')
+            print('time remaining:', (1.0-done)*timepassedSinceStart/done, 'seconds')
+        line=line.split('\t')
+        line[2]=float(line[2][:len(line[2])-2])
+        Graph.add_edge(line[0],line[1], weight=line[2])
+        for i in range(0,2):
+            node=line[i]
+            if node not in all_nodes:
+                Graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled')
+    return
+
+
+
+#Takes as input a networkx graph
+def iterativeMethod(Graph, t):
+    changed=[]
+    changedNegative=[]
+    changedPositive=[]
+    #Note: Graph.nodes() is a list of all the nodes
+    #Graph.nodes[node] is a dictionary of that node's attributes
+    nodes = Graph.nodes()
     for node in nodes:
+        #Want to keep positive scores at 1 and negative scores at 0 (or -1)
+        if nodes[node]['label'] != 'Unlabeled':
+            pass
+        else:
+            newConfidence = 0
+            sumofWeights = 0
+            #Note: Graph.adj[node].items() gives a list of tuples. Each tuple includes one of the
+            #node's neighbors and a dictionary of the attributes that their shared edge has i.e. weight
+            #neighbor is the node's neighbor, datadict is the dictionary of attributes
+            for neighbor, datadict in Graph.adj[node].items(): 
+                newConfidence = newConfidence + datadict['weight']*nodes[neighbor]['prev_score'] #use t-1 score
+                sumofWeights = sumofWeights + datadict['weight']
+            if sumofWeights>0:
+                newScore = float(newConfidence)/float(sumofWeights)
+                nodes[node]['score'] = newScore #update score to be the new score
         
 
-        try:
-            dicv[node]=G.nodes[node]['SZconfidence']
-        except:
-            dicv[node]=0.5
-            G.nodes[node]['SZconfidence']=0.5
-
+    #After each time step is complete, the previous score is updated to be the current score
+    #Prints the scores after each timestep is complete
 
     for node in nodes:
-        newConfidence=0
-        sumofweights=0
-        for neighbor, datadict  in G.adj[node].items():
-            newConfidence=newConfidence+datadict['weight']*G.nodes[neighbor]['SZconfidence']
-            sumofweights=sumofweights+datadict['weight']
-        if sumofweights>0:
-            G.nodes[node]['SZconfidence']=float(newConfidence)/float(sumofweights)
+        if nodes[node]['prev_score'] != nodes[node]['score']:
+            changed.append(node)
+            if nodes[node]['prev_score'] < nodes[node]['score']:
+                changedNegative.append(node)
+            else:
+                changedPositive.append(node)
+        nodes[node]['prev_score'] = nodes[node]['score']
+    #     print(str(node) + " Label: " + str(nodes[node]['label']) + ", Score: " + str(nodes[node]['score']))
+    print(len(changed), 'of', len(nodes), 'nodes changed')
+    print(len(changedNegative), 'node scores decreased')
+    print(len(changedPositive), 'node scores increased')
+    return
 
-print('initializing list')
-nodeValues=set()
-for node in G.nodes:
+
+
+def write_output(Graph, GeneMap):
+    start=time.time()
+    nodes = Graph.nodes()
+    x=1
+    for node in nodes:
+        x=x+1
+        if x%1000==0:
+            print() 
+            print('assigning HUGO name to gene',x, 'of', len(nodes))
+            done=x/41254.0
+            print(done, 'percent completed')
+            timepassedSinceStart=time.time()-start
+            print('time remaining:', (1.0-done)*timepassedSinceStart/done, 'seconds')
+
+        Found=False
+        for gene in GeneMap:
+            if gene[1]==node:
+                Graph.nodes[node]['name']=gene[0]
+                Found=True
+        if not Found:
+            Graph.nodes[node]['name']='No HUGO name'
+
+
+
+
+    print('initializing list')
+    nodeValues=[]
+    for node in Graph.nodes:
+        
+        nodeValues.append([ node, Graph.nodes[node]['score'], Graph.nodes[node]['label'],Graph.nodes[node]['name']])
+
+        
+
+    nodeValues=sorted(nodeValues, key=itemgetter(1), reverse=True)
+
+
+    x=open('gene_rankings.txt', 'w')
+    y=open('gene_rankings_no_pos.txt', 'w')
+    for node in nodeValues:
+        # if G.nodes[node]['positive']==False:
+        #     print(node)
+        label=node[2]
+        x.write(str(node)+'\n')
+        if label=='Unlabeled':
+            y.write(str(node)+'\n')
+    return
+
+
+
+
+main()
+
+
+
+
+
+
+
+
+
+
+# GIANTbrain.close()
+
+
+# print()
+
+# for node in G.nodes():
+#     if 'positive' not in G.nodes[node]:
+#         G.nodes[node]['positive']=False
+#     if 'name' not in G.nodes[node]:
+#         G.nodes[node]['name']='no name'
+
+# start=time.time()
+
+# for iteration in range(iterations):
+#     print('iteration', iteration+1)
+#     dicv={}
+#     nodes=G.nodes()
+
+
+#     timepassedSinceStart=time.time()-start
+#     x=x+1
+#     done=x*100.0/float(iterations)
+
+#     print() 
+#     print(done, 'percent completed')
+#     print('time remaining:', (100-done)*timepassedSinceStart/done, 'seconds')
+
     
-    nodeValues.add((node, G.nodes[node]['SZconfidence'], G.nodes[node]['positive'],G.nodes[node]['name']))
-    
+#     for node in nodes:
+        
 
-nodeValues=sorted(nodeValues, key=itemgetter(1))
+#         try:
+#             dicv[node]=G.nodes[node]['SZconfidence']
+#         except:
+#             dicv[node]=0.5
+#             G.nodes[node]['SZconfidence']=0.5
 
 
-x=open('gene_rankings.txt', 'w')
-y=open('gene_rankings_no_pos.txt', 'w')
-for node in nodeValues:
-    # if G.nodes[node]['positive']==False:
-    #     print(node)
-    entrez,value,positive,name=node
-    x.write(str(node)+'\n')
-    if not positive:
-        print(node)
-        y.write(str(node)+'\n')
+#     for node in nodes:
+#         newConfidence=0
+#         sumofweights=0
+#         for neighbor, datadict  in G.adj[node].items():
+#             newConfidence=newConfidence+datadict['weight']*G.nodes[neighbor]['SZconfidence']
+#             sumofweights=sumofweights+datadict['weight']
+#         if sumofweights>0:
+#             G.nodes[node]['SZconfidence']=float(newConfidence)/float(sumofweights)
+
 
 
 
