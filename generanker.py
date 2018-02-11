@@ -5,16 +5,17 @@ from operator import itemgetter
 
 
 def main():
-    timesteps = 6
+    timesteps = 150
     print('Opening Files')
-    SZpositiveFile=open('SZpositives.txt','r')
     SZnegativeFile=open('SZnegatives.csv','r')
+    SZpositiveFile=open('SZpositives.txt','r')
+    
     GeneMapfile=open('hugogenelist.txt','r')
     G = nx.Graph()
     GeneMap, nodeset=read_gene_map_file(GeneMapfile,G)
     positiveReader(SZpositiveFile, G, nodeset)
     negativeReader(SZnegativeFile, G, nodeset)
-    edgeFile=open('brain_top_geq_0.150.txt','r')
+    edgeFile=open('brain_top_geq_0.200.txt','r')
     read_edge_file(edgeFile,G, nodeset)
     edgeFile.close()
     print(G.number_of_edges(), 'edges')
@@ -25,6 +26,7 @@ def main():
         print('\n\n')
         print("t = " + str(t+1))
         iterativeMethod(G,t)
+        inter_iterative_output(G)
 
         done=float(t)/float(timesteps)
         print('Time Elapsed:', time.time()-start)
@@ -70,8 +72,8 @@ def read_gene_map_file(GeneMapfile, Graph):
             # print(iname,ialiases,ientrez,iUID, iens)
             igene=[iname,ientrez]
             GeneMap.append(igene)
-            nodeset.add(ientrez)
-            Graph.add_node(ientrez, score=0.5, prev_score=0.5, label='Unlabeled', name=iname)
+            # nodeset.add(ientrez)
+            # Graph.add_node(ientrez, score=0.5, prev_score=0.5, label='Unlabeled', name=iname)
     print(len(GeneMap))
     return GeneMap, nodeset
 
@@ -85,20 +87,23 @@ def positiveReader(GeneFile, Graph, all_nodes):
             entrezNumber=line.split('\t')
             entrezNumber=entrezNumber[0]
             if entrezNumber not in all_nodes:
-                Graph.add_node(entrezNumber, prev_score=1.0, score=1.0, label='Positive')
+                Graph.add_node(entrezNumber, prev_score=1.0, score=1.0, label='Positive', untouched=False)
             Graph.nodes[entrezNumber]['score']=1.0
             Graph.nodes[entrezNumber]['prev_score']=1.0
             Graph.nodes[entrezNumber]['label']='Positive'
+            all_nodes.add(entrezNumber)
 
 def negativeReader(GeneFile, Graph, all_nodes):
     for line in GeneFile:
         line=line.split(',')
         entrezNumber=line[0]
         if entrezNumber not in all_nodes:
-            Graph.add_node(entrezNumber, prev_score=0.0, score=0.0, label='Negative')
+            Graph.add_node(entrezNumber, prev_score=0.0, score=0.0, label='Negative', untouched=False)
+        
         Graph.nodes[entrezNumber]['score']=0.0
         Graph.nodes[entrezNumber]['prev_score']=0.0
         Graph.nodes[entrezNumber]['label']='Negative'
+        all_nodes.add(entrezNumber)
 
 
 def read_edge_file(infile, Graph, all_nodes):
@@ -121,16 +126,20 @@ def read_edge_file(infile, Graph, all_nodes):
         for i in range(0,2):
             node=line[i]
             if node not in all_nodes:
-                Graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled')
+                Graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True)
+                all_nodes.add(node)
     return
 
 
 
 #Takes as input a networkx graph
 def iterativeMethod(Graph, t):
+    positivechangesum=0
+    sumofchanges=0
     changed=[]
     changedNegative=[]
     changedPositive=[]
+    untouchedSet=set()
     #Note: Graph.nodes() is a list of all the nodes
     #Graph.nodes[node] is a dictionary of that node's attributes
     nodes = Graph.nodes()
@@ -158,15 +167,30 @@ def iterativeMethod(Graph, t):
     for node in nodes:
         if nodes[node]['prev_score'] != nodes[node]['score']:
             changed.append(node)
-            if nodes[node]['prev_score'] < nodes[node]['score']:
+            nodes[node]['untouched']=False
+            sumofchanges=sumofchanges+abs(nodes[node]['prev_score'] - nodes[node]['score'])
+            if nodes[node]['prev_score'] > nodes[node]['score']:
                 changedNegative.append(node)
             else:
                 changedPositive.append(node)
+                positivechangesum=positivechangesum+abs(nodes[node]['prev_score'] - nodes[node]['score'])
+
+
+        if nodes[node]['untouched']==True:
+            untouchedSet.add(node)
+
+
+
+
+
         nodes[node]['prev_score'] = nodes[node]['score']
     #     print(str(node) + " Label: " + str(nodes[node]['label']) + ", Score: " + str(nodes[node]['score']))
     print(len(changed), 'of', len(nodes), 'nodes changed')
     print(len(changedNegative), 'node scores decreased')
     print(len(changedPositive), 'node scores increased')
+    print('Sum of absolute value of changes:', sumofchanges)
+    print('Sum of positive changes:', positivechangesum)
+    print('Untouched nodes:', len(untouchedSet))
     return
 
 
@@ -209,6 +233,36 @@ def write_output(Graph, GeneMap):
 
     x=open('gene_rankings.txt', 'w')
     y=open('gene_rankings_no_pos.txt', 'w')
+    for node in nodeValues:
+        # if G.nodes[node]['positive']==False:
+        #     print(node)
+        label=node[2]
+        x.write(str(node)+'\n')
+        if label=='Unlabeled':
+            y.write(str(node)+'\n')
+    return
+
+def inter_iterative_output(Graph):
+    start=time.time()
+    nodes = Graph.nodes()
+
+
+
+
+
+
+    nodeValues=[]
+    for node in Graph.nodes:
+        
+        nodeValues.append([ node, Graph.nodes[node]['score'], Graph.nodes[node]['label']])
+
+        
+
+    nodeValues=sorted(nodeValues, key=itemgetter(1), reverse=True)
+
+
+    x=open('mid_process_gene_rankings.txt', 'w')
+    y=open('mide_process_gene_rankings_no_pos.txt', 'w')
     for node in nodeValues:
         # if G.nodes[node]['positive']==False:
         #     print(node)
