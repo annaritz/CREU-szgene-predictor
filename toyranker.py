@@ -105,28 +105,33 @@ def rgb_to_hex(red,green,blue):
 
 
 #Posts iterative method on toy example network to graphspace
-def plot_network(graphspace, G):
-    ITR = GSGraph()
-    ITR.set_name('Toy Example Iterative Method' + ' ' + str(datetime.now()))
-    ITR.set_tags(['CREU'])
+def plot_network(graphspace, GR):
+    toy = GSGraph()
+    toy.set_name('Toy Example Iterative Method' + ' ' + str(datetime.now()))
+    toy.set_tags(['CREU'])
 
     #The code below colors the nodes according to their scores
-    for node in G.nodes():
-        score = G.nodes[node]['score']
+    for node in GR.nodes():
+        score = GR.nodes[node]['score']
         node_color = rgb_to_hex(1-score, 0, score)
-        label = G.nodes[node]['label']
+        label = GR.nodes[node]['label']
         
-        ITR.add_node(node, label=node, popup=label)
-        ITR.add_node_style(node, color=node_color)
+        print(node)
+        print(type(node))
 
-    for edge in G.edges():
-        weight = G.edges[edge]['weight']
+        print(label)
+        print(type(label))
+        toy.add_node(node, label=node, popup=label + ', ' + score)
+        toy.add_node_style(node, color=node_color)
 
-        ITR.add_edge(edge[0], edge[1])
-        ITR.add_edge_style(edge[0], edge[1], width=weight)
+    for edge in GR.edges():
+        weight = GR.edges[edge]['weight']
+
+        toy.add_edge(edge[0], edge[1])
+        toy.add_edge_style(edge[0], edge[1], width=weight)
     
 
-    graphspace.post_graph(ITR)
+    graphspace.post_graph(toy)
     print("Graph posted!")
 
     return
