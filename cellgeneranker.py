@@ -100,10 +100,10 @@ def read_edge_file(infile, Graph, all_nodes):
 def iterativeMethod(Graph, t):
     positivechangesum=0
     sumofchanges=0
-    changed=[]
-    changedNegative=[]
-    changedPositive=[]
-    untouchedSet=set()
+    changed=0
+    changedNegative=0
+    changedPositive=0
+    untouchedSet=0
     #Note: Graph.nodes() is a list of all the nodes
     #Graph.nodes[node] is a dictionary of that node's attributes
     nodes = Graph.nodes()
@@ -130,18 +130,18 @@ def iterativeMethod(Graph, t):
 
     for node in nodes:
         if nodes[node]['prev_score'] != nodes[node]['score']:
-            changed.append(node)
+            changed += 1
             nodes[node]['untouched']=False
             sumofchanges=sumofchanges+abs(nodes[node]['prev_score'] - nodes[node]['score'])
             if nodes[node]['prev_score'] > nodes[node]['score']:
-                changedNegative.append(node)
+                changedNegative += 1
             else:
-                changedPositive.append(node)
+                changedPositive += 1
                 positivechangesum=positivechangesum+abs(nodes[node]['prev_score'] - nodes[node]['score'])
 
 
         if nodes[node]['untouched']==True:
-            untouchedSet.add(node)
+            untouchedSet += 1
 
 
 
@@ -149,12 +149,12 @@ def iterativeMethod(Graph, t):
 
         nodes[node]['prev_score'] = nodes[node]['score']
     #     print(str(node) + " Label: " + str(nodes[node]['label']) + ", Score: " + str(nodes[node]['score']))
-    print(len(changed), 'of', len(nodes), 'nodes changed')
-    print(len(changedNegative), 'node scores decreased')
-    print(len(changedPositive), 'node scores increased')
+    print(changed, 'of', len(nodes), 'nodes changed')
+    print(changedNegative, 'node scores decreased')
+    print(changedPositive, 'node scores increased')
     print('Sum of absolute value of changes:', sumofchanges)
     print('Sum of positive changes:', positivechangesum)
-    print('Untouched nodes:', len(untouchedSet))
+    print('Untouched nodes:', untouchedSet)
     return
 
 
