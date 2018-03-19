@@ -21,7 +21,7 @@ def main():
     positiveReader(CellpositiveFile, G, nodeset) #adds positive nodes to graph
     negativeReader(SZnegativeFile, G, nodeset) #adds negative nodes to graph
 
-    edgeFile=open('brain_top_geq_0.150.txt','r')
+    edgeFile=open('brain_top_geq_0.200.txt','r')
     read_edge_file(edgeFile,G, nodeset)
     edgeFile.close()
 
@@ -85,6 +85,7 @@ def positiveReader(GeneFile, Graph, all_nodes):
         if line[0] == 'Gene':
             pass
         else:
+
             entrezNumber=line[1]
             if entrezNumber not in all_nodes:
                 Graph.add_node(entrezNumber, prev_score=1.0, score=1.0, label='Positive', untouched=False)
