@@ -1,0 +1,2 @@
+Gene	EntrezID
+PTK2	5747
