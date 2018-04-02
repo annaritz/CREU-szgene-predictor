@@ -21,7 +21,7 @@ def main():
     positiveReader(CellpositiveFile, G, nodeset) #adds positive nodes to graph
     negativeReader(SZnegativeFile, G, nodeset) #adds negative nodes to graph
 
-    edgeFile=open('brain_top_geq_0.150.txt','r')
+    edgeFile=open('brain_top_geq_0.200.txt','r')
     read_edge_file(edgeFile,G, nodeset)
     edgeFile.close()
 
@@ -85,12 +85,14 @@ def positiveReader(GeneFile, Graph, all_nodes):
         if line[0] == 'Gene':
             pass
         else:
-            entrezNumber=line[1]
+            entrezNumber=line[0]
+            print(entrezNumber)
             if entrezNumber not in all_nodes:
                 Graph.add_node(entrezNumber, prev_score=1.0, score=1.0, label='Positive', untouched=False)
             Graph.nodes[entrezNumber]['score']=1.0
             Graph.nodes[entrezNumber]['prev_score']=1.0
             Graph.nodes[entrezNumber]['label']='Positive'
+
             all_nodes.add(entrezNumber)
 
 def negativeReader(GeneFile, Graph, all_nodes):
@@ -184,6 +186,7 @@ def iterativeMethod(Graph, t):
 
 
         nodes[node]['prev_score'] = nodes[node]['score']
+        # print(nodes[node]['prev_score'])
     #     print(str(node) + " Label: " + str(nodes[node]['label']) + ", Score: " + str(nodes[node]['score']))
     print(changed, 'of', len(nodes), 'nodes changed')
     print(changedNegative, 'node scores decreased')
@@ -207,8 +210,8 @@ def write_output(Graph):
     nodeValues=sorted(nodeValues, key=itemgetter(1), reverse=True)
 
 
-    x=open('cellgene_rankings.txt', 'w')
-    y=open('cellgene_rankings_no_pos.txt', 'w')
+    x=open('gene_rankings.txt', 'w')
+    y=open('gene_rankings_no_pos.txt', 'w')
     for node in nodeValues:
         # if G.nodes[node]['positive']==False:
         #     print(node)
