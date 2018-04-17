@@ -2,10 +2,15 @@ print('Initializing Modules')
 import time
 import networkx as nx
 from operator import itemgetter
+import matplotlib.pyplot as plt
 
 
 def main():
     timesteps = 150
+    chartSteps = 500
+    chartPrecision = timesteps/chartSteps
+    chartMarker = 0
+
     print('Opening Files')
     SZnegativeFile=open('SZnegatives.csv','r') #Uses SZ negatives for now
     CellpositiveFile=open('mastergenelist.txt','r') 
@@ -24,18 +29,49 @@ def main():
     print(G.number_of_nodes(), 'nodes')
 
     start=time.time()
+    now=start
+    iterationLogger=[]
+    timelogger=[]
     for t in range(0,timesteps):
         print('\n\n')
         print("t = " + str(t+1))
+        prev=now
+        now=time.time()
+
+
+        if t > chartMarker:
+            iterationLogger.append(t)
+            timelogger.append(now-prev)
+            chartMarker=chartMarker+chartPrecision
+            plt.plot(iterationLogger, timelogger)
+            plt.ylabel('Time Per Iteration')
+            plt.xlabel('Iteration')
+            plt.savefig('timeCourse.png')
+
+
+
+
         iterativeMethod(G,t)
 
         done=float(t)/float(timesteps)
-        print('Time Elapsed:', time.time()-start)
+        print('Time Elapsed:', now-start)
         if done!=0:
             print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
 
+
+
     print('Writing Output File')
-    write_output(G,timesteps)
+    prev=now
+    now=time.time()
+    iterationLogger.append(timesteps)
+    timelogger.append(now-prev)
+    chartMarker=chartMarker+chartPrecision
+    plt.plot(iterationLogger, timelogger)
+    plt.ylabel('Time Per Iteration')
+    plt.xlabel('Iteration')
+    plt.savefig('timeCourse.png')
+
+    write_output(G)
 
 
 
@@ -49,6 +85,7 @@ def positiveReader(GeneFile, Graph, all_nodes):
         if line[0] == 'Gene':
             pass
         else:
+
             entrezNumber=line[1]
             if entrezNumber not in all_nodes:
                 Graph.add_node(entrezNumber, prev_score=1.0, score=1.0, label='Positive', untouched=False)
@@ -174,6 +211,7 @@ def write_output(Graph, timesteps):
     x=open('cellgene_rankings_' + str(timesteps) + '.txt', 'w')
     y=open('cellgene_rankings_no_pos_' + str(timesteps) + '.txt', 'w')
     for node in nodeValues:
+        print(node)
         # if G.nodes[node]['positive']==False:
         #     print(node)
         label=node[2]
