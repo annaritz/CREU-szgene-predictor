@@ -8,7 +8,7 @@ def main():
     timesteps = 150
     print('Opening Files')
     SZnegativeFile=open('SZnegatives.csv','r') #Uses SZ negatives for now
-    CellpositiveFile=open('mastergenelist2.txt','r') 
+    CellpositiveFile=open('mastergenelist.txt','r') 
     
     G = nx.Graph()
     nodeset = set()
@@ -35,7 +35,7 @@ def main():
             print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
 
     print('Writing Output File')
-    write_output(G)
+    write_output(G,timesteps)
 
 
 
@@ -45,7 +45,7 @@ def main():
 #Takes in positive gene file - two columns Gene, EntrezID
 def positiveReader(GeneFile, Graph, all_nodes):
     for line in GeneFile:
-        line=line.strip().split('\t')
+        line=line.strip().split('\t') 
         if line[0] == 'Gene':
             pass
         else:
@@ -159,7 +159,7 @@ def iterativeMethod(Graph, t):
 
 
 
-def write_output(Graph):
+def write_output(Graph, timesteps):
     print('initializing list')
     nodeValues=[]
     for node in Graph.nodes:
@@ -171,8 +171,8 @@ def write_output(Graph):
     nodeValues=sorted(nodeValues, key=itemgetter(1), reverse=True)
 
 
-    x=open('cellgene_rankings.txt', 'w')
-    y=open('cellgene_rankings_no_pos.txt', 'w')
+    x=open('cellgene_rankings_' + str(timesteps) + '.txt', 'w')
+    y=open('cellgene_rankings_no_pos_' + str(timesteps) + '.txt', 'w')
     for node in nodeValues:
         # if G.nodes[node]['positive']==False:
         #     print(node)
