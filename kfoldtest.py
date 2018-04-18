@@ -4,7 +4,7 @@ import networkx as nx
 from operator import itemgetter
 import random
 import matplotlib.pyplot as plt
-
+import sys
 #Don't add nodes that aren't in the network 
 
 #Gene ranker code, with a few changes 
@@ -13,25 +13,32 @@ def main():
     for i in range(x):
         #Runs the algorithm on the test positives (1/4)
         test_genes, hidden_genes, all_genes = random_positives('mastergenelist.txt')
+        print('test gene len:',len(test_genes))
+        print('hidden gene len:',len(hidden_genes))
+        print('all gene len:',len(all_genes))
 
         timesteps = 150
         print('Opening Files')
-        SZnegativeFile=open('SZnegatives.csv','r') #Uses SZ negatives for now
-        CelltestPos=test_genes     
+        
+          
         G = nx.Graph()
         nodeset = set()
-
-        hidden_in_graph = positiveReader(CelltestPos, hidden_genes, G, nodeset) #adds positive nodes to graph
-        negativeReader(SZnegativeFile, G, nodeset) #adds negative nodes to graph
-        SZnegativeFile.close()
-
         edgeFile=open('brain_top_geq_0.200.txt','r')
         read_edge_file(edgeFile,G, nodeset)
         edgeFile.close()
-
         print(G.number_of_edges(), 'edges')
         print(G.number_of_nodes(), 'nodes')
 
+        hidden_in_graph = positiveReader(test_genes, hidden_genes, G, nodeset) #adds positive nodes to graph
+        print('hidden_in_graph:',len(hidden_in_graph))
+
+        SZnegativeFile=open('SZnegatives.csv','r') #Uses SZ negatives for now
+        negativeReader(SZnegativeFile, G, nodeset) #adds negative nodes to graph
+        SZnegativeFile.close()
+
+        print(G.number_of_edges(), 'edges')
+        print(G.number_of_nodes(), 'nodes')
+        
         start=time.time()
         for t in range(0,timesteps):
             print('\n\n')
@@ -129,10 +136,10 @@ def read_edge_file(infile, Graph, all_nodes):
         timepassedSinceStart=time.time()-start
         x=x+1
         done=x/3362057.0
-        if x%100000==0:
-            print() 
-            print(done, 'percent completed')
-            print('time remaining:', (1.0-done)*timepassedSinceStart/done, 'seconds')
+        #if x%100000==0:
+        #    print() 
+        #    print(done, 'percent completed')
+        #    print('time remaining:', (1.0-done)*timepassedSinceStart/done, 'seconds')
         line=line.split('\t')
         line[2]=float(line[2][:len(line[2])-2])
         Graph.add_edge(line[0],line[1], weight=line[2])
