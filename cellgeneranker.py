@@ -7,8 +7,8 @@ import matplotlib.pyplot as plt
 
 def main():
     timesteps = 150
-    chartSteps = 500
-    chartPrecision = timesteps/chartSteps
+    chartSteps = 500 #This looks for the precision of the graph of the time for each iteration
+    chartPrecision = timesteps/chartSteps #These two variables are for logging the time
     chartMarker = 0
 
     print('Opening Files')
@@ -17,13 +17,19 @@ def main():
     
     G = nx.Graph()
     nodeset = set()
+    print("Initializing Graph")
+    edgeFile=open('brain_top_geq_0.200.txt','r')
+    read_edge_file(edgeFile,G, nodeset)
+    edgeFile.close()
+
+    print(G.number_of_edges(), 'edges')
+    print(G.number_of_nodes(), 'nodes')
+
 
     positiveReader(CellpositiveFile, G, nodeset) #adds positive nodes to graph
     negativeReader(SZnegativeFile, G, nodeset) #adds negative nodes to graph
 
-    edgeFile=open('brain_top_geq_0.200.txt','r')
-    read_edge_file(edgeFile,G, nodeset)
-    edgeFile.close()
+    
 
     print(G.number_of_edges(), 'edges')
     print(G.number_of_nodes(), 'nodes')
@@ -71,7 +77,7 @@ def main():
     plt.xlabel('Iteration')
     plt.savefig('timeCourse.png')
 
-    write_output(G)
+    write_output(G, timesteps)
 
 
 
@@ -85,50 +91,40 @@ def positiveReader(GeneFile, Graph, all_nodes):
         if line[0] == 'Gene':
             pass
         else:
-
             entrezNumber=line[1]
-            if entrezNumber not in all_nodes:
-                Graph.add_node(entrezNumber, prev_score=1.0, score=1.0, label='Positive', untouched=False)
-            Graph.nodes[entrezNumber]['score']=1.0
-            Graph.nodes[entrezNumber]['prev_score']=1.0
-            Graph.nodes[entrezNumber]['label']='Positive'
-            all_nodes.add(entrezNumber)
+            if entrezNumber in all_nodes: #This will ignore nodes that are not in the graph.
+                Graph.nodes[entrezNumber]['score']=1.0
+                Graph.nodes[entrezNumber]['prev_score']=1.0
+                Graph.nodes[entrezNumber]['label']='Positive'
 
+#Takes in positive gene file - two columns Gene, EntrezID
 def negativeReader(GeneFile, Graph, all_nodes):
     for line in GeneFile:
         line=line.split(',')
         entrezNumber=line[0]
-        if entrezNumber not in all_nodes:
-            Graph.add_node(entrezNumber, prev_score=0.0, score=0.0, label='Negative', untouched=False)
-        
-        Graph.nodes[entrezNumber]['score']=0.0
-        Graph.nodes[entrezNumber]['prev_score']=0.0
-        Graph.nodes[entrezNumber]['label']='Negative'
-        all_nodes.add(entrezNumber)
+        if entrezNumber in all_nodes:
+            Graph.nodes[entrezNumber]['score']=0.0
+            Graph.nodes[entrezNumber]['prev_score']=0.0
+            Graph.nodes[entrezNumber]['label']='Negative'
+            all_nodes.add(entrezNumber)
 
-
+#Takes in edge list file from Humanbase - 3 columns gene 1, gene 2, functional interaction probability
 def read_edge_file(infile, Graph, all_nodes):
 
-    start=time.time()
 
-    x=0
+
     for line in infile:
 
-        timepassedSinceStart=time.time()-start
-        x=x+1
-        done=x/3362057.0
-        if x%100000==0:
-            print() 
-            print(done, 'percent completed')
-            print('time remaining:', (1.0-done)*timepassedSinceStart/done, 'seconds')
+            
         line=line.split('\t')
-        line[2]=float(line[2][:len(line[2])-2])
-        Graph.add_edge(line[0],line[1], weight=line[2])
+        line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
+        
         for i in range(0,2):
             node=line[i]
             if node not in all_nodes:
                 Graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True)
                 all_nodes.add(node)
+        Graph.add_edge(line[0],line[1], weight=line[2])
     return
 
 
@@ -208,12 +204,10 @@ def write_output(Graph, timesteps):
     nodeValues=sorted(nodeValues, key=itemgetter(1), reverse=True)
 
 
-    x=open('cellgene_rankings_' + str(timesteps) + '.txt', 'w')
-    y=open('cellgene_rankings_no_pos_' + str(timesteps) + '.txt', 'w')
+    x=open('cellgene_rankings_.txt', 'w')
+    y=open('cellgene_rankings_no_pos.txt', 'w')
     for node in nodeValues:
-        print(node)
-        # if G.nodes[node]['positive']==False:
-        #     print(node)
+
         label=node[2]
         x.write(str(node)+'\n')
         if label=='Unlabeled':

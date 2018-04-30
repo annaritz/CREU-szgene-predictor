@@ -5,14 +5,16 @@ from operator import itemgetter
 import random
 import matplotlib.pyplot as plt
 import sys
+import scipy.stats as stats
 #Don't add nodes that aren't in the network 
 
 #Gene ranker code, with a few changes 
 def main():
-    x = 1 #run the tests x times
+    x = 50 #run the tests x times
+    AUCs=[]
     for i in range(x):
-        #Runs the algorithm on the test positives (1/4)
-        test_genes, hidden_genes, all_genes = random_positives('mastergenelist.txt')
+        #Runs the algorithm on the test positives (1/5)
+        test_genes, hidden_genes, all_genes = SZrandom_positives('SZpositives.txt')
         print('test gene len:',len(test_genes))
         print('hidden gene len:',len(hidden_genes))
         print('all gene len:',len(all_genes))
@@ -56,7 +58,10 @@ def main():
 
         plot_histogram(hist_scores, timesteps, x)
 
-
+        AUCs.append(Mann_Whitney_U_test(G, all_genes, hidden_in_graph))
+    plt.clf()
+    plt.boxplot(AUCs)
+    plt.savefig('szgene_AUC.png')
 
     return
 
@@ -75,7 +80,7 @@ def random_positives(positives):
             else:
                 master_positives.add(line[1])
 
-    hidden_pos = random.sample(master_positives, (len(master_positives)//4)) #randomly choose 1/4
+    hidden_pos = random.sample(master_positives, (len(master_positives)//5)) #randomly choose 1/4
     #to remove from the set of positives
     hidden_pos = set(hidden_pos)
 
@@ -83,6 +88,21 @@ def random_positives(positives):
     #master list but not in hidden positives
     return test_pos, hidden_pos, master_positives
 
+def SZrandom_positives(positives):
+    master_positives = set() #set of EntrezID master positives
+    with open(positives, 'r') as pos:
+        for line in pos:
+            line = line.strip().split('\t')
+
+            master_positives.add(line[0])
+
+    hidden_pos = random.sample(master_positives, (len(master_positives)//5)) #randomly choose 1/4
+    #to remove from the set of positives
+    hidden_pos = set(hidden_pos)
+
+    test_pos = master_positives.difference(hidden_pos) #test positives: positives in 
+    #master list but not in hidden positives
+    return test_pos, hidden_pos, master_positives
 
 
 #Takes in the test positives (set of positives/EntrezIDs), the Graph, and the nodes in the Graph
@@ -265,6 +285,48 @@ def plot_histogram(hist_list, timesteps, x):
     plt.savefig('cellgene_testhist_' + str(timesteps) + '_' + str(x) + '.png')
     print('Histogram done!')
     return
+
+def Mann_Whitney_U_test(Graph, all_pos, hidden_nodes):
+    #Runs a Mann-Whitney U test on the lists
+    kfold_ranks=[] #This will be the results we have computed without the positives
+    test_ranks=[] #This will be the results we have computed with all positives
+
+    nodeValues=[] #This is the vehicle by which we extract graph information
+    hiddenNodeValues=[]
+    notPositiveNodeValues=[]
+
+    for node in Graph.nodes:
+        if node in hidden_nodes:
+            hiddenNodeValues.append(Graph.nodes[node]['score'])
+        elif node not in all_pos:
+            notPositiveNodeValues.append(Graph.nodes[node]['score'])
+
+    U, p=stats.mannwhitneyu(hiddenNodeValues, notPositiveNodeValues, alternative="two-sided")
+    print(U,p)
+    AUC=U/(len(hiddenNodeValues)*len(notPositiveNodeValues))
+    print(AUC)
+
+
+
+
+
+
+    return AUC
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
