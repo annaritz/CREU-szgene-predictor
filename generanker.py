@@ -90,7 +90,7 @@ def positiveReader(GeneFile, Graph, all_nodes):
         if line[0] == 'Gene':
             pass
         else:
-            entrezNumber=line[1]
+            entrezNumber=line[0]
             if entrezNumber in all_nodes: #This will ignore nodes that are not in the graph.
                 Graph.nodes[entrezNumber]['score']=1.0
                 Graph.nodes[entrezNumber]['prev_score']=1.0

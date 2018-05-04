@@ -1,9 +1,9 @@
 import networkx as nx
-from graphspace_python.api.client import GraphSpace
-from graphspace_python.graphs.classes.gsgraph import GSGraph
+# from graphspace_python.api.client import GraphSpace
+# from graphspace_python.graphs.classes.gsgraph import GSGraph
 from datetime import datetime
-
-graphspace = GraphSpace('mirbern@reed.edu', 'pumpkin')
+import matplotlib.pyplot as plt
+# graphspace = GraphSpace('mirbern@reed.edu', 'pumpkin')
 
 def main():
 
@@ -25,9 +25,10 @@ def main():
         print("t = " + str(t+1))
         iterativeMethod(G,t)
 
-    plot_network(graphspace, G)
+    # plot_network(graphspace, G)
 
-
+    nx.draw(G, pos=nx.spring_layout(G), with_labels=True)
+    plt.show()
     return
 
 
@@ -64,6 +65,12 @@ def read_label_file(infile, Graph):
 
 #Takes as input a networkx graph
 def iterativeMethod(Graph, t):
+    positivechangesum=0
+    sumofchanges=0
+    changed=0
+    changedNegative=0
+    changedPositive=0
+    untouchedSet=0
     #Note: Graph.nodes() is a list of all the nodes
     #Graph.nodes[node] is a dictionary of that node's attributes
     nodes = Graph.nodes()
@@ -87,10 +94,32 @@ def iterativeMethod(Graph, t):
 
     #After each time step is complete, the previous score is updated to be the current score
     #Prints the scores after each timestep is complete
-    for node in nodes:
-        nodes[node]['prev_score'] = nodes[node]['score']
-        print(str(node) + " Label: " + str(nodes[node]['label']) + ", Score: " + str(nodes[node]['score']))
 
+    for node in nodes:
+        if nodes[node]['prev_score'] != nodes[node]['score']:
+            changed += 1
+            sumofchanges=sumofchanges+abs(nodes[node]['prev_score'] - nodes[node]['score'])
+            if nodes[node]['prev_score'] > nodes[node]['score']:
+                changedNegative += 1
+            else:
+                changedPositive += 1
+                positivechangesum=positivechangesum+abs(nodes[node]['prev_score'] - nodes[node]['score'])
+
+
+
+
+
+
+
+        nodes[node]['prev_score'] = nodes[node]['score']
+        # print(nodes[node]['prev_score'])
+        print(str(node) + " Label: " + str(nodes[node]['label']) + ", Score: " + str(nodes[node]['score']))
+    print(changed, 'of', len(nodes), 'nodes changed')
+    print(changedNegative, 'node scores decreased')
+    print(changedPositive, 'node scores increased')
+    print('Sum of absolute value of changes:', sumofchanges)
+    print('Sum of positive changes:', positivechangesum)
+    print('Untouched nodes:', untouchedSet)
     return
 
 def rgb_to_hex(red,green,blue):
