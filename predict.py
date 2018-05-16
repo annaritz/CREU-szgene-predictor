@@ -7,6 +7,8 @@ import networkx as nx
 from operator import itemgetter
 import matplotlib.pyplot as plt
 from optparse import OptionParser
+from scipy.sparse import lil_matrix
+from scipy.sparse.linalg import spsolve
 
 def parse_arguments(argv):
     usage = 'predict.py [options]\n'
@@ -33,15 +35,19 @@ def parse_arguments(argv):
         help='output file prefixes (default="outfiles/out").')
 
     ## ARGUMENTS
-    parser.add_option('','--matrix',\
-        action='store_true',default=False,\
-        help='Run the matrix version of the iterative method (default=False).')
     parser.add_option('-e','--epsilon',\
         type='float',metavar='FLOAT',default=0.001,\
         help='Epsilon to terminate the iterative process (default = 0.001).')
     parser.add_option('-t','--timesteps',\
-        type='int',metavar='INT',default=150,\
-        help='Maximum number of timesteps to consider (default=150).')
+        type='int',metavar='INT',default=500,\
+        help='Maximum number of timesteps to consider (default=500).')
+    parser.add_option('-k','--k_fold',metavar='INT',default=5,\
+        help='k for k-fold cross validation (default=5).')
+    parser.add_option('-a','--auc_samples',metavar='INT',default=5,\
+        help='number of cross validation iterations to compute AUC (default=50).')
+    parser.add_option('','--matrix',\
+        action='store_true',default=False,\
+        help='Run the matrix version of the iterative method (default=False).')
 
     ## OUTPUTS
     parser.add_option('','--stats',\
@@ -50,6 +56,9 @@ def parse_arguments(argv):
     parser.add_option('','--plot',\
         action='store_true',default=False,\
         help='Plot outputs about method iterations. Default=False.')
+    parser.add_option('','--auc',\
+        action='store_true',default=False,\
+        help='Run k-fold cross validation and compute AUC values.')
     parser.add_option('','--format',\
         action='store_true',default=False,\
         help='Format LaTeX tables. Default=False.')
@@ -100,6 +109,7 @@ def main(argv):
         
     print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.' % \
         (len(disease_positives),len(biological_process_positives),len(negatives)))
+    print('')
     print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
 
     print('\nRunning Learning Algorithms...')
@@ -112,11 +122,11 @@ def main(argv):
         d_times,d_changes,d_predictions = readResults(statsfile,outfile)
     else:
         if opts.matrix:
-            pass
+            d_times,d_changes,d_predictions = matrixLearn(G,disease_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
         else:
             setGraphAttrs(G,disease_positives,negatives)
-            d_times,d_changes,d_predictions = iterativeUpdate(G,opts.epsilon,opts.timesteps,opts.verbose)
-            writeResults(statsfile,outfile,d_times,d_changes,d_predictions,genemap)
+            d_times,d_changes,d_predictions = iterativeLearn(G,opts.epsilon,opts.timesteps,opts.verbose)
+        writeResults(statsfile,outfile,d_times,d_changes,d_predictions,genemap)
 
     print(' biological process predictions...')
     statsfile = opts.outprefix + '_biological_process_stats.txt'
@@ -126,16 +136,32 @@ def main(argv):
         b_times,b_changes,b_predictions = readResults(statsfile,outfile)
     else:
         if opts.matrix:
-            pass
+            b_times,b_changes,b_predictions = matrixLearn(G,biological_process_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
         else:
             setGraphAttrs(G,biological_process_positives,negatives)
-            b_times,b_changes,b_predictions = iterativeUpdate(G,opts.epsilon,opts.timesteps,opts.verbose)
-            writeResults(statsfile,outfile,b_times,b_changes,b_predictions,genemap)
+            b_times,b_changes,b_predictions = iterativeLearn(G,opts.epsilon,opts.timesteps,opts.verbose)
+        writeResults(statsfile,outfile,b_times,b_changes,b_predictions,genemap)
     
-    print('\nWriting Output and Post-Processing...')
-    outfile = opts.outprefix+'_combined_output.txt'
+    outfile = opts.outprefix+'_union_combined_output.txt'
     writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap)
 
+    print(' union of positives...')
+    statsfile = opts.outprefix + '_union_stats.txt'
+    outfile = opts.outprefix+'_union_output.txt'
+    union_positives = disease_positives.union(biological_process_positives)
+    if not opts.force and os.path.isfile(outfile):
+        print('  File %s exists. Not running (use --force to override)' % (outfile))
+        u_times,u_changes,u_predictions = readResults(statsfile,outfile)
+    else:
+        if opts.matrix:
+            u_times,u_changes,u_predictions = matrixLearn(G,union_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
+        else:
+            setGraphAttrs(G,union_positives,negatives)
+            u_times,u_changes,u_predictions = iterativeLearn(G,opts.epsilon,opts.timesteps,opts.verbose)
+        writeResults(statsfile,outfile,u_times,u_changes,u_predictions,genemap)
+
+    print('\nWriting Output and Post-Processing...')
+    
     if opts.plot:
         plt.clf()
         plt.plot(range(len(d_times)),d_times,'-r',label='Disease Predictions')
@@ -153,6 +179,22 @@ def main(argv):
         plt.xlabel('Iteration')
         plt.savefig(opts.outprefix+'_scoreChange.png')
 
+        plt.clf()
+        names = ['Disease Predictor $f_{\mathcal{D}}$','Biological Process Predictor $f_{\mathcal{P}}$','Union Predictor','Score $g$']
+        colors =['g','b','k','r']
+        n = G.number_of_nodes()
+        preds = [d_predictions,b_predictions,u_predictions,{x:d_predictions[x]*u_predictions[x] for x in G.nodes()}]
+        for i in range(len(names)):
+            yvals =sorted(preds[i].values(),reverse=True)
+            plt.plot(range(n),yvals,color=colors[i],label=names[i])
+        plt.plot([0,n-1],[0.5,0.5],':k',label='_nolabel_')
+        plt.legend()
+        plt.xlabel('Node ($n=%s$)' % (n))
+        plt.ylabel('Ranking ($f$ or $g$)')
+        plt.xlim(0,n-1)
+        plt.ylim(0.01,1.01)
+        plt.savefig(opts.outprefix+'_nodeRankings.png')
+
     if opts.format:
         outfile = opts.outprefix+'_formatted.txt'
         formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap)
@@ -164,36 +206,35 @@ def main(argv):
 def formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap):
     # write output
     out = open(outfile,'w')
-    out.write('\\begin{table*}[h]\n')
+    out.write('\\begin{table}[h]\n')
     out.write('\\centering\n')
-    out.write('\\begin{tabular}{ll|c|cc|cc|}\n')
-    out.write(' & & & \\multicolumn{2}{|c|}{Schizophrenia ($\mathcal{D}$)} & \\multicolumn{2}{|c|}{Cell Motility ($\mathcal{P})$} \\\\\n')
-    out.write('Name & EntrezID & Score $g(v)$ & In $C_{\mathcal{D}}$? & $f_{\mathcal{D}}$ & In $C_{\mathcal{P}}$? & $f_{\mathcal{P}}$\\\\\\hline\n')
+    out.write('\\begin{tabular}{|ll|ccc|}\\hline\n')
+    out.write('Gene Name & EntrezID & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\\\\hline\n')
     for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
         score = d_predictions[n]*b_predictions[n]
         if d_predictions[n] < 0.5 or b_predictions[n] < 0.5 or score == 0.25:
             continue
         name = genemap.get(n,n)
         entrezID = n
+        out.write('%s & %s ' % (name,entrezID))
         if n in disease_positives:
-            d_pos = '$\\checkmark$'
+            out.write(' & \\textit{%.2f}' % (d_predictions[n]))
         else:
-            d_pos = ''
+            out.write(' & \\textbf{%.2f}' % (d_predictions[n]))
         if n in biological_process_positives:
-            b_pos = '$\\checkmark$'
+            out.write(' & \\textit{%.2f}' % (b_predictions[n]))
         else:
-            b_pos = ''
-        
-        out.write('%s & %s & %.2f & %s & %.2f & %s & %.2f\\\\\n' % (name,entrezID,score,d_pos,d_predictions[n],b_pos,b_predictions[n]))
+            out.write(' & \\textbf{%.2f}' % (b_predictions[n]))
+        out.write(' & %.2f\\\\\n' % (score))
     out.write('\\end{tabular}\n')
-    out.write('\\end{table*}\n')
+    out.write('\\end{table}\n')
     print('Wrote to %s' % (outfile))
     return
 
 def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap):
     # write output
     out = open(outfile,'w')
-    out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tBlackList?\n')
+    out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\n')
     for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
         disLabel='Unlabeled'
         procLabel='Unlabeled'
@@ -309,12 +350,100 @@ def read_edge_file(filename, graph):
             for i in range(0,2):
                 node=line[i]
                 if node not in all_nodes:
-                    graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True)
+                    graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=-1)
                     all_nodes.add(node)
             graph.add_edge(line[0],line[1], weight=line[2])
     return
 
-def iterativeUpdate(G,epsilon,timesteps,verbose):
+def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
+
+    ## Takes the form of f = M * f + c. 
+
+    ## sort unlabeled nodes.
+    unlabeled = set(G.nodes()).difference(pos).difference(neg)
+    unlabeled_list = sorted(unlabeled)
+    unlabeled_inds = {unlabeled_list[i]:i for i in range(len(unlabeled_list))}
+    print('%d unlabeled nodes.' % (len(unlabeled)))
+
+    print('Preparing matrix data')
+    #Add summed degree to graph.
+    #Note: Graph.adj[node].items() gives a list of tuples. Each tuple includes one of the
+    #node's neighbors and a dictionary of the attributes that their shared edge has i.e. weight
+    #neighbor is the node's neighbor, datadict is the dictionary of attributes
+    print(' computing weighted degree...')
+    for node in G.nodes():
+        G.nodes[node]['weighted_degree'] = 0
+        for neighbor, datadict in G.adj[node].items():
+            G.nodes[node]['weighted_degree'] += datadict['weight']
+
+    #Make sparse M matrix.
+    print(' making M matrix...')
+    M = lil_matrix((len(unlabeled),len(unlabeled)))
+    for u,v in G.edges():
+        if u in unlabeled and v in unlabeled:
+            i = unlabeled_inds[u]
+            j = unlabeled_inds[v]
+            M[i,j] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
+            M[j,i] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
+
+    #Make c vector
+    print(' making c vector...')
+    c = [0]*len(unlabeled_list)
+    for i in range(len(unlabeled_list)):
+        v = unlabeled_list[i]
+        for neighbor, datadict in G.adj[v].items():
+            if neighbor not in unlabeled: # it is labeled
+                if neighbor in pos:
+                    c[i] += datadict['weight']
+                else: # neighbor in negative; label is 0 so nothing is added.
+                    pass
+
+        c[i] = float(c[i])/G.nodes[v]['weighted_degree']
+
+    #Make initial f vector.  This is a value of 0.5 for all unlabeled nodes.
+    f = [0.5]*len(unlabeled_list)
+
+    changeLogger=[]
+    timeLogger=[]
+    for t in range(0,timesteps):
+        
+        start = time.time()
+        
+        ## conduct sparse matrix operation.
+        f_prev = f
+        f = M.dot(f)+c
+
+        ## sum changes
+        changes = sum([abs(f[i]-f_prev[i]) for i in range(len(f))])
+
+        end = time.time()
+        timeLogger.append(end-start)
+        changeLogger.append(changes)
+
+        print("t = %d: change = %.4f" % (t,changes))
+
+        if changes < epsilon:
+            print('BELOW THRESHOLD OF %.2e! Breaking out of loop.' % (epsilon))
+            break
+            
+        if verbose:    
+            done=float(t)/float(timesteps)
+            print('Time Elapsed:', end-start)
+            if done!=0:
+                print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
+
+    # predictions is a dictionary of nodes to values.
+    predictions = {}
+    for n in pos:
+        predictions[n] = 1
+    for n in neg:
+        predictions[n] = 0
+    for i in range(len(unlabeled_list)):
+        predictions[unlabeled_list[i]] = f[i]
+    
+    return timeLogger,changeLogger, predictions
+
+def iterativeLearn(G,epsilon,timesteps,verbose):
     changeLogger=[]
     timeLogger=[]
     for t in range(0,timesteps):
