@@ -1,7 +1,10 @@
+from __future__ import print_statement
+
 import astropy.stats as ast
 import matplotlib.pyplot as plt
 import numpy as np
 import pylab as pl
+
 cellgeneFile=open('cellgene_rankings.txt','r')
 szgeneFile=open('gene_rankings.txt','r')
 
@@ -15,12 +18,9 @@ class Gene:
         self.Cell_label=None
         self.totalScore=0
 
-
-
 SZlist=[]
 SZnegativeentrez=set()
 totalList=[]
-
 
 for line in szgeneFile:
     line=line[1:len(line)-2]
@@ -95,16 +95,8 @@ for gene in x:
             found=True
 
 
-
-
-
-
-
-
-
-
 overlapScore=open('overlapScore.txt','w')
-overlapScore.write('HGNC Symbol'+'\t'+'SZ Score'+'\t'+'Cell Score'+'\t'+'Total Score'+'\t'+'entrez'+'\t'+'SZ label'+'\t'+'Cell Motility Label'+'\n\n')
+overlapScore.write('#HGNC Symbol'+'\t'+'SZ Score'+'\t'+'Cell Score'+'\t'+'Total Score'+'\t'+'entrez'+'\t'+'SZ label'+'\t'+'Cell Motility Label'+'\n')
 
 scoreList=[]
 for gene in x:
@@ -122,7 +114,13 @@ plt.hist(x, bins=50)
 plt.title('Scores')
 plt.show()
 
-
+plt.clf()
+plt.plot(range(len(totalList)),sorted(totalList, key=lambda x: x.totalScore, reverse=True),'r','label'='totalScore')
+plt.plot(range(len(totalList)),sorted(totalList, key=lambda x: x.SZscore, reverse=True),'g','label'='SZscore')
+plt.plot(range(len(totalList)),sorted(totalList, key=lambda x: x.Cell_score, reverse=True),'b','label'='Cell_score')
+plt.xlabel('Gene (sorted by each list')
+plt.ylabel('Score')
+plt.savefig('independent_scores.png')
 
 
 

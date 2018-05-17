@@ -6,9 +6,11 @@ import math
 import networkx as nx
 from operator import itemgetter
 import matplotlib.pyplot as plt
+import random
 from optparse import OptionParser
 from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import spsolve
+import scipy.stats as stats
 
 def parse_arguments(argv):
     usage = 'predict.py [options]\n'
@@ -41,9 +43,11 @@ def parse_arguments(argv):
     parser.add_option('-t','--timesteps',\
         type='int',metavar='INT',default=500,\
         help='Maximum number of timesteps to consider (default=500).')
-    parser.add_option('-k','--k_fold',metavar='INT',default=5,\
+    parser.add_option('-k','--k_fold',\
+        type='int',metavar='INT',default=5,\
         help='k for k-fold cross validation (default=5).')
-    parser.add_option('-a','--auc_samples',metavar='INT',default=5,\
+    parser.add_option('-a','--auc_samples',\
+        type='int',metavar='INT',default=50,\
         help='number of cross validation iterations to compute AUC (default=50).')
     parser.add_option('','--matrix',\
         action='store_true',default=False,\
@@ -160,6 +164,37 @@ def main(argv):
             u_times,u_changes,u_predictions = iterativeLearn(G,opts.epsilon,opts.timesteps,opts.verbose)
         writeResults(statsfile,outfile,u_times,u_changes,u_predictions,genemap)
 
+    if opts.auc:
+        print('\nCalculating AUC w/ matrix method...')
+        d_AUCs = []
+        for i in range(opts.auc_samples):
+            print('#%d of %d' % (i,opts.auc_samples))
+            # subsaample 1/k of the positives...
+            hidden_genes = random.sample(disease_positives,int(len(disease_positives)/opts.k_fold))
+            test_positives = disease_positives.difference(hidden_genes)
+            print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
+            ignore,ignore,d_predictions = matrixLearn(G,test_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
+            d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
+
+        b_AUCs = []
+        for i in range(opts.auc_samples):
+            print('#%d of %d' % (i,opts.auc_samples))
+            # subsaample 1/k of the positives...
+            hidden_genes = random.sample(biological_process_positives,int(len(biological_process_positives)/opts.k_fold))
+            test_positives = biological_process_positives.difference(hidden_genes)
+            print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
+            ignore,ignore,d_predictions = matrixLearn(G,test_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
+            b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
+        plt.clf()
+        plt.boxplot([d_AUCs,b_AUCs])
+        plt.savefig(opts.outprefix+'_auc.png')
+
+        out = open(opts.outprefix+'_auc.txt','w')
+        out.write('#DiseaseAUCs\tBiologicalProcessAUCs\n')
+        for i in range(len(d_AUCs)):
+            out.write('%f\t%f\n' % (d_AUCs[i],b_AUCs[i]))
+        out.close()
+
     print('\nWriting Output and Post-Processing...')
     
     if opts.plot:
@@ -202,6 +237,28 @@ def main(argv):
     print('Done.')
 
     return
+
+
+def Mann_Whitney_U_test(predictions, hidden_nodes, negatives):
+    #Runs a Mann-Whitney U test on the lists
+    kfold_ranks=[] #This will be the results we have computed without the positives
+    test_ranks=[] #This will be the results we have computed with all positives
+
+    nodeValues=[] #This is the vehicle by which we extract graph information
+    hiddenNodeValues=[]
+    notPositiveNodeValues=[]
+
+    for node in predictions:
+        if node in hidden_nodes:
+            hiddenNodeValues.append(predictions[node])
+        else:
+            notPositiveNodeValues.append(predictions[node])
+
+    U, p=stats.mannwhitneyu(hiddenNodeValues, notPositiveNodeValues, alternative="two-sided")
+    #print(U,p)
+    AUC=U/(len(hiddenNodeValues)*len(notPositiveNodeValues))
+    #print(AUC)
+    return AUC
 
 def formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap):
     # write output
