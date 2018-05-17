@@ -63,6 +63,9 @@ def parse_arguments(argv):
     parser.add_option('','--auc',\
         action='store_true',default=False,\
         help='Run k-fold cross validation and compute AUC values.')
+    parser.add_option('','--roc',\
+        action='store_true',default=False,\
+        help='Compute ROC cuves after holding out the overlap set.')
     parser.add_option('','--format',\
         action='store_true',default=False,\
         help='Format LaTeX tables. Default=False.')
@@ -121,49 +124,22 @@ def main(argv):
     print(' disease predictions...')
     statsfile = opts.outprefix + '_disease_stats.txt'
     outfile = opts.outprefix+'_disease_output.txt'
-    if not opts.force and os.path.isfile(outfile):
-        print('  File %s exists. Not running (use --force to override)' % (outfile))
-        d_times,d_changes,d_predictions = readResults(statsfile,outfile)
-    else:
-        if opts.matrix:
-            d_times,d_changes,d_predictions = matrixLearn(G,disease_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
-        else:
-            setGraphAttrs(G,disease_positives,negatives)
-            d_times,d_changes,d_predictions = iterativeLearn(G,opts.epsilon,opts.timesteps,opts.verbose)
-        writeResults(statsfile,outfile,d_times,d_changes,d_predictions,genemap)
+    d_predictions = learn(outfile,statsfile,genemap,G,disease_positives,negs,opts.epsilon,opts.timesteps,opts.verbose,opts.force,write=True)
 
     print(' biological process predictions...')
     statsfile = opts.outprefix + '_biological_process_stats.txt'
     outfile = opts.outprefix+'_biological_process_output.txt'
-    if not opts.force and os.path.isfile(outfile):
-        print('  File %s exists. Not running (use --force to override)' % (outfile))
-        b_times,b_changes,b_predictions = readResults(statsfile,outfile)
-    else:
-        if opts.matrix:
-            b_times,b_changes,b_predictions = matrixLearn(G,biological_process_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
-        else:
-            setGraphAttrs(G,biological_process_positives,negatives)
-            b_times,b_changes,b_predictions = iterativeLearn(G,opts.epsilon,opts.timesteps,opts.verbose)
-        writeResults(statsfile,outfile,b_times,b_changes,b_predictions,genemap)
+    b_predictions = learn(outfile,statsfile,genemap,G,biological_process_positives,negs,opts.epsilon,opts.timesteps,opts.verbose,opts.force,write=True)
     
-    outfile = opts.outprefix+'_union_combined_output.txt'
+    outfile = opts.outprefix+'_combined_output.txt'
     writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap)
 
     print(' union of positives...')
     statsfile = opts.outprefix + '_union_stats.txt'
     outfile = opts.outprefix+'_union_output.txt'
     union_positives = disease_positives.union(biological_process_positives)
-    if not opts.force and os.path.isfile(outfile):
-        print('  File %s exists. Not running (use --force to override)' % (outfile))
-        u_times,u_changes,u_predictions = readResults(statsfile,outfile)
-    else:
-        if opts.matrix:
-            u_times,u_changes,u_predictions = matrixLearn(G,union_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
-        else:
-            setGraphAttrs(G,union_positives,negatives)
-            u_times,u_changes,u_predictions = iterativeLearn(G,opts.epsilon,opts.timesteps,opts.verbose)
-        writeResults(statsfile,outfile,u_times,u_changes,u_predictions,genemap)
-
+    u_predictions = learn(outfile,statsfile,genemap,G,union_positives,negs,opts.epsilon,opts.timesteps,opts.verbose,opts.force,write=True)
+    
     if opts.auc:
         print('\nCalculating AUC w/ matrix method...')
         d_AUCs = []
@@ -194,6 +170,10 @@ def main(argv):
         for i in range(len(d_AUCs)):
             out.write('%f\t%f\n' % (d_AUCs[i],b_AUCs[i]))
         out.close()
+
+    if opts.roc:
+        print('\nHolding out overlap set and running procedure.')
+        
 
     print('\nWriting Output and Post-Processing...')
     
@@ -238,6 +218,19 @@ def main(argv):
 
     return
 
+def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,verbose,force,write=False):
+    if not force and os.path.isfile(outfile):
+        print('  File %s exists. Not running (use --force to override)' % (outfile))
+        times,changes,predictions = readResults(statsfile,outfile)
+    else:
+        if opts.matrix:
+            times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose)
+        else:
+            setGraphAttrs(G,disease_positives,negatives)
+            times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
+        if write:
+            writeResults(statsfile,outfile,times,changes,predictions,genemap)
+    return predictions
 
 def Mann_Whitney_U_test(predictions, hidden_nodes, negatives):
     #Runs a Mann-Whitney U test on the lists
