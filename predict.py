@@ -124,21 +124,25 @@ def main(argv):
     print(' disease predictions...')
     statsfile = opts.outprefix + '_disease_stats.txt'
     outfile = opts.outprefix+'_disease_output.txt'
-    d_predictions = learn(outfile,statsfile,genemap,G,disease_positives,negs,opts.epsilon,opts.timesteps,opts.verbose,opts.force,write=True)
+    d_predictions = learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
+        opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
 
     print(' biological process predictions...')
     statsfile = opts.outprefix + '_biological_process_stats.txt'
     outfile = opts.outprefix+'_biological_process_output.txt'
-    b_predictions = learn(outfile,statsfile,genemap,G,biological_process_positives,negs,opts.epsilon,opts.timesteps,opts.verbose,opts.force,write=True)
+    b_predictions = learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
+        opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
     
     outfile = opts.outprefix+'_combined_output.txt'
-    writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap)
+    writeCombinedResults(G,outfile,d_predictions,b_predictions,\
+        disease_positives,biological_process_positives,negatives,blacklist,genemap)
 
     print(' union of positives...')
     statsfile = opts.outprefix + '_union_stats.txt'
     outfile = opts.outprefix+'_union_output.txt'
     union_positives = disease_positives.union(biological_process_positives)
-    u_predictions = learn(outfile,statsfile,genemap,G,union_positives,negs,opts.epsilon,opts.timesteps,opts.verbose,opts.force,write=True)
+    u_predictions = learn(outfile,statsfile,genemap,G,union_positives,negatives,\
+        opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
     
     if opts.auc:
         print('\nCalculating AUC w/ matrix method...')
@@ -149,7 +153,8 @@ def main(argv):
             hidden_genes = random.sample(disease_positives,int(len(disease_positives)/opts.k_fold))
             test_positives = disease_positives.difference(hidden_genes)
             print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
-            ignore,ignore,d_predictions = matrixLearn(G,test_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
+            ignore,ignore,d_predictions = matrixLearn(G,test_positives,negatives,\
+                opts.epsilon,opts.timesteps,opts.verbose)
             d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
 
         b_AUCs = []
@@ -159,7 +164,8 @@ def main(argv):
             hidden_genes = random.sample(biological_process_positives,int(len(biological_process_positives)/opts.k_fold))
             test_positives = biological_process_positives.difference(hidden_genes)
             print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
-            ignore,ignore,d_predictions = matrixLearn(G,test_positives,negatives,opts.epsilon,opts.timesteps,opts.verbose)
+            ignore,ignore,d_predictions = matrixLearn(G,test_positives,negatives,\
+                opts.epsilon,opts.timesteps,opts.verbose)
             b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
         plt.clf()
         plt.boxplot([d_AUCs,b_AUCs])
@@ -218,12 +224,12 @@ def main(argv):
 
     return
 
-def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,verbose,force,write=False):
+def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,matrix,verbose,force,write=False):
     if not force and os.path.isfile(outfile):
         print('  File %s exists. Not running (use --force to override)' % (outfile))
         times,changes,predictions = readResults(statsfile,outfile)
     else:
-        if opts.matrix:
+        if matrix:
             times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose)
         else:
             setGraphAttrs(G,disease_positives,negatives)
