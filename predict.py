@@ -8,7 +8,7 @@ from operator import itemgetter
 import matplotlib.pyplot as plt
 import random
 from optparse import OptionParser
-from scipy.sparse import lil_matrix
+from scipy.sparse import lil_matrix,dok_matrix,coo_matrix
 from scipy.sparse.linalg import spsolve
 import scipy.stats as stats
 
@@ -196,7 +196,7 @@ def main(argv):
         outfile = opts.outprefix+'_holdout_biological_process_output.txt'
         ignore,ignore,holdout_b_predictions = learn(outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
-    
+
         outfile = opts.outprefix+'_holdout_combined_output.txt'
         writeCombinedResults(G,outfile,holdout_d_predictions,holdout_b_predictions,\
             test_disease_positives,test_biological_process_positives,negatives,hidden_genes,genemap)
@@ -219,7 +219,7 @@ def main(argv):
         plt.legend(loc='lower right')
         plt.savefig(opts.outprefix+'_ROC.png')
 
- 
+
     print('\nWriting Output and Post-Processing...')
 
     if opts.plot:
@@ -465,9 +465,11 @@ def read_edge_file(filename, graph):
             for i in range(0,2):
                 node=line[i]
                 if node not in all_nodes:
-                    graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=-1)
+                    graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=0)
                     all_nodes.add(node)
             graph.add_edge(line[0],line[1], weight=line[2])
+            graph.nodes[line[0]]['weighted_degree'] += line[2]
+            graph.nodes[line[1]]['weighted_degree'] += line[2]
     return
 
 def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
@@ -485,22 +487,28 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
     #Note: Graph.adj[node].items() gives a list of tuples. Each tuple includes one of the
     #node's neighbors and a dictionary of the attributes that their shared edge has i.e. weight
     #neighbor is the node's neighbor, datadict is the dictionary of attributes
-    print(' computing weighted degree...')
-    for node in G.nodes():
-        G.nodes[node]['weighted_degree'] = 0
-        for neighbor, datadict in G.adj[node].items():
-            G.nodes[node]['weighted_degree'] += datadict['weight']
+
 
     #Make sparse M matrix.
+    start = time.time()
     print(' making M matrix...')
-    M = lil_matrix((len(unlabeled),len(unlabeled)))
+    # from https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html
+    data_for_M = {}
     for u,v in G.edges():
         if u in unlabeled and v in unlabeled:
             i = unlabeled_inds[u]
             j = unlabeled_inds[v]
-            M[i,j] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
-            M[j,i] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
-
+            data_for_M[(i,j)] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
+            data_for_M[(j,i)] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
+    keys = data_for_M.keys()
+    data = [data_for_M[key] for key in keys]
+    row = [key[0] for key in keys]
+    col = [key[1] for key in keys]
+    n = len(unlabeled)
+    M = coo_matrix((data, (row,col)), shape=(n,n))
+    M = M.tocsr()
+    end = time.time()
+    print(' %f seconds' % (end-start))
     #Make c vector
     print(' making c vector...')
     c = [0]*len(unlabeled_list)
@@ -522,16 +530,15 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
     timeLogger=[]
     for t in range(0,timesteps):
 
-        start = time.time()
-
         ## conduct sparse matrix operation.
         f_prev = f
+        start = time.time()
         f = M.dot(f)+c
+        end = time.time()
 
         ## sum changes
         changes = sum([abs(f[i]-f_prev[i]) for i in range(len(f))])
 
-        end = time.time()
         timeLogger.append(end-start)
         changeLogger.append(changes)
 
@@ -546,7 +553,7 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
             print('Time Elapsed:', end-start)
             if done!=0:
                 print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
-
+    print('Average Mult. Time: %f seconds' % (sum(timeLogger)/len(timeLogger)))
     # predictions is a dictionary of nodes to values.
     predictions = {}
     for n in pos:
