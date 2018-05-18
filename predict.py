@@ -188,13 +188,13 @@ def main(argv):
         print(' disease predictions...')
         statsfile = opts.outprefix + '_holdout_disease_stats.txt'
         outfile = opts.outprefix+'_holdout_disease_output.txt'
-        holdout_d_predictions = learn(outfile,statsfile,genemap,G,test_disease_positives,negatives,\
+        ignore,ignore,holdout_d_predictions = learn(outfile,statsfile,genemap,G,test_disease_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
 
         print(' biological process predictions...')
         statsfile = opts.outprefix + '_holdout_biological_process_stats.txt'
         outfile = opts.outprefix+'_holdout_biological_process_output.txt'
-        holdout_b_predictions = learn(outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
+        ignore,ignore,holdout_b_predictions = learn(outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
     
         outfile = opts.outprefix+'_holdout_combined_output.txt'
@@ -204,13 +204,21 @@ def main(argv):
         ## plot ROC.
         names = ['Disease Predictor $f_{\mathcal{D}}$','Biological Process Predictor $f_{\mathcal{P}}$','Score $g$']
         colors =['g','b','r']
-        preds = [holdout_d_predictions,holdout_b_predictions,{x:holdout_d_predictions[x]*holdout_u_predictions[x] for x in G.nodes()}]
+        preds = [holdout_d_predictions,holdout_b_predictions,{x:holdout_d_predictions[x]*holdout_b_predictions[x] for x in G.nodes()}]
         test_union_positives=test_disease_positives.union(test_biological_process_positives)
         pos = [test_disease_positives,test_biological_process_positives,test_union_positives]
         plt.clf()
         for i in range(len(names)):
-            x,y = getROCvalues(predis[i],pos[i],hidden_genes)
-            plt.plot
+            x,y = getROCvalues(preds[i],pos[i],hidden_genes)
+            plt.plot(x,y,color=colors[i],label=names[i])
+            AUC = Mann_Whitney_U_test(preds[i], hidden_genes,negatives)
+            print(names[i],AUC)
+        plt.xlabel('# False Positives')
+        plt.ylabel('# True Positives')
+        plt.title('Receiver Operator Characteristic (ROC)')
+        plt.legend(loc='lower right')
+        plt.savefig(opts.outprefix+'_ROC.png')
+
  
     print('\nWriting Output and Post-Processing...')
 
