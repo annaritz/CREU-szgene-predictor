@@ -8,7 +8,7 @@ from operator import itemgetter
 import matplotlib.pyplot as plt
 import random
 from optparse import OptionParser
-from scipy.sparse import lil_matrix,dok_matrix,coo_matrix
+from scipy.sparse import lil_matrix
 from scipy.sparse.linalg import spsolve
 import scipy.stats as stats
 
@@ -57,6 +57,14 @@ def parse_arguments(argv):
     parser.add_option('','--stats',\
         action='store_true',default=False,\
         help='Plot statistics about the network. Default=False.')
+    parser.add_option('','--aggregate',\
+        action='append',default=[],\
+        type='string',metavar='STR1,STR2,',
+        help='plot aggregate information (takes a list of prefixes)')
+    parser.add_option('','--aggregate_names',\
+        action='append',default=[],\
+        type='string',metavar='STR1,STR2,',
+        help='plot aggregate information (takes a list of dataset names)')
     parser.add_option('','--plot',\
         action='store_true',default=False,\
         help='Plot outputs about method iterations. Default=False.')
@@ -164,7 +172,7 @@ def main(argv):
             hidden_genes = random.sample(biological_process_positives,int(len(biological_process_positives)/opts.k_fold))
             test_positives = biological_process_positives.difference(hidden_genes)
             print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
-            ignore,ignore,d_predictions = matrixLearn(G,test_positives,negatives,\
+            ignore,ignore,b_predictions = matrixLearn(G,test_positives,negatives,\
                 opts.epsilon,opts.timesteps,opts.verbose)
             b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
         plt.clf()
@@ -196,7 +204,7 @@ def main(argv):
         outfile = opts.outprefix+'_holdout_biological_process_output.txt'
         ignore,ignore,holdout_b_predictions = learn(outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
-
+    
         outfile = opts.outprefix+'_holdout_combined_output.txt'
         writeCombinedResults(G,outfile,holdout_d_predictions,holdout_b_predictions,\
             test_disease_positives,test_biological_process_positives,negatives,hidden_genes,genemap)
@@ -219,7 +227,7 @@ def main(argv):
         plt.legend(loc='lower right')
         plt.savefig(opts.outprefix+'_ROC.png')
 
-
+    
     print('\nWriting Output and Post-Processing...')
 
     if opts.plot:
@@ -246,7 +254,7 @@ def main(argv):
         preds = [d_predictions,b_predictions,u_predictions,{x:d_predictions[x]*u_predictions[x] for x in G.nodes()}]
         for i in range(len(names)):
             yvals =sorted(preds[i].values(),reverse=True)
-            plt.plot(range(n),yvals,color=colors[i],label=names[i])
+            plt.plot(range(n),yvals,color=colors[i],label=names[i],lw=2)
         plt.plot([0,n-1],[0.5,0.5],':k',label='_nolabel_')
         plt.legend()
         plt.xlabel('Node ($n=%s$)' % (n))
@@ -258,6 +266,64 @@ def main(argv):
     if opts.format:
         outfile = opts.outprefix+'_formatted.txt'
         formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap)
+
+    if opts.aggregate:
+        print('\nAggregating information')
+        files = opts.aggregate
+        names = opts.aggregate_names
+        # aggregate AUCs
+        plt.clf()
+        AUCs = []
+        AUC_names = []
+        for i in range(len(files)):
+            d = []
+            b = []
+            with open(files[i]+'_auc.txt') as fin:
+                for line in fin:
+                    if line[0]=='#':
+                        continue
+                    row = line.strip().split()
+                    d.append(float(row[0]))
+                    b.append(float(row[1]))
+            print(names[i]+' Disease Average:',sum(d)/len(d))
+            print(names[i]+' Biological Process Average:',sum(b)/len(b))
+            AUCs = AUCs + [d,b]
+            AUC_names = AUC_names + [names[i]+' $\mathcal{D}$',names[i]+'$\mathcal{P}$']
+
+        bplot = plt.boxplot(AUCs,patch_artist=True)
+        for patch in bplot['boxes']:
+            patch.set_facecolor('lightblue')
+        plt.xticks(range(1,len(files)*2+1),AUC_names)
+        plt.ylabel('AUC')
+        plt.ylim([0.4,1])
+        plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
+        plt.savefig(opts.outprefix+'_aggregate_auc.png')
+
+
+        plt.clf()
+        n = G.number_of_nodes()
+        vals = []
+        colors =['g','b','k','r']
+        for i in range(len(files)):
+            vals.append([])
+            with open(files[i]+'_combined_output.txt') as fin:
+                for line in fin:
+                    if line[0]=='#':
+                        continue
+                    vals[i].append(float(line.strip().split()[6]))
+        for i in range(len(vals)):
+            yvals =sorted(vals[i],reverse=True)
+            plt.plot(range(len(vals[i])),yvals,color=colors[i],label=names[i],lw=2)
+        plt.plot([0,n-1],[0.5,0.5],':k',label='_nolabel_')
+        plt.legend()
+        plt.xlabel('Node')
+        plt.ylabel('Combined Score $g$')
+        plt.xlim(0,500)
+        plt.ylim(0.01,1.01)
+        plt.savefig(opts.outprefix+'_aggregate_nodeRankings.png')
+
+
+
 
     print('Done.')
 
@@ -291,7 +357,7 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,matrix,verbose,
         if matrix:
             times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose)
         else:
-            setGraphAttrs(G,disease_positives,negatives)
+            setGraphAttrs(G,pos,negs)
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
         if write:
             writeResults(statsfile,outfile,times,changes,predictions,genemap)
@@ -465,11 +531,9 @@ def read_edge_file(filename, graph):
             for i in range(0,2):
                 node=line[i]
                 if node not in all_nodes:
-                    graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=0)
+                    graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=-1)
                     all_nodes.add(node)
             graph.add_edge(line[0],line[1], weight=line[2])
-            graph.nodes[line[0]]['weighted_degree'] += line[2]
-            graph.nodes[line[1]]['weighted_degree'] += line[2]
     return
 
 def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
@@ -487,28 +551,22 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
     #Note: Graph.adj[node].items() gives a list of tuples. Each tuple includes one of the
     #node's neighbors and a dictionary of the attributes that their shared edge has i.e. weight
     #neighbor is the node's neighbor, datadict is the dictionary of attributes
-
+    print(' computing weighted degree...')
+    for node in G.nodes():
+        G.nodes[node]['weighted_degree'] = 0
+        for neighbor, datadict in G.adj[node].items():
+            G.nodes[node]['weighted_degree'] += datadict['weight']
 
     #Make sparse M matrix.
-    start = time.time()
     print(' making M matrix...')
-    # from https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html
-    data_for_M = {}
+    M = lil_matrix((len(unlabeled),len(unlabeled)))
     for u,v in G.edges():
         if u in unlabeled and v in unlabeled:
             i = unlabeled_inds[u]
             j = unlabeled_inds[v]
-            data_for_M[(i,j)] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
-            data_for_M[(j,i)] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
-    keys = data_for_M.keys()
-    data = [data_for_M[key] for key in keys]
-    row = [key[0] for key in keys]
-    col = [key[1] for key in keys]
-    n = len(unlabeled)
-    M = coo_matrix((data, (row,col)), shape=(n,n))
-    M = M.tocsr()
-    end = time.time()
-    print(' %f seconds' % (end-start))
+            M[i,j] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
+            M[j,i] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
+
     #Make c vector
     print(' making c vector...')
     c = [0]*len(unlabeled_list)
@@ -530,15 +588,16 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
     timeLogger=[]
     for t in range(0,timesteps):
 
+        start = time.time()
+
         ## conduct sparse matrix operation.
         f_prev = f
-        start = time.time()
         f = M.dot(f)+c
-        end = time.time()
 
         ## sum changes
         changes = sum([abs(f[i]-f_prev[i]) for i in range(len(f))])
 
+        end = time.time()
         timeLogger.append(end-start)
         changeLogger.append(changes)
 
@@ -553,7 +612,7 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
             print('Time Elapsed:', end-start)
             if done!=0:
                 print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
-    print('Average Mult. Time: %f seconds' % (sum(timeLogger)/len(timeLogger)))
+
     # predictions is a dictionary of nodes to values.
     predictions = {}
     for n in pos:
