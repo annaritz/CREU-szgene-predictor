@@ -30,8 +30,8 @@ def parse_arguments(argv):
         type='string',metavar='STR',default='infiles/SZ_negatives.txt',\
         help='File of negatives (default="infiles/SZ_negatives.txt")')
     parser.add_option('-m','--gene_map_file',\
-        type='string',metavar='STR',default='Homo_sapiens.txt',\
-        help='File of EntrezID to Common Names (default="Homo_sapiens.txt")')
+        type='string',metavar='STR',default='infiles/Homo_sapiens.txt',\
+        help='File of EntrezID to Common Names (default="infiles/Homo_sapiens.txt")')
     parser.add_option('-o','--outprefix',\
         type='string',metavar='STR',default='outfiles/out',\
         help='output file prefixes (default="outfiles/out").')
@@ -98,7 +98,6 @@ def main(argv):
     print('\nLoading Data...')
 
     print(" reading edge file...")
-    edgeFile=open('brain_top_geq_0.200.txt','r')
     read_edge_file(opts.interaction_graph,G)
     print(' ',G.number_of_edges(), 'edges')
     print(' ',G.number_of_nodes(), 'nodes')
@@ -177,6 +176,10 @@ def main(argv):
             b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
         plt.clf()
         plt.boxplot([d_AUCs,b_AUCs])
+        plt.xticks([1,2],['SZ','Cell Motility'])
+        plt.ylabel('AUC')
+        plt.ylim([0,1])
+        plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
         plt.savefig(opts.outprefix+'_auc.png')
 
         out = open(opts.outprefix+'_auc.txt','w')
