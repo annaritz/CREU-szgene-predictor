@@ -179,6 +179,38 @@ def main(argv):
 
     if opts.roc:
         print('\nHolding out overlap set and running procedure.')
+        hidden_genes = disease_positives.intersection(biological_process_positives)
+        test_biological_process_positives = biological_process_positives.difference(hidden_genes)
+        test_disease_positives = disease_positives.difference(hidden_genes)
+
+        print('%d hidden genes, %d test disease genes, and %d test biological process genes' % \
+            (len(hidden_genes),len(test_disease_positives),len(test_biological_process_positives)))
+        print(' disease predictions...')
+        statsfile = opts.outprefix + '_holdout_disease_stats.txt'
+        outfile = opts.outprefix+'_holdout_disease_output.txt'
+        holdout_d_predictions = learn(outfile,statsfile,genemap,G,test_disease_positives,negatives,\
+            opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
+
+        print(' biological process predictions...')
+        statsfile = opts.outprefix + '_holdout_biological_process_stats.txt'
+        outfile = opts.outprefix+'_holdout_biological_process_output.txt'
+        holdout_b_predictions = learn(outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
+            opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
+    
+        outfile = opts.outprefix+'_holdout_combined_output.txt'
+        writeCombinedResults(G,outfile,holdout_d_predictions,holdout_b_predictions,\
+            test_disease_positives,test_biological_process_positives,negatives,hidden_genes,genemap)
+
+        ## plot ROC.
+        names = ['Disease Predictor $f_{\mathcal{D}}$','Biological Process Predictor $f_{\mathcal{P}}$','Score $g$']
+        colors =['g','b','r']
+        preds = [holdout_d_predictions,holdout_b_predictions,{x:holdout_d_predictions[x]*holdout_u_predictions[x] for x in G.nodes()}]
+        test_union_positives=test_disease_positives.union(test_biological_process_positives)
+        pos = [test_disease_positives,test_biological_process_positives,test_union_positives]
+        plt.clf()
+        for i in range(len(names)):
+            x,y = getROCvalues(predis[i],pos[i],hidden_genes)
+            plt.plot
         
 
     print('\nWriting Output and Post-Processing...')
@@ -223,6 +255,26 @@ def main(argv):
     print('Done.')
 
     return
+
+def getROCvalues(preds,pos,hidden):
+    x = [0]
+    y = [0]
+    sorted_preds = sorted(preds, key=lambda x:preds[x], reverse=True)
+    runningx = 0
+    runningy = 0
+    for node in sorted_preds:
+        if node in hidden:
+            runningy += 1
+        elif node not in pos: # ignore positives
+            runningx += 1
+        x.append(runningx)
+        y.append(runningy)
+        if runningy == len(hidden):
+            x.append(1)
+            y.append(runningy)
+            break
+    return x,y
+
 
 def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,matrix,verbose,force,write=False):
     if not force and os.path.isfile(outfile):
