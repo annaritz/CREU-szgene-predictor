@@ -75,7 +75,7 @@ def parse_arguments(argv):
     parser.add_option('','--verbose',\
         action='store_true',default=False,\
         help='Print extra statements to the screen. Default=False.')
-    
+
     # parse the command line arguments
     (opts, args) = parser.parse_args()
     return opts
@@ -83,7 +83,7 @@ def parse_arguments(argv):
 def main(argv):
     opts = parse_arguments(argv)
     print(opts)
-    
+
     genemap = geneMapReader(opts.gene_map_file)
     G = nx.Graph()
 
@@ -113,7 +113,7 @@ def main(argv):
         negatives = negatives.difference(overlap_set)
         biological_process_positives = biological_process_positives.difference(overlap_set)
         blacklist.update(overlap_set)
-        
+
     print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.' % \
         (len(disease_positives),len(biological_process_positives),len(negatives)))
     print('')
@@ -124,15 +124,15 @@ def main(argv):
     print(' disease predictions...')
     statsfile = opts.outprefix + '_disease_stats.txt'
     outfile = opts.outprefix+'_disease_output.txt'
-    d_predictions = learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
+    d_times,d_changes,d_predictions = learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
         opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
 
     print(' biological process predictions...')
     statsfile = opts.outprefix + '_biological_process_stats.txt'
     outfile = opts.outprefix+'_biological_process_output.txt'
-    b_predictions = learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
+    b_times,b_changes,b_predictions = learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
         opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
-    
+
     outfile = opts.outprefix+'_combined_output.txt'
     writeCombinedResults(G,outfile,d_predictions,b_predictions,\
         disease_positives,biological_process_positives,negatives,blacklist,genemap)
@@ -141,9 +141,9 @@ def main(argv):
     statsfile = opts.outprefix + '_union_stats.txt'
     outfile = opts.outprefix+'_union_output.txt'
     union_positives = disease_positives.union(biological_process_positives)
-    u_predictions = learn(outfile,statsfile,genemap,G,union_positives,negatives,\
+    u_times,u_changes,u_predictions = learn(outfile,statsfile,genemap,G,union_positives,negatives,\
         opts.epsilon,opts.timesteps,opts.matrix,opts.verbose,opts.force,write=True)
-    
+
     if opts.auc:
         print('\nCalculating AUC w/ matrix method...')
         d_AUCs = []
@@ -179,10 +179,10 @@ def main(argv):
 
     if opts.roc:
         print('\nHolding out overlap set and running procedure.')
-        
+
 
     print('\nWriting Output and Post-Processing...')
-    
+
     if opts.plot:
         plt.clf()
         plt.plot(range(len(d_times)),d_times,'-r',label='Disease Predictions')
@@ -236,7 +236,7 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,matrix,verbose,
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
         if write:
             writeResults(statsfile,outfile,times,changes,predictions,genemap)
-    return predictions
+    return times,changes,predictions
 
 def Mann_Whitney_U_test(predictions, hidden_nodes, negatives):
     #Runs a Mann-Whitney U test on the lists
@@ -413,7 +413,7 @@ def read_edge_file(filename, graph):
 
 def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
 
-    ## Takes the form of f = M * f + c. 
+    ## Takes the form of f = M * f + c.
 
     ## sort unlabeled nodes.
     unlabeled = set(G.nodes()).difference(pos).difference(neg)
@@ -462,9 +462,9 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
     changeLogger=[]
     timeLogger=[]
     for t in range(0,timesteps):
-        
+
         start = time.time()
-        
+
         ## conduct sparse matrix operation.
         f_prev = f
         f = M.dot(f)+c
@@ -481,8 +481,8 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
         if changes < epsilon:
             print('BELOW THRESHOLD OF %.2e! Breaking out of loop.' % (epsilon))
             break
-            
-        if verbose:    
+
+        if verbose:
             done=float(t)/float(timesteps)
             print('Time Elapsed:', end-start)
             if done!=0:
@@ -496,16 +496,16 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
         predictions[n] = 0
     for i in range(len(unlabeled_list)):
         predictions[unlabeled_list[i]] = f[i]
-    
+
     return timeLogger,changeLogger, predictions
 
 def iterativeLearn(G,epsilon,timesteps,verbose):
     changeLogger=[]
     timeLogger=[]
     for t in range(0,timesteps):
-        
+
         start = time.time()
-        
+
         changes = iterativeMethod(G,t,verbose)
         end = time.time()
         timeLogger.append(end-start)
@@ -516,8 +516,8 @@ def iterativeLearn(G,epsilon,timesteps,verbose):
         if changes < epsilon:
             print('BELOW THRESHOLD OF %.2e! Breaking out of loop.' % (epsilon))
             break
-            
-        if verbose:    
+
+        if verbose:
             done=float(t)/float(timesteps)
             print('Time Elapsed:', end-start)
             if done!=0:
@@ -552,13 +552,13 @@ def iterativeMethod(Graph, t,verbose):
             #Note: Graph.adj[node].items() gives a list of tuples. Each tuple includes one of the
             #node's neighbors and a dictionary of the attributes that their shared edge has i.e. weight
             #neighbor is the node's neighbor, datadict is the dictionary of attributes
-            for neighbor, datadict in Graph.adj[node].items(): 
+            for neighbor, datadict in Graph.adj[node].items():
                 newConfidence = newConfidence + datadict['weight']*nodes[neighbor]['prev_score'] #use t-1 score
                 sumofWeights = sumofWeights + datadict['weight']
             if sumofWeights>0:
                 newScore = float(newConfidence)/float(sumofWeights)
                 nodes[node]['score'] = newScore #update score to be the new score
-        
+
 
     #After each time step is complete, the previous score is updated to be the current score
     #Prints the scores after each timestep is complete
@@ -596,10 +596,10 @@ def write_output(Graph, timesteps):
     print('initializing list')
     nodeValues=[]
     for node in Graph.nodes:
-        
+
         nodeValues.append([ node, Graph.nodes[node]['score'], Graph.nodes[node]['label']])
 
-        
+
 
     nodeValues=sorted(nodeValues, key=itemgetter(1), reverse=True)
 
@@ -621,5 +621,3 @@ def write_output(Graph, timesteps):
 
 if __name__ == '__main__':
     main(sys.argv)
-
-
