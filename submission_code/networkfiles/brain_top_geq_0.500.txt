@@ -1,1 +1,1 @@
-/home/aritz/Downloads/brain_top_geq_0.500.txt
+/Users/aritz/Downloads/networks/brain_top_geq_0.500.txt
