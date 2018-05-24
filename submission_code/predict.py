@@ -1,4 +1,6 @@
 ## Full program that calls all parts of the analysis.
+import matplotlib
+matplotlib.use('Agg')
 import sys
 import os.path
 import time
@@ -18,7 +20,7 @@ def parse_arguments(argv):
 
     ## FILES
     parser.add_option('-g','--interaction_graph',\
-        type='string',metavar='STR',default='brain_top_geq_0.200.txt',\
+        type='string',metavar='STR',default='networkfiles/brain_top_geq_0.200.txt',\
         help='Functional interaction network (default="brain_top_geq_0.200.txt").')
     parser.add_option('-b','--biological_process_positives',\
         type='string',metavar='STR',default='infiles/motility_positives.txt',\
@@ -276,6 +278,7 @@ def main(argv):
         names = opts.aggregate_names
         # aggregate AUCs
         plt.clf()
+        plt.figure(figsize=(8,4))
         AUCs = []
         AUC_names = []
         for i in range(len(files)):
@@ -291,14 +294,14 @@ def main(argv):
             print(names[i]+' Disease Average:',sum(d)/len(d))
             print(names[i]+' Biological Process Average:',sum(b)/len(b))
             AUCs = AUCs + [d,b]
-            AUC_names = AUC_names + [names[i]+' $\mathcal{D}$',names[i]+'$\mathcal{P}$']
+            AUC_names = AUC_names + [names[i]+'\n$\mathcal{D}$',names[i]+'\n$\mathcal{P}$']
 
         bplot = plt.boxplot(AUCs,patch_artist=True)
         for patch in bplot['boxes']:
             patch.set_facecolor('lightblue')
         plt.xticks(range(1,len(files)*2+1),AUC_names)
         plt.ylabel('AUC')
-        plt.ylim([0.4,1])
+        plt.ylim([0,1])
         plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
         plt.savefig(opts.outprefix+'_aggregate_auc.png')
 
@@ -306,7 +309,7 @@ def main(argv):
         plt.clf()
         n = G.number_of_nodes()
         vals = []
-        colors =['g','b','k','r']
+        colors =['g','b','k','r','y','c','m']
         for i in range(len(files)):
             vals.append([])
             with open(files[i]+'_combined_output.txt') as fin:
