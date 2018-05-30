@@ -126,9 +126,9 @@ def visualize_graph(graphspace, Graph, gene, threshold):
 
     weight_sum = 0
     neighbors = 0
-
-    with open('candidate_neighbors.txt', 'w') as c:
-        c.write('EntrezID\tSZPos\tCMPos\tNeg\tEdgeWeight\n') #Title
+    name = 'candidate_neighbors_' + str(gene) + '_' + str(threshold) + '.txt'
+    with open(name, 'w') as c:
+        c.write('EntrezID\tSZPos\tCMPos\tSZNeg\tEdgeWeight\n') #Title
         #For every neighbor, write a line of info to output file
         for neighbor,datadict in Graph.adj[gene].items():
             weight_sum += datadict['weight']
@@ -138,7 +138,7 @@ def visualize_graph(graphspace, Graph, gene, threshold):
         average_weight = float(weight_sum/neighbors)
 
         #Summary line
-        c.write('Entrez ID %s has %d neighbors with an average edge weight score of %f' % (gene, neighbors, average_weight))
+        c.write('Entrez ID %s has %d neighbor(s) with an average edge weight score of %f' % (gene, neighbors, average_weight))
 
 
     """
