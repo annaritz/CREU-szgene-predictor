@@ -11,22 +11,19 @@ def main():
     chartPrecision = timesteps/chartSteps
     chartMarker = 0
 
-    print('Opening Files')
-    SZnegativeFile=open('SZnegatives.csv','r') #Uses SZ negatives for now
-    CellpositiveFile=open('SZpositives.txt','r') 
-    
+
     G = nx.Graph()
     nodeset = set()
-    print("Initializing Graph")
-    edgeFile=open('brain_top_geq_0.200.txt','r')
+    print('Initializing Graph')
     read_edge_file(edgeFile,G, nodeset)
-    edgeFile.close()
+    
 
     print(G.number_of_edges(), 'edges')
     print(G.number_of_nodes(), 'nodes')
 
-    positiveReader(CellpositiveFile, G, nodeset) #adds positive nodes to graph
-    negativeReader(SZnegativeFile, G, nodeset) #adds negative nodes to graph
+    print('Opening files')
+    positiveReader('SZPositives.txt', G, nodeset) #adds positive nodes to graph
+    negativeReader('SZnegatives.txt', G, nodeset) #adds negative nodes to graph
 
 
 
@@ -85,43 +82,45 @@ def main():
 
 #Takes in positive gene file - two columns Gene, EntrezID
 def positiveReader(GeneFile, Graph, all_nodes):
-    for line in GeneFile:
-        line=line.strip().split('\t') 
-        if line[0] == 'Gene':
-            pass
-        else:
-            entrezNumber=line[0]
-            if entrezNumber in all_nodes: #This will ignore nodes that are not in the graph.
-                Graph.nodes[entrezNumber]['score']=1.0
-                Graph.nodes[entrezNumber]['prev_score']=1.0
-                Graph.nodes[entrezNumber]['label']='Positive'
+    with open(GeneFile, 'r') as pos:
+        for line in pos:
+            line=line.strip().split('\t') 
+            if line[0] == 'Gene':
+                pass
+            else:
+                entrezNumber=line[0]
+                if entrezNumber in all_nodes: #This will ignore nodes that are not in the graph.
+                    Graph.nodes[entrezNumber]['score']=1.0
+                    Graph.nodes[entrezNumber]['prev_score']=1.0
+                    Graph.nodes[entrezNumber]['label']='Positive'
+    return
 
 #Takes in positive gene file - two columns Gene, EntrezID
 def negativeReader(GeneFile, Graph, all_nodes):
-    for line in GeneFile:
-        line=line.split(',')
-        entrezNumber=line[0]
-        if entrezNumber in all_nodes:
-            Graph.nodes[entrezNumber]['score']=0.0
-            Graph.nodes[entrezNumber]['prev_score']=0.0
-            Graph.nodes[entrezNumber]['label']='Negative'
-            all_nodes.add(entrezNumber)
+    with open(GeneFile, 'r') as neg:
+        for line in neg:
+            line=line.split(',')
+            entrezNumber=line[0]
+            if entrezNumber in all_nodes:
+                Graph.nodes[entrezNumber]['score']=0.0
+                Graph.nodes[entrezNumber]['prev_score']=0.0
+                Graph.nodes[entrezNumber]['label']='Negative'
+                all_nodes.add(entrezNumber)
+    return
 
 #Takes in edge list file from Humanbase - 3 columns gene 1, gene 2, functional interaction probability
 def read_edge_file(infile, Graph, all_nodes):
-
-
-    for line in infile:
-
-        line=line.split('\t')
-        line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
-        
-        for i in range(0,2):
-            node=line[i]
-            if node not in all_nodes:
-                Graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True)
-                all_nodes.add(node)
-        Graph.add_edge(line[0],line[1], weight=line[2])
+    with open(infile, 'r') as edges:
+        for line in edges:
+            line=line.split('\t')
+            line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
+            
+            for i in range(0,2):
+                node=line[i]
+                if node not in all_nodes:
+                    Graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True)
+                    all_nodes.add(node)
+            Graph.add_edge(line[0],line[1], weight=line[2])
     return
 
 
