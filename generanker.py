@@ -14,8 +14,9 @@ def main():
 
     G = nx.Graph()
     nodeset = set()
+    edgefile = 'brain_top_geq_200.txt' #0.200 threshold for now
     print('Initializing Graph')
-    read_edge_file(edgeFile,G, nodeset)
+    read_edge_file(edgefile,G, nodeset)
     
 
     print(G.number_of_edges(), 'edges')
@@ -73,10 +74,9 @@ def main():
     plt.xlabel('Iteration')
     plt.savefig('timeCourse.png')
 
-    write_output(G)
+    ranked_candidates = write_output(G) #returns a list of candidates in descending order of rank
 
-
-
+    plot_candidate_degrees(ranked_candidates, G) #plots graph of node rank versus node degree 
 
     return
 
@@ -209,8 +209,28 @@ def write_output(Graph):
         x.write(str(node)+'\n')
         if label=='Unlabeled':
             y.write(str(node)+'\n')
-    return
 
+    return nodeValues
+
+
+def plot_candidate_degrees(rank, Graph):
+    fig = plt.figure(figsize=(4,4))
+    y = []
+    for cand in rank:
+        deg = Graph.degree(cand) #looks up the degree of a candidate
+        y.append(deg)
+
+    plt.plot(y,'cb')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees')
+
+    plt.tight_layout()
+
+    plt.savefig('candidate_degrees.png')
+
+
+    return
 
 
 
