@@ -14,7 +14,7 @@ def main():
 
     G = nx.Graph()
     nodeset = set()
-    edgefile = 'brain_top_geq_200.txt' #0.200 threshold for now
+    edgefile = 'brain_top_geq_0.200.txt' #0.200 threshold for now
     print('Initializing Graph')
     read_edge_file(edgefile,G, nodeset)
     
@@ -24,7 +24,7 @@ def main():
 
     print('Opening files')
     positiveReader('SZPositives.txt', G, nodeset) #adds positive nodes to graph
-    negativeReader('SZnegatives.txt', G, nodeset) #adds negative nodes to graph
+    negativeReader('SZnegatives.csv', G, nodeset) #adds negative nodes to graph
 
 
 
@@ -216,11 +216,12 @@ def write_output(Graph):
 def plot_candidate_degrees(rank, Graph):
     fig = plt.figure(figsize=(4,4))
     y = []
-    for cand in rank:
-        deg = Graph.degree(cand) #looks up the degree of a candidate
+    for cand in rank: #iterates through list of 
+        node = cand[0]
+        deg = Graph.degree(node) #looks up the degree of a candidate, returns [(cand, degree)]
         y.append(deg)
 
-    plt.plot(y,'cb')
+    plt.plot(y,'ob')
     plt.xlabel('Node Rank')
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees')

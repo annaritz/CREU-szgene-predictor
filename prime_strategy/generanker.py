@@ -77,7 +77,9 @@ def main():
     plt.xlabel('Iteration')
     plt.savefig('timeCourse.png')
 
-    write_output(G)
+    ranked_cand = write_output(G)
+
+    plot_candidate_degrees(ranked_cand, G)
 
 
 
@@ -246,10 +248,31 @@ def write_output(Graph):
         x.write(str(node)+'\n')
         if label=='Unlabeled':
             y.write(str(node)+'\n')
+
+    return nodeValues
+
+
+def plot_candidate_degrees(rank, Graph):
+    print('Creating candidate plot...')
+    fig = plt.figure(figsize=(4,4))
+    y = []
+    for cand in rank: #iterates through list of 
+        node = cand[0]
+        deg = Graph.degree(node) #looks up the degree of a candidate, returns [(cand, degree)]
+        y.append(deg)
+
+    plt.plot(y,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees')
+
+    plt.tight_layout()
+
+    plt.savefig('candidate_degrees.png')
+    print('Wrote to candidate_degrees.png')
+
+
     return
-
-
-
 
 
 
