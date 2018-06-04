@@ -15,6 +15,7 @@ def main():
     G = nx.Graph()
     nodeset = set()
     edgefile = 'brain_top_geq_0.200.txt' #0.200 threshold for now
+    threshold = edgefile[14:19] #takes part of edgefile name that specifies threshold
     print('Initializing Graph')
     read_edge_file(edgefile,G, nodeset)
     
@@ -25,8 +26,6 @@ def main():
     print('Opening files')
     positiveReader('SZPositives.txt', G, nodeset) #adds positive nodes to graph
     negativeReader('SZnegatives.csv', G, nodeset) #adds negative nodes to graph
-
-
 
     print(G.number_of_edges(), 'edges')
     print(G.number_of_nodes(), 'nodes')
@@ -74,9 +73,9 @@ def main():
     plt.xlabel('Iteration')
     plt.savefig('timeCourse.png')
 
-    ranked_candidates = write_output(G) #returns a list of candidates in descending order of rank
+    ranked_candidates = write_output(G, timesteps, threshold) #returns a list of candidates in descending order of rank
 
-    plot_candidate_degrees(ranked_candidates, G) #plots graph of node rank versus node degree 
+    plot_candidate_degrees(ranked_candidates, G, timesteps, threshold) #plots graph of node rank versus node degree 
 
     return
 
@@ -189,19 +188,20 @@ def iterativeMethod(Graph, t):
 
 
 
-def write_output(Graph):
+def write_output(Graph, timesteps, threshold):
     print('initializing list')
     nodeValues=[]
-    for node in Graph.nodes:
-        nodeValues.append([ node, Graph.nodes[node]['score'], Graph.nodes[node]['label']])
+    #Each line prints the node, score, label, and degree
+    for node in Graph.nodes: 
+        nodeValues.append([node, Graph.nodes[node]['score'], Graph.nodes[node]['label'], Graph.degree(node)])
 
         
 
     nodeValues=sorted(nodeValues, key=itemgetter(1), reverse=True)
 
 
-    x=open('gene_rankings.txt', 'w')
-    y=open('gene_rankings_no_pos.txt', 'w')
+    x=open('gene_rankings_%s_%s.txt' % (timesteps, threshold), 'w')
+    y=open('gene_rankings_no_pos_%s_%s.txt' % (timesteps, threshold), 'w')
     for node in nodeValues:
         # if G.nodes[node]['positive']==False:
         #     print(node)
@@ -213,13 +213,17 @@ def write_output(Graph):
     return nodeValues
 
 
-def plot_candidate_degrees(rank, Graph):
+def plot_candidate_degrees(rank, Graph, timesteps, threshold):
     fig = plt.figure(figsize=(4,4))
     y = []
-    for cand in rank: #iterates through list of 
-        node = cand[0]
-        deg = Graph.degree(node) #looks up the degree of a candidate, returns [(cand, degree)]
-        y.append(deg)
+    for cand in rank[:500]: #iterates through top 500 of ordered list of ranked candidates
+        label = cand[2] #gets the label of the candidate (positive, negative, unlabeled)
+        if label == 'Unlabeled':
+            node = cand[0]
+            deg = Graph.degree(node) #looks up the degree of a candidate, returns [(cand, degree)]
+            y.append(deg)
+        else: #ignore positives and negatives - only want to look at degree of unlabeled nodes
+            pass
 
     plt.plot(y,'ob')
     plt.xlabel('Node Rank')
@@ -228,7 +232,8 @@ def plot_candidate_degrees(rank, Graph):
 
     plt.tight_layout()
 
-    plt.savefig('candidate_degrees.png')
+    plt.savefig('candidate_degrees_%s_%s.png' % (timesteps, threshold))
+    
 
 
     return
