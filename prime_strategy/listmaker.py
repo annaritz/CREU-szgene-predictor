@@ -99,9 +99,9 @@ def main():
                 deleteList[j]=deleteList[j]-1
 
     BigList=sorted(BigList, key=lambda x: x[4])
-    outputFile1=open('E1_positives.txt', 'w')
-    outputFile2=open('E2_positives.txt', 'w')
-    outputFile3=open('E3_positives.txt', 'w')
+    outputFile1=open('SZ_positives.txt', 'w')
+    # outputFile2=open('E2_positives.txt', 'w')
+    # outputFile3=open('E3_positives.txt', 'w')
     overlapControlledECdistribution=[]
 
     E1=[]
@@ -114,19 +114,20 @@ def main():
             Actual_positives.append(gene)
 
     for gene in Actual_positives:
-        if Actual_positives.index(gene)<len(Actual_positives)//3:
-            E1.append(gene)
-        elif Actual_positives.index(gene)<(len(Actual_positives)//3)*2:
-            E2.append(gene)
-        else:
-            E3.append(gene)
+        outputFile1.write(str(gene[1])+'\n')
+    #     if Actual_positives.index(gene)<len(Actual_positives)//3:
+    #         E1.append(gene)
+    #     elif Actual_positives.index(gene)<(len(Actual_positives)//3)*2:
+    #         E2.append(gene)
+    #     else:
+    #         E3.append(gene)
 
-    for gene in E1:
-        outputFile1.write(str(gene[1])+'\t'+str(gene[4])+'\n')
-    for gene in E2:
-        outputFile2.write(str(gene[1])+'\t'+str(gene[4])+'\n')
-    for gene in E3:
-        outputFile3.write(str(gene[1])+'\t'+str(gene[4])+'\n')
+    # for gene in E1:
+    #     outputFile1.write(str(gene[1])+'\t'+str(gene[4])+'\n')
+    # for gene in E2:
+    #     outputFile1.write(str(gene[1])+'\t'+str(gene[4])+'\n')
+    # for gene in E3:
+    #     outputFile3.write(str(gene[1])+'\t'+str(gene[4])+'\n')
 
 
 

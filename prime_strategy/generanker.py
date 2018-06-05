@@ -256,12 +256,16 @@ def plot_candidate_degrees(rank, Graph):
     print('Creating candidate plot...')
     fig = plt.figure(figsize=(4,4))
     y = []
-    for cand in rank: #iterates through list of 
+    for cand in rank[0:100]: #iterates through list of 
+        index=0
         node = cand[0]
         deg = Graph.degree(node) #looks up the degree of a candidate, returns [(cand, degree)]
+        if deg < 15:
+            print(index, node, deg)
+        
         y.append(deg)
 
-    plt.plot(y,'ob')
+    plt.plot(y[0:100],'ob')
     plt.xlabel('Node Rank')
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees')
