@@ -61,18 +61,12 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
     out.close()
     print('Wrote to %s' % (outfile))
     degreeList=degreeList
-    plt.plot(degreeList,'ob')
-    plt.xlabel('Node Rank')
-    plt.ylabel('Node Degree')
-    plt.title('Candidate Degrees')
-    plt.tight_layout()
 
-    plt.savefig('out_candidate_degrees.png')
-    print('Wrote to candidate_degrees.png')
     return
 
 def writeResults(statsfile,outfile,times,changes,predictions,genemap, G):
     degreeList=[]
+    valueList=[]
     fig = plt.figure(figsize=(4,4))
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
@@ -86,26 +80,70 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G):
     for n in sorted(predictions, key=lambda x:predictions[x], reverse=True):
         if n[-6:] == '_prime':
             out.write('%s\t%s\t%f\t%s\n' % (n[:-6],genemap.get(n[:-6],n[:-6]),predictions[n],G.degree(n[:-6]+'_E1')))
-            degreeList.append(G.degree(n[:-6]+'_E1'))
+            if G.node[n[:-6]+'_E1']!= 'Positive' and G.node[n[:-6]+'_E2']!= 'Positive' and G.node[n[:-6]+'_E3']!= 'Positive':
+                degreeList.append(G.degree(n[:-6]+'_E1'))
+                valueList.append(predictions[n])
     out.close()
     print('Wrote to %s' % (outfile))
+    # degreeList=degreeList[0:300]
+    movingAverage=[]
+    alpha=15
+    for i in range(len(degreeList)-alpha):
+        average=sum(degreeList[i:i+alpha])/(alpha+1)
+
+
+        movingAverage.append(average)
+
     
-    # plt.plot(degreeList,'ob')
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Degree')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('out_candidate_degrees_superiter.png')
-    degreeList=degreeList[0:300]
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('candidate_degrees_multilayer.png')
+    
 
     plt.figure()
-    plt.plot(degreeList,'ob')
+    plt.plot(valueList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('candidate_scores_multilayer.png')
 
+    plt.figure()
+    plt.plot(valueList,degreeList,'ob')
+    plt.xlabel('Node Score')
+    plt.ylabel('Node Degrees')
+    plt.title('Candidate Nodes')
+    plt.tight_layout()
+    plt.savefig('candidate_degrees_by_score_multilayer.png')
+
+    degreeList=degreeList[0:300]
+    movingAverage=movingAverage[0:300]
+    plt.figure()
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
     plt.xlabel('Node Rank')
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees')
     plt.tight_layout()
     plt.savefig('top_300_candidate_degrees_multilayer.png')
+
+    valueList=valueList[0:300]
+
+    plt.figure()
+    plt.plot(valueList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('top_300_candidate_scores_multilayer.png')
+
+
+
+
     print(fnjansfkns)
 
     return
@@ -113,6 +151,8 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G):
 
 
 def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
+    degreeList=[]
+    valueList=[]
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
     for i in range(len(times)):
@@ -125,18 +165,65 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     for n in sorted(predictions, key=lambda x:predictions[x], reverse=True):
         out.write('%s\t%s\t%f\n' % (n,genemap.get(n,n),predictions[n]))
         degreeList.append(G.degree(n))
+        valueList.append(predictions[n])
     out.close()
     print('Wrote to %s' % (outfile))
 
-    plt.figure()
-    plt.plot(degreeList,'ob')
 
+    movingAverage=[]
+    alpha=15
+    for i in range(len(degreeList)-alpha):
+        average=sum(degreeList[i:i+alpha])/(alpha+1)
+
+
+        movingAverage.append(average)
+
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
     plt.xlabel('Node Rank')
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('top_300_candidate_degrees_single.png')
-    print(fnjansfkns)
+    plt.savefig('candidate_degrees_singlelayer.png')
+    
+
+    plt.figure()
+    plt.plot(valueList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('candidate_scores_singlelayer.png')
+
+    plt.figure()
+    plt.plot(valueList,degreeList,'ob')
+    plt.xlabel('Node Score')
+    plt.ylabel('Node Degrees')
+    plt.title('Candidate Nodes')
+    plt.tight_layout()
+    plt.savefig('candidate_degrees_by_score_singlelayer.png')
+
+    degreeList=degreeList[0:300]
+    movingAverage=movingAverage[0:300]
+    plt.figure()
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('top_300_candidate_degrees_singlelayer.png')
+
+    valueList=valueList[0:300]
+
+    plt.figure()
+    plt.plot(valueList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('top_300_candidate_scores_singlelayer.png')
+    print(vdfvksjdnvlkjs)
     return
 
 
@@ -182,10 +269,20 @@ def curatedFileReader(filename,graph,verbose, single, minimum_labeled):
                     if verbose:
                         print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
 
+
+        if len(curated)<minimum_labeled:
+            minimum_labeled=len(curated)
+        else:
+            count=minimum_labeled
+        print(minimum_labeled)
+        print(len(curated))
+
+        curated=set(random.sample(curated, minimum_labeled))
+
         print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
         return curated, minimum_labeled
     else:
-        return curatedFileReader2(filename, graph, verbose, minimum_labeled)
+        return curatedFileReaderMulti(filename, graph, verbose, minimum_labeled)
 
 def curatedFileReader1(filename,graph,verbose):
     #Note: Graph.nodes() is a list of all the nodes
@@ -210,7 +307,7 @@ def curatedFileReader1(filename,graph,verbose):
     return curated, minimum_labeled
 
 
-def curatedFileReader2(filename,graph,verbose, minimum_labeled):
+def curatedFileReaderMulti(filename,graph,verbose, minimum_labeled):
     #Note: Graph.nodes() is a list of all the nodes
     nodes = graph.nodes()
     tot = 0
@@ -300,7 +397,43 @@ def read_edge_file(filename, graph, single):
                 graph.add_edge(line[0]+'_E1',line[1]+'_E1', weight=line[2])
                 graph.add_edge(line[0]+'_E2',line[1]+'_E2', weight=line[2])
                 graph.add_edge(line[0]+'_E3',line[1]+'_E3', weight=line[2])
-        return
+
+        # nodes_to_remove=set()
+        # for node in graph.nodes():
+        #     adj_dict=graph.adj[node]
+        #     if len(adj_dict)<=2 and (node[-3:]=='_E1' or node[-3:]=='_E2' or node[-3:]=='_E3'):
+        #         nodes_to_remove.add(node[:-3]+'_E1')
+        #         nodes_to_remove.add(node[:-3]+'_E2')
+        #         nodes_to_remove.add(node[:-3]+'_E3')
+        #         nodes_to_remove.add(node[:-3]+'_prime')
+
+        # for node in nodes_to_remove:
+        #     graph.remove_node(node)
+
+        # edges_to_add=[]
+        # x=0
+        # pairs=set()
+
+
+        # for node in graph.nodes():
+        #     if x%1==0:
+        #         print(x, len(edges_to_add), len(pairs))
+
+        #     x=x+1
+        #     if node[-6:] != '_prime':
+        #         adj_dict=graph.adj[node]
+        #         if len(adj_dict)<10:
+        #             for neighbor in adj_dict:
+        #                 for double_neighbor in graph.adj[neighbor]:
+        #                     if double_neighbor not in adj_dict and (node, double_neighbor) not in pairs:
+        #                         edges_to_add.append([node,double_neighbor])
+        #                         pairs.add((node, double_neighbor))
+
+        # for edge in edges_to_add:
+        #     graph.add_edge(edge[0],edge[1],weight=0.05)
+
+
+
     else:
         all_nodes = set()
         with open(filename,'r') as fin:
@@ -315,7 +448,14 @@ def read_edge_file(filename, graph, single):
                 graph.add_edge(line[0],line[1], weight=line[2])
                 graph.nodes[line[0]]['weighted_degree'] += line[2]
                 graph.nodes[line[1]]['weighted_degree'] += line[2]
-        return
+        # nodes_to_remove=set()
+        # for node in graph.nodes():
+        #     adj_dict=graph.adj[node]
+        #     if len(adj_dict)<2:
+        #         nodes_to_remove.add(node)
+        # for node in nodes_to_remove:
+        #     graph.remove_node(node)
+
 
 def plot_candidate_degrees(rank, Graph):
     print('Creating candidate plot...')

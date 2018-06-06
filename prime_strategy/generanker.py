@@ -265,7 +265,14 @@ def plot_candidate_degrees(rank, Graph):
         
         y.append(deg)
 
-    plt.plot(y[0:100],'ob')
+    movingAverage=[]
+    alpha=15
+    for i in range(len(degreeList)-alpha):
+        average=sum(degreeList[i:i+alpha])/(alpha+1)
+        movingAverage.append(average)
+
+    plt.plot(y[0:300],'ob')
+    plt.plot(movingAverage[0:300])
     plt.xlabel('Node Rank')
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees')

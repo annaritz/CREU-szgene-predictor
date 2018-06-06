@@ -76,7 +76,7 @@ def parse_arguments(argv):
     group = OptionGroup(parser,'Input Files (all have default values)')
     group.add_option('-g','--interaction_graph',\
         type='string',metavar='STR',default='networkfiles/brain_top_geq_0.200.txt',\
-        help='Functional interaction network (default="networkfiles/brain_top_geq_0.150.txt").')
+        help='Functional interaction network (default="networkfiles/brain_top_geq_0.200.txt").')
     group.add_option('-b','--biological_process_positives',\
         type='string',metavar='STR',default='infiles/motility_positives.txt',\
         help='File of positives for the biological process (default="infiles/motility_positives.txt")')
@@ -106,11 +106,14 @@ def parse_arguments(argv):
         type='int',metavar='INT',default=5,\
         help='k for k-fold cross validation (default=5).')
     group.add_option('-s','--auc_samples',\
-        type='int',metavar='INT',default=50,\
+        type='int',metavar='INT',default=5,\
         help='number of cross validation iterations to compute AUC (default=50).')
     group.add_option('-l', '--single_layer',\
         action='store_true', default=False,\
         help='Run the single experiments for disease and biological process and computes score with only one node per gene.')
+    group.add_option('', '--sinksource_constant',\
+        type='float',metavar='FLOAT',default=0.01,\
+        help='How much to add to the denominator of the node value')
     parser.add_option_group(group)
 
     group = OptionGroup(parser,'Aggregate Analysis (combines runs into one figure)')
@@ -161,7 +164,8 @@ def main(argv):
         minimum_labeled=25825
         disease_positives, minimum_labeled = fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, opts.single_layer, minimum_labeled)
         biological_process_positives, minimum_labeled = fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, opts.single_layer, minimum_labeled)
-        negatives, minimum_labeled = fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.single_layer, minimum_labeled)
+        # negatives, minimum_labeled = fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.single_layer, minimum_labeled, opts.gene_mania)
+        negatives=set()
 
         ## some nodes appear in both positive and negative sets; identify these and remove
         ## them from the curated set.
@@ -198,13 +202,13 @@ def main(argv):
         statsfile = opts.outprefix + '_disease_stats.txt'
         outfile = opts.outprefix+'_disease_output.txt'
         d_times,d_changes,d_predictions = learners.learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.single_layer, write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.single_layer,opts.sinksource_constant, write=True)
 
         print(' biological process predictions...')
         statsfile = opts.outprefix + '_biological_process_stats.txt'
         outfile = opts.outprefix+'_biological_process_output.txt'
         b_times,b_changes,b_predictions = learners.learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.single_layer,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.single_layer,sinksource_constant,write=True)
 
         ## write combined results for disease and biological process predictions, including the final score 
         ## which is the product of the two sets of predictions.
@@ -294,7 +298,7 @@ def main(argv):
                 test_positives = disease_positives.difference(hidden_genes)
                 print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
                 ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,negatives,\
-                    opts.epsilon,opts.timesteps,opts.verbose)
+                    opts.epsilon,opts.timesteps,opts.verbose, sinksource_constant)
                 d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
 
             ## biological process k-fold validation

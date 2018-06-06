@@ -2,16 +2,18 @@ import os.path
 import time
 from scipy.sparse import coo_matrix
 from scipy.sparse.linalg import spsolve
+from numpy import diagflat
+import numpy as np
 
 import fileIO2 as fileIO
 
-def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force,single_layer, write=False):
+def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force,single_layer, sinksource_constant, write=False):
     if not force and os.path.isfile(outfile):
         print('  File %s exists. Not running (use --force to override)' % (outfile))
         times,changes,predictions = fileIO.readResults(statsfile,outfile)
     else:
         if not iterative_update:
-            times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose)
+            times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose,sinksource_constant)
 
         else:
             setGraphAttrs(G,pos,negs)
@@ -23,7 +25,7 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
                 fileIO.writeResults(statsfile,outfile,times,changes,predictions,genemap, G)
     return times,changes,predictions
 
-def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
+def matrixLearn(G,pos,neg,epsilon,timesteps,verbose, sinksource_constant):
 
     ## Takes the form of f = M * f + c.
 
@@ -45,8 +47,8 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
             i = unlabeled_inds[u]
             j = unlabeled_inds[v]
 
-            data_for_M[(i,j)] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
-            data_for_M[(j,i)] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
+            data_for_M[(i,j)] = float(G.edges[u,v]['weight'])/(G.nodes[u]['weighted_degree']+sinksource_constant)
+            data_for_M[(j,i)] = float(G.edges[u,v]['weight'])/(G.nodes[v]['weighted_degree']+sinksource_constant)
     keys = data_for_M.keys()
     data = [data_for_M[key] for key in keys]
     row = [key[0] for key in keys]
@@ -68,7 +70,7 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
                 else: # neighbor in negative; label is 0 so nothing is added.
                     pass
 
-        c[i] = float(c[i])/G.nodes[v]['weighted_degree']
+        c[i] = float(c[i])/(G.nodes[v]['weighted_degree']+sinksource_constant)
 
     #Make initial f vector.  This is a value of 0.5 for all unlabeled nodes.
     f = [0.5]*len(unlabeled_list)
@@ -204,19 +206,15 @@ def matrixLearn2(G,pos,neg,epsilon,timesteps,verbose):
 
     return timeLogger,changeLogger, predictions
 
-
-def matrixLearn3(G,pos,neg,epsilon,timesteps,verbose):
-
-    pos1, pos2, pos3 = pos[0], pos[1], pos[2]
+def matrixLearnMANIA(G,pos,neg,epsilon,timesteps,verbose):
 
     ## Takes the form of f = M * f + c.
 
     ## sort unlabeled nodes.
-    unlabeled1, unlabeled2, unlabeled3 = set(G.nodes()).difference(pos[0]).difference(neg), set(G.nodes()).difference(pos[1]).difference(neg), set(G.nodes()).difference(pos[2]).difference(neg)
-    unlabeled_list1, unlabeled_list2, unlabeled_list3  = sorted(unlabeled1), sorted(unlabeled2), sorted(unlabeled3)
-    unlabeled_inds1, unlabeled_inds2, unlabeled_inds3 = {unlabeled_list1[i]:i for i in range(len(unlabeled_list1))}, {unlabeled_list2[i]:i for i in range(len(unlabeled_list2))}, {unlabeled_list3[i]:i for i in range(len(unlabeled_list3))}
-    print('%d unlabeled nodes' % (len(unlabeled1)+len(unlabeled2)+len(unlabeled3)))
-
+    unlabeled = set(G.nodes())
+    unlabeled_list = sorted(unlabeled)
+    unlabeled_inds = {unlabeled_list[i]:i for i in range(len(unlabeled_list))}
+    print('%d unlabeled nodes.' % (len(unlabeled)))
 
     print('Preparing matrix data')
 
@@ -224,90 +222,80 @@ def matrixLearn3(G,pos,neg,epsilon,timesteps,verbose):
     start = time.time()
     print(' making M matrix...')
     # from https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html
-    data_for_M1 = {}
-    data_for_M2 = {}
-    data_for_M3 = {}
+    data_for_M = {}
     for u,v in G.edges():
-        if u in unlabeled1 and v in unlabeled1:
-            i = unlabeled_inds1[u]
-            j = unlabeled_inds1[v]
-            data_for_M1[(i,j)] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
-            data_for_M1[(j,i)] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
-        if u in unlabeled2 and v in unlabeled2:
-            i = unlabeled_inds2[u]
-            j = unlabeled_inds2[v]
-            data_for_M2[(i,j)] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
-            data_for_M2[(j,i)] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
-        if u in unlabeled3 and v in unlabeled3:
-            i = unlabeled_inds3[u]
-            j = unlabeled_inds3[v]
-            data_for_M3[(i,j)] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
-            data_for_M3[(j,i)] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
+        if u in unlabeled and v in unlabeled:
+            i = unlabeled_inds[u]
+            j = unlabeled_inds[v]
 
-
-    keys1 = data_for_M1.keys()
-    data1 = [data_for_M1[key] for key in keys1]
-    row1 = [key[0] for key in keys1]
-    col1 = [key[1] for key in keys1]
-
-    keys1 = data_for_M1.keys()
-    data1 = [data_for_M1[key] for key in keys1]
-    row1 = [key[0] for key in keys1]
-    col1 = [key[1] for key in keys1]
-
-
-
+            data_for_M[(i,j)] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
+            data_for_M[(j,i)] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
+    keys = data_for_M.keys()
+    data = [data_for_M[key] for key in keys]
+    row = [key[0] for key in keys]
+    col = [key[1] for key in keys]
     n = len(unlabeled)
+    PreMatrix=coo_matrix((data, (row,col)), shape=(n,n)).tocsr()
     M = coo_matrix((data, (row,col)), shape=(n,n))
     M = M.tocsr()
+    col_sums=PreMatrix.sum(axis=0, dtype=np.float)
+    row_sums=PreMatrix.sum(axis=1, dtype=np.float)
+    print(row_sums)
+
+
+    for i in range(len(row)):
+        for j in range(len(col)):
+
+            M[i,j]=PreMatrix[i,j]/(row_sums[i,i]*col_sums[0,j])**0.5
+
+    D = diagflat(col_sums)
+    L = D - M
+
+
     end = time.time()
     print(' %f seconds' % (end-start))
     #Make c vector
-    print(' making c vectors...')
-    cs = [[0]*len(unlabeled_list), [0]*len(unlabeled_list), [0]*len(unlabeled_list)]
-    for impact in cs:
-        for i in range(len(unlabeled_list)):
-            v = unlabeled_list[i]
-            for neighbor, datadict in G.adj[v].items():
-                if neighbor not in unlabeled: # it is labeled
-                    if neighbor in pos1:
-                        impact[i] += datadict['weight']
-                    else: # neighbor in negative; label is 0 so nothing is added.
-                        pass
+    print(' making c vector...')
+    c = [0.5]*len(unlabeled_list)
+    i=0
+    for node in unlabeled_list:
+        if node in pos:
+            c[i]=1
+        if node in neg:
+            c[i]=0
+        i=i+1
+    f=spsolve(L,c)
 
-            impact[i] = float(c1[i])/G.nodes[v]['weighted_degree']
 
     #Make initial f vector.  This is a value of 0.5 for all unlabeled nodes.
-    f1, f2, f3 = [0.5]*len(unlabeled_list), [0.5]*len(unlabeled_list), [0.5]*len(unlabeled_list)
 
-    changeLogger=[]
-    timeLogger=[]
-    for t in range(0,timesteps):
+    # changeLogger=[]
+    # timeLogger=[]
 
-        ## conduct sparse matrix operation.
-        f_prev = f
-        start = time.time()
-        f1 = M.dot(f1)+c1
-        f2 = M.dot(f2)+c1
-        end = time.time()
+    #     ## conduct sparse matrix operation.
+    #     f_prev = f
+    #     start = time.time()
+    #     f = L.dot(f)
+    #     end = time.time()
 
-        ## sum changes
-        changes = sum([abs(f[i]-f_prev[i]) for i in range(len(f))])
+    #     ## sum changes
+    #     changes = sum([abs(f[i]-f_prev[i]) for i in range(len(f))])
+    #     error=
 
-        timeLogger.append(end-start)
-        changeLogger.append(changes)
-        if t % 10 == 0:
-            print("t = %d: change = %.4f" % (t,changes))
+    #     timeLogger.append(end-start)
+    #     changeLogger.append(changes)
+    #     if t % 10 == 0:
+    #         print("t = %d: change = %.4f" % (t,changes))
 
-        if changes < epsilon:
-            print('BELOW THRESHOLD OF %.2e! Breaking out of loop.' % (epsilon))
-            break
+    #     if changes < epsilon:
+    #         print('BELOW THRESHOLD OF %.2e! Breaking out of loop.' % (epsilon))
+    #         break
 
-        if verbose:
-            done=float(t)/float(timesteps)
-            print('Time Elapsed:', end-start)
-            if done!=0:
-                print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
+    #     if verbose:
+    #         done=float(t)/float(timesteps)
+    #         print('Time Elapsed:', end-start)
+    #         if done!=0:
+    #             print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
     print('Average Mult. Time: %f seconds' % (sum(timeLogger)/len(timeLogger)))
 
     # predictions is a dictionary of nodes to values.
@@ -317,9 +305,13 @@ def matrixLearn3(G,pos,neg,epsilon,timesteps,verbose):
     for n in neg:
         predictions[n] = 0
     for i in range(len(unlabeled_list)):
+
         predictions[unlabeled_list[i]] = f[i]
 
+
+
     return timeLogger,changeLogger, predictions
+
 
 def iterativeLearn(G,epsilon,timesteps,verbose):
     changeLogger=[]
