@@ -106,14 +106,14 @@ def parse_arguments(argv):
         type='int',metavar='INT',default=5,\
         help='k for k-fold cross validation (default=5).')
     group.add_option('-s','--auc_samples',\
-        type='int',metavar='INT',default=5,\
+        type='int',metavar='INT',default=50,\
         help='number of cross validation iterations to compute AUC (default=50).')
-    group.add_option('-l', '--single_layer',\
-        action='store_true', default=False,\
-        help='Run the single experiments for disease and biological process and computes score with only one node per gene.')
+    group.add_option('-l', '--layers',\
+        type='int', default=3,\
+        help='Run the experiments for disease and biological process with n nodes per gene. Each of the gene\'s nodes are connected to a node that represents the score for the gene. Positives are distributed among these layers. Reducing the nodes to 1 eliminates the process')
     group.add_option('', '--sinksource_constant',\
-        type='float',metavar='FLOAT',default=0.01,\
-        help='How much to add to the denominator of the node value')
+        type='float',metavar='FLOAT',default=1,\
+        help='How much to add to the denominator of the node value (default=1)')
     parser.add_option_group(group)
 
     group = OptionGroup(parser,'Aggregate Analysis (combines runs into one figure)')
@@ -156,14 +156,15 @@ def main(argv):
 
         print(" reading edge file %s..." % (opts.interaction_graph))
         G = nx.Graph()
-        fileIO.read_edge_file(opts.interaction_graph,G, opts.single_layer)
+        layers=3
+        fileIO.read_edge_file(opts.interaction_graph,G, opts.layers)
         print(' ',G.number_of_edges(), 'edges')
         print(' ',G.number_of_nodes(), 'nodes')
 
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
         minimum_labeled=25825
-        disease_positives, minimum_labeled = fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, opts.single_layer, minimum_labeled)
-        biological_process_positives, minimum_labeled = fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, opts.single_layer, minimum_labeled)
+        disease_positives, minimum_labeled = fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, minimum_labeled, opts.layers)
+        biological_process_positives, minimum_labeled = fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, minimum_labeled, opts.layers)
         # negatives, minimum_labeled = fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.single_layer, minimum_labeled, opts.gene_mania)
         negatives=set()
 
@@ -202,23 +203,23 @@ def main(argv):
         statsfile = opts.outprefix + '_disease_stats.txt'
         outfile = opts.outprefix+'_disease_output.txt'
         d_times,d_changes,d_predictions = learners.learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.single_layer,opts.sinksource_constant, write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant, opts.layers,write=True)
 
         print(' biological process predictions...')
         statsfile = opts.outprefix + '_biological_process_stats.txt'
         outfile = opts.outprefix+'_biological_process_output.txt'
         b_times,b_changes,b_predictions = learners.learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.single_layer,opts.sinksource_constant,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,write=True)
 
         ## write combined results for disease and biological process predictions, including the final score 
         ## which is the product of the two sets of predictions.
         outfile = opts.outprefix+'_combined_output.txt'
         fileIO.writeCombinedResults(G,outfile,d_predictions,b_predictions,\
-            disease_positives,biological_process_positives,negatives,blacklist,genemap, opts.single_layer)
+            disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers)
 
         ## Formats the results as a LaTeX table.
         outfile = opts.outprefix+'_formatted.txt'
-        fileIO.formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap)
+        fileIO.formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap, opts.layers)
 
         ## Plot the time course of the runs per iteration.
         plt.clf()

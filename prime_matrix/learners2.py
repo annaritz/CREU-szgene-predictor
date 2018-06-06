@@ -10,7 +10,7 @@ import fileIO2 as fileIO
 
 
 
-def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force,single_layer, sinksource_constant, write=False):
+def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force, sinksource_constant, layers, write=False):
     if not force and os.path.isfile(outfile):
         print('  File %s exists. Not running (use --force to override)' % (outfile))
         times,changes,predictions = fileIO.readResults(statsfile,outfile)
@@ -22,10 +22,10 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
             setGraphAttrs(G,pos,negs) #intitializes the scores
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
         if write:
-            if single_layer:
-                fileIO.writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G)
+            if layers==1:
+                fileIO.writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant)
             else:
-                fileIO.writeResults(statsfile,outfile,times,changes,predictions,genemap, G)
+                fileIO.writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant)
     return times,changes,predictions
 
 # Utilizes sinksource constant 
