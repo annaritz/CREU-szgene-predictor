@@ -263,8 +263,9 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G):
 
 # Output results for single-layer method 
 # Called once for each set of positives (SZ and then CM)
+# predictions is the output from the method - dictionary of {nodes:scores}
 def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
-    degreeList=[]
+    degreeList=[] #initialize list of degrees of top unlabeled candidates 
     valueList=[]
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
@@ -275,12 +276,19 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
 
     out = open(outfile,'w')
     out.write('#EntrezID\tName\tScore\n')
-    for n in sorted(predictions, key=lambda x:predictions[x], reverse=True):
+    #sorts the keys of the predictions dictionary by their scores from highest to lowest - provides a list
+    sorted_predict = sorted(predictions, key=lambda x:predictions[x], reverse=True) 
+    for n in sorted_predict[:700]: #iterates through list of top 700 ranked nodes
         out.write('%s\t%s\t%f\n' % (n,genemap.get(n,n),predictions[n]))
-        degreeList.append(G.degree(n))
-        valueList.append(predictions[n])
+        if G.nodes[n]['label'] == 'Unlabeled': #if the node is unlabeled i.e. not a positive
+            degreeList.append(G.degree(n)) 
+            valueList.append(predictions[n])
+        else: #ignore positives
+            pass
     out.close()
     print('Wrote to %s' % (outfile))
+
+
 
 
     movingAverage=[]
@@ -295,26 +303,26 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     plt.plot(movingAverage)
     plt.xlabel('Node Rank')
     plt.ylabel('Node Degree')
-    plt.title('Candidate Degrees')
+    plt.title('Unlabeled Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('candidate_degrees_singlelayer.png')
+    plt.savefig('unlab_candidate_degrees_singlelayer.png')
     
 
     plt.figure()
     plt.plot(valueList,'ob')
     plt.xlabel('Node Rank')
     plt.ylabel('Node Score')
-    plt.title('Candidate Degrees')
+    plt.title('Unlabeled Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('candidate_scores_singlelayer.png')
+    plt.savefig('unlab_candidate_scores_singlelayer.png')
 
     plt.figure()
     plt.plot(valueList,degreeList,'ob')
     plt.xlabel('Node Score')
     plt.ylabel('Node Degrees')
-    plt.title('Candidate Nodes')
+    plt.title('Unlabeled Candidate Nodes')
     plt.tight_layout()
-    plt.savefig('candidate_degrees_by_score_singlelayer.png')
+    plt.savefig('unlab_candidate_degrees_by_score_singlelayer.png')
 
     degreeList=degreeList[0:300]
     movingAverage=movingAverage[0:300]
@@ -323,9 +331,9 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     plt.plot(movingAverage)
     plt.xlabel('Node Rank')
     plt.ylabel('Node Degree')
-    plt.title('Candidate Degrees')
+    plt.title('Unlabeled Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('top_300_candidate_degrees_singlelayer.png')
+    plt.savefig('top_300_unlab_candidate_degrees_singlelayer.png')
 
     valueList=valueList[0:300]
 
