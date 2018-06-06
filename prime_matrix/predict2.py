@@ -208,7 +208,7 @@ def main(argv):
         statsfile = opts.outprefix + '_biological_process_stats.txt'
         outfile = opts.outprefix+'_biological_process_output.txt'
         b_times,b_changes,b_predictions = learners.learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.single_layer,sinksource_constant,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.single_layer,opts.sinksource_constant,write=True)
 
         ## write combined results for disease and biological process predictions, including the final score 
         ## which is the product of the two sets of predictions.
@@ -248,7 +248,7 @@ def main(argv):
             statsfile = opts.outprefix + '_union_stats.txt'
             outfile = opts.outprefix+'_union_output.txt'
             union_positives = disease_positives.union(biological_process_positives)
-            u_times,u_changes,u_predictions = lerners.learn(outfile,statsfile,genemap,G,union_positives,negatives,\
+            u_times,u_changes,u_predictions = learners.learn(outfile,statsfile,genemap,G,union_positives,negatives,\
                 opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,write=True)
 
             ## plot node rankings.
