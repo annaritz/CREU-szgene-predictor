@@ -1,4 +1,4 @@
-#Contains the functions that handle the edge files, write the output files, and 
+#Contains the functions that handle the edge files and write the output files
 
 import random
 import matplotlib.pyplot as plt
@@ -221,9 +221,11 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,
 
 # Output results for single-layer method 
 # Called once for each set of positives (SZ and then CM)
-def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos):
+# predictions is the output from the method 
+def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant, name):
+    print('Writing %s single-layer output files...' % name)
     degreeList=[]
-    valueList=[]
+    scoreList=[]
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
     for i in range(len(times)):
@@ -233,11 +235,12 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
 
     out = open(outfile,'w')
     out.write('#EntrezID\tName\tScore\n')
+    # predictions dictionary keys (nodes) are sorted by score from highest to lowest - this list is iterated through
     for n in sorted(predictions, key=lambda x:predictions[x], reverse=True):
         out.write('%s\t%s\t%f\t%s\n' % (n,genemap.get(n,n),predictions[n], G.degree(n)))
-        if n not in pos:
+        if n not in pos: #only add degree and score if unlabeled
             degreeList.append(G.degree(n))
-            valueList.append(predictions[n])
+            scoreList.append(predictions[n])
     out.close()
     print('Wrote to %s' % (outfile))
 
@@ -250,51 +253,50 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
 
         movingAverage.append(average)
 
-    # plt.plot(degreeList,'ob')
-    # plt.plot(movingAverage)
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Degree')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('candidate_degrees_singlelayer.png')
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees by Rank')
+    plt.tight_layout()
+    plt.savefig('outfiles/%s_%f_candidate_degrees_singlelayer.png' % (name, sinksource_constant))
     
+    plt.figure()
+    plt.plot(scoreList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Scores by Rank')
+    plt.tight_layout()
+    plt.savefig('outfiles/%s_%f_candidate_scores_singlelayer.png' % (name, sinksource_constant))
 
-    # plt.figure()
-    # plt.plot(valueList,'ob')
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Score')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('candidate_scores_singlelayer.png')
+    plt.figure()
+    plt.plot(scoreList,degreeList,'ob')
+    plt.xlabel('Node Score')
+    plt.ylabel('Node Degrees')
+    plt.title('Candidate Degrees by Score')
+    plt.tight_layout()
+    plt.savefig('outfiles/%s_%f_candidate_degrees_by_score_singlelayer.png' % (name, sinksource_constant))
 
-    # plt.figure()
-    # plt.plot(valueList,degreeList,'ob')
-    # plt.xlabel('Node Score')
-    # plt.ylabel('Node Degrees')
-    # plt.title('Candidate Nodes')
-    # plt.tight_layout()
-    # plt.savefig('candidate_degrees_by_score_singlelayer.png')
+    degreeList=degreeList[0:300]
+    movingAverage=movingAverage[0:300]
+    plt.figure()
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees by Rank')
+    plt.tight_layout()
+    plt.savefig('outfiles/%s_%f_top_300_candidate_degrees_singlelayer.png' % (name, sinksource_constant))
 
-    # degreeList=degreeList[0:300]
-    # movingAverage=movingAverage[0:300]
-    # plt.figure()
-    # plt.plot(degreeList,'ob')
-    # plt.plot(movingAverage)
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Degree')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('top_300_candidate_degrees_singlelayer.png')
+    scoreList=scoreList[0:300]
 
-    # valueList=valueList[0:300]
-
-    # plt.figure()
-    # plt.plot(valueList,'ob')
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Score')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('top_300_candidate_scores_singlelayer.png')
+    plt.figure()
+    plt.plot(scoreList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Scores by Rank')
+    plt.tight_layout()
+    plt.savefig('outfiles/%s_%f_top_300_candidate_scores_singlelayer.png' % (name, sinksource_constant))
 
     #print(vdfvksjdnvlkjs)
 
