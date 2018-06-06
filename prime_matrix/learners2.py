@@ -1,3 +1,4 @@
+#Contains all the algorithms for calculating scores - iterative, matrix, matrix with sinksource+ constant, etc.
 import os.path
 import time
 from scipy.sparse import coo_matrix
@@ -6,6 +7,8 @@ from numpy import diagflat
 import numpy as np
 
 import fileIO2 as fileIO
+
+
 
 def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force,single_layer, sinksource_constant, write=False):
     if not force and os.path.isfile(outfile):
@@ -16,7 +19,7 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
             times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose,sinksource_constant)
 
         else:
-            setGraphAttrs(G,pos,negs)
+            setGraphAttrs(G,pos,negs) #intitializes the scores
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
         if write:
             if single_layer:
@@ -25,9 +28,11 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
                 fileIO.writeResults(statsfile,outfile,times,changes,predictions,genemap, G)
     return times,changes,predictions
 
+# Utilizes sinksource constant 
 def matrixLearn(G,pos,neg,epsilon,timesteps,verbose, sinksource_constant):
 
-    ## Takes the form of f = M * f + c.
+    ## Takes the form of f = M * f + c where each entry for M 
+    ## is calculated by dividing the weight by the weighted degree + constant from sinksource+ algorithm
 
     ## sort unlabeled nodes.
     unlabeled = set(G.nodes()).difference(pos).difference(neg)
@@ -118,6 +123,8 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose, sinksource_constant):
 
     return timeLogger,changeLogger, predictions
 
+
+# Does not utilize sinksource constant (uses original formula)
 def matrixLearn2(G,pos,neg,epsilon,timesteps,verbose):
 
     ## Takes the form of f = M * f + c.
@@ -206,113 +213,10 @@ def matrixLearn2(G,pos,neg,epsilon,timesteps,verbose):
 
     return timeLogger,changeLogger, predictions
 
-def matrixLearnMANIA(G,pos,neg,epsilon,timesteps,verbose):
-
-    ## Takes the form of f = M * f + c.
-
-    ## sort unlabeled nodes.
-    unlabeled = set(G.nodes())
-    unlabeled_list = sorted(unlabeled)
-    unlabeled_inds = {unlabeled_list[i]:i for i in range(len(unlabeled_list))}
-    print('%d unlabeled nodes.' % (len(unlabeled)))
-
-    print('Preparing matrix data')
-
-    #Make sparse M matrix.
-    start = time.time()
-    print(' making M matrix...')
-    # from https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html
-    data_for_M = {}
-    for u,v in G.edges():
-        if u in unlabeled and v in unlabeled:
-            i = unlabeled_inds[u]
-            j = unlabeled_inds[v]
-
-            data_for_M[(i,j)] = float(G.edges[u,v]['weight'])/G.nodes[u]['weighted_degree']
-            data_for_M[(j,i)] = float(G.edges[u,v]['weight'])/G.nodes[v]['weighted_degree']
-    keys = data_for_M.keys()
-    data = [data_for_M[key] for key in keys]
-    row = [key[0] for key in keys]
-    col = [key[1] for key in keys]
-    n = len(unlabeled)
-    PreMatrix=coo_matrix((data, (row,col)), shape=(n,n)).tocsr()
-    M = coo_matrix((data, (row,col)), shape=(n,n))
-    M = M.tocsr()
-    col_sums=PreMatrix.sum(axis=0, dtype=np.float)
-    row_sums=PreMatrix.sum(axis=1, dtype=np.float)
-    print(row_sums)
 
 
-    for i in range(len(row)):
-        for j in range(len(col)):
-
-            M[i,j]=PreMatrix[i,j]/(row_sums[i,i]*col_sums[0,j])**0.5
-
-    D = diagflat(col_sums)
-    L = D - M
-
-
-    end = time.time()
-    print(' %f seconds' % (end-start))
-    #Make c vector
-    print(' making c vector...')
-    c = [0.5]*len(unlabeled_list)
-    i=0
-    for node in unlabeled_list:
-        if node in pos:
-            c[i]=1
-        if node in neg:
-            c[i]=0
-        i=i+1
-    f=spsolve(L,c)
-
-
-    #Make initial f vector.  This is a value of 0.5 for all unlabeled nodes.
-
-    # changeLogger=[]
-    # timeLogger=[]
-
-    #     ## conduct sparse matrix operation.
-    #     f_prev = f
-    #     start = time.time()
-    #     f = L.dot(f)
-    #     end = time.time()
-
-    #     ## sum changes
-    #     changes = sum([abs(f[i]-f_prev[i]) for i in range(len(f))])
-    #     error=
-
-    #     timeLogger.append(end-start)
-    #     changeLogger.append(changes)
-    #     if t % 10 == 0:
-    #         print("t = %d: change = %.4f" % (t,changes))
-
-    #     if changes < epsilon:
-    #         print('BELOW THRESHOLD OF %.2e! Breaking out of loop.' % (epsilon))
-    #         break
-
-    #     if verbose:
-    #         done=float(t)/float(timesteps)
-    #         print('Time Elapsed:', end-start)
-    #         if done!=0:
-    #             print('Estimated Time Remaining:', (1.0-done)*(time.time()-start)/done, 'seconds')
-    print('Average Mult. Time: %f seconds' % (sum(timeLogger)/len(timeLogger)))
-
-    # predictions is a dictionary of nodes to values.
-    predictions = {}
-    for n in pos:
-        predictions[n] = 1
-    for n in neg:
-        predictions[n] = 0
-    for i in range(len(unlabeled_list)):
-
-        predictions[unlabeled_list[i]] = f[i]
-
-
-
-    return timeLogger,changeLogger, predictions
-
-
+# Utilizes iterative method instead of matrix method
+# Called when --iterative_update is specified (matrix method is default)
 def iterativeLearn(G,epsilon,timesteps,verbose):
     changeLogger=[]
     timeLogger=[]
@@ -351,6 +255,7 @@ def iterativeLearn(G,epsilon,timesteps,verbose):
     return timeLogger,changeLogger, predictions
 
 #Takes as input a networkx graph
+#Verbose set to False by default, --verbose True will print more descriptive statements of nodes and scores changed in each iteration
 def iterativeMethod(Graph, t,verbose):
     positivechangesum=0
     sumofchanges=0
@@ -409,6 +314,7 @@ def iterativeMethod(Graph, t,verbose):
         print('Untouched nodes:', untouchedSet)
     return sumofchanges
 
+
 def setGraphAttrs(graph,pos,neg):
     for node in graph.nodes():
         if node in neg and node in pos:
@@ -426,3 +332,5 @@ def setGraphAttrs(graph,pos,neg):
             graph.nodes[node]['prev_score']=0.5
             graph.nodes[node]['label']='Unlabeled'
     return
+
+
