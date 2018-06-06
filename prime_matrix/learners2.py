@@ -10,7 +10,7 @@ import fileIO2 as fileIO
 
 
 
-def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force, sinksource_constant, layers, write=False):
+def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force,sinksource_constant,layers,name,write=False):
     if not force and os.path.isfile(outfile):
         print('  File %s exists. Not running (use --force to override)' % (outfile))
         times,changes,predictions = fileIO.readResults(statsfile,outfile)
@@ -23,9 +23,9 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
         if write:
             if layers==1:
-                fileIO.writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant)
+                fileIO.writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant, name)
             else:
-                fileIO.writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant)
+                fileIO.writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant, name)
     return times,changes,predictions
 
 # Utilizes sinksource constant 
@@ -44,7 +44,7 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose, sinksource_constant):
 
     #Make sparse M matrix.
     start = time.time()
-    print(' making M matrix...')
+    print('Making M matrix with sinksource constant...')
     # from https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.coo_matrix.html
     data_for_M = {}
     for u,v in G.edges():
