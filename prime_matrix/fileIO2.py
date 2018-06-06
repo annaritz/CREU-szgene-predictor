@@ -1,5 +1,116 @@
+#Contains the functions that handle the edge files, write the output files, and 
+
 import random
 import matplotlib.pyplot as plt
+
+
+def geneMapReader(infile):
+    GeneMapfile=open(infile, 'r')
+    genemap = {}
+    for i in GeneMapfile:
+        i=i.split('\t')
+        ientrez = i[1]
+        iname=i[2]
+        if iname!='Approved Symbol':
+            genemap[iname]=ientrez
+            genemap[ientrez]=iname
+    return genemap
+
+
+#Takes in edge list file from Humanbase - 3 columns gene 1, gene 2, functional interaction probability
+
+def read_edge_file(filename, graph, single):
+    if not single: #creates new edges for multi-layered method (default)
+        Levels=['_E1', '_E2', '_E3']
+        all_nodes = set()
+        with open(filename,'r') as fin:
+            for line in fin:
+                line=line.split('\t')
+                line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
+                for i in range(0,2):
+                    node=line[i]
+                    if node not in all_nodes:
+                        graph.add_node(node+'_E1', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
+                        graph.add_node(node+'_E2', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
+                        graph.add_node(node+'_E3', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
+                        graph.add_node(node+'_prime', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=3)
+                        graph.add_edge(node+'_E1',node+'_prime', weight=1.0)
+                        graph.add_edge(node+'_E2',node+'_prime', weight=1.0)
+                        graph.add_edge(node+'_E3',node+'_prime', weight=1.0)
+                        all_nodes.add(node)
+
+                graph.nodes[line[0]+'_E1']['weighted_degree'] += line[2]
+                graph.nodes[line[0]+'_E2']['weighted_degree'] += line[2]
+                graph.nodes[line[0]+'_E3']['weighted_degree'] += line[2]
+                graph.nodes[line[1]+'_E1']['weighted_degree'] += line[2]
+                graph.nodes[line[1]+'_E2']['weighted_degree'] += line[2]
+                graph.nodes[line[1]+'_E3']['weighted_degree'] += line[2]
+                graph.add_edge(line[0]+'_E1',line[1]+'_E1', weight=line[2])
+                graph.add_edge(line[0]+'_E2',line[1]+'_E2', weight=line[2])
+                graph.add_edge(line[0]+'_E3',line[1]+'_E3', weight=line[2])
+
+        # nodes_to_remove=set()
+        # for node in graph.nodes():
+        #     adj_dict=graph.adj[node]
+        #     if len(adj_dict)<=2 and (node[-3:]=='_E1' or node[-3:]=='_E2' or node[-3:]=='_E3'):
+        #         nodes_to_remove.add(node[:-3]+'_E1')
+        #         nodes_to_remove.add(node[:-3]+'_E2')
+        #         nodes_to_remove.add(node[:-3]+'_E3')
+        #         nodes_to_remove.add(node[:-3]+'_prime')
+
+        # for node in nodes_to_remove:
+        #     graph.remove_node(node)
+
+        # edges_to_add=[]
+        # x=0
+        # pairs=set()
+
+
+        # for node in graph.nodes():
+        #     if x%1==0:
+        #         print(x, len(edges_to_add), len(pairs))
+
+        #     x=x+1
+        #     if node[-6:] != '_prime':
+        #         adj_dict=graph.adj[node]
+        #         if len(adj_dict)<10:
+        #             for neighbor in adj_dict:
+        #                 for double_neighbor in graph.adj[neighbor]:
+        #                     if double_neighbor not in adj_dict and (node, double_neighbor) not in pairs:
+        #                         edges_to_add.append([node,double_neighbor])
+        #                         pairs.add((node, double_neighbor))
+
+        # for edge in edges_to_add:
+        #     graph.add_edge(edge[0],edge[1],weight=0.05)
+
+
+
+    else: #Single-layered method 
+        all_nodes = set()
+        with open(filename,'r') as fin:
+            for line in fin:
+                line=line.split('\t')
+                line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
+                for i in range(0,2):
+                    node=line[i]
+                    if node not in all_nodes:
+                        graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=0)
+                        all_nodes.add(node)
+                graph.add_edge(line[0],line[1], weight=line[2])
+                graph.nodes[line[0]]['weighted_degree'] += line[2]
+                graph.nodes[line[1]]['weighted_degree'] += line[2]
+        # nodes_to_remove=set()
+        # for node in graph.nodes():
+        #     adj_dict=graph.adj[node]
+        #     if len(adj_dict)<2:
+        #         nodes_to_remove.add(node)
+        # for node in nodes_to_remove:
+        #     graph.remove_node(node)
+
+
+
+#Formats results as a LaTeX table
+#outfile variable is the name of the outfile, partially specified by --outprefix 
 def formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap):
     # write output
     out = open(outfile,'w')
@@ -64,6 +175,7 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
 
     return
 
+# Output results for multi-layer method
 def writeResults(statsfile,outfile,times,changes,predictions,genemap, G):
     degreeList=[]
     valueList=[]
@@ -144,12 +256,13 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G):
 
 
 
-    print(fnjansfkns)
+    #print(fnjansfkns)
 
     return
 
 
-
+# Output results for single-layer method 
+# Called once for each set of positives (SZ and then CM)
 def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     degreeList=[]
     valueList=[]
@@ -223,11 +336,10 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     plt.title('Candidate Degrees')
     plt.tight_layout()
     plt.savefig('top_300_candidate_scores_singlelayer.png')
-    print(vdfvksjdnvlkjs)
+
+    #print(vdfvksjdnvlkjs)
+
     return
-
-
-
 
 
 
@@ -354,108 +466,6 @@ def curatedFileReaderMulti(filename,graph,verbose, minimum_labeled):
     print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
     return curated, minimum_labeled
 
-def geneMapReader(infile):
-    GeneMapfile=open(infile, 'r')
-    genemap = {}
-    for i in GeneMapfile:
-        i=i.split('\t')
-        ientrez = i[1]
-        iname=i[2]
-        if iname!='Approved Symbol':
-            genemap[iname]=ientrez
-            genemap[ientrez]=iname
-    return genemap
-
-
-#Takes in edge list file from Humanbase - 3 columns gene 1, gene 2, functional interaction probability
-def read_edge_file(filename, graph, single):
-    if not single:
-        Levels=['_E1', '_E2', '_E3']
-        all_nodes = set()
-        with open(filename,'r') as fin:
-            for line in fin:
-                line=line.split('\t')
-                line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
-                for i in range(0,2):
-                    node=line[i]
-                    if node not in all_nodes:
-                        graph.add_node(node+'_E1', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
-                        graph.add_node(node+'_E2', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
-                        graph.add_node(node+'_E3', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
-                        graph.add_node(node+'_prime', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=3)
-                        graph.add_edge(node+'_E1',node+'_prime', weight=1.0)
-                        graph.add_edge(node+'_E2',node+'_prime', weight=0.75)
-                        graph.add_edge(node+'_E3',node+'_prime', weight=0.5)
-                        all_nodes.add(node)
-
-                graph.nodes[line[0]+'_E1']['weighted_degree'] += line[2]
-                graph.nodes[line[0]+'_E2']['weighted_degree'] += line[2]
-                graph.nodes[line[0]+'_E3']['weighted_degree'] += line[2]
-                graph.nodes[line[1]+'_E1']['weighted_degree'] += line[2]
-                graph.nodes[line[1]+'_E2']['weighted_degree'] += line[2]
-                graph.nodes[line[1]+'_E3']['weighted_degree'] += line[2]
-                graph.add_edge(line[0]+'_E1',line[1]+'_E1', weight=line[2])
-                graph.add_edge(line[0]+'_E2',line[1]+'_E2', weight=line[2])
-                graph.add_edge(line[0]+'_E3',line[1]+'_E3', weight=line[2])
-
-        # nodes_to_remove=set()
-        # for node in graph.nodes():
-        #     adj_dict=graph.adj[node]
-        #     if len(adj_dict)<=2 and (node[-3:]=='_E1' or node[-3:]=='_E2' or node[-3:]=='_E3'):
-        #         nodes_to_remove.add(node[:-3]+'_E1')
-        #         nodes_to_remove.add(node[:-3]+'_E2')
-        #         nodes_to_remove.add(node[:-3]+'_E3')
-        #         nodes_to_remove.add(node[:-3]+'_prime')
-
-        # for node in nodes_to_remove:
-        #     graph.remove_node(node)
-
-        # edges_to_add=[]
-        # x=0
-        # pairs=set()
-
-
-        # for node in graph.nodes():
-        #     if x%1==0:
-        #         print(x, len(edges_to_add), len(pairs))
-
-        #     x=x+1
-        #     if node[-6:] != '_prime':
-        #         adj_dict=graph.adj[node]
-        #         if len(adj_dict)<10:
-        #             for neighbor in adj_dict:
-        #                 for double_neighbor in graph.adj[neighbor]:
-        #                     if double_neighbor not in adj_dict and (node, double_neighbor) not in pairs:
-        #                         edges_to_add.append([node,double_neighbor])
-        #                         pairs.add((node, double_neighbor))
-
-        # for edge in edges_to_add:
-        #     graph.add_edge(edge[0],edge[1],weight=0.05)
-
-
-
-    else:
-        all_nodes = set()
-        with open(filename,'r') as fin:
-            for line in fin:
-                line=line.split('\t')
-                line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
-                for i in range(0,2):
-                    node=line[i]
-                    if node not in all_nodes:
-                        graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=0)
-                        all_nodes.add(node)
-                graph.add_edge(line[0],line[1], weight=line[2])
-                graph.nodes[line[0]]['weighted_degree'] += line[2]
-                graph.nodes[line[1]]['weighted_degree'] += line[2]
-        # nodes_to_remove=set()
-        # for node in graph.nodes():
-        #     adj_dict=graph.adj[node]
-        #     if len(adj_dict)<2:
-        #         nodes_to_remove.add(node)
-        # for node in nodes_to_remove:
-        #     graph.remove_node(node)
-
 
 def plot_candidate_degrees(rank, Graph):
     print('Creating candidate plot...')
@@ -513,3 +523,5 @@ def write_output(Graph, timesteps):
         if label=='Unlabeled':
             y.write(str(node)+'\n')
     return
+
+
