@@ -85,7 +85,7 @@ def read_edge_file(filename, graph, single):
 
 
 
-    else: #Single-layered method 
+    else: #Single-layered method (no E1, E2, E3, prime)
         all_nodes = set()
         with open(filename,'r') as fin:
             for line in fin:
@@ -109,74 +109,10 @@ def read_edge_file(filename, graph, single):
 
 
 
-#Formats results as a LaTeX table
-#outfile variable is the name of the outfile, partially specified by --outprefix 
-def formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap):
-    # write output
-    out = open(outfile,'w')
-    out.write('\\begin{table}[h]\n')
-    out.write('\\centering\n')
-    out.write('\\begin{tabular}{|ll|ccc|}\\hline\n')
-    out.write('Gene Name & EntrezID & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\\\\hline\n')
-    for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
-        score = d_predictions[n]*b_predictions[n]
-        if d_predictions[n] < 0.5 or b_predictions[n] < 0.5 or score == 0.25:
-            continue
-        name = genemap.get(n,n)
-        entrezID = n
-        out.write('%s & %s ' % (name,entrezID))
-        if n in disease_positives:
-            out.write(' & \\textit{%.2f}' % (d_predictions[n]))
-        else:
-            out.write(' & \\textbf{%.2f}' % (d_predictions[n]))
-        if n in biological_process_positives:
-            out.write(' & \\textit{%.2f}' % (b_predictions[n]))
-        else:
-            out.write(' & \\textbf{%.2f}' % (b_predictions[n]))
-        out.write(' & %.2f\\\\\n' % (score))
-    out.write('\\end{tabular}\n')
-    out.write('\\end{table}\n')
-    print('Wrote to %s' % (outfile))
-    return
-
-def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap, single_layer):
-    # write output
-    out = open(outfile,'w')
-    fig = plt.figure(figsize=(4,4))
-    out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\n')
-    degreeList=[]
-    
-
-    for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
-        disLabel='Unlabeled'
-        procLabel='Unlabeled'
-        if n in negatives:
-            disLabel = 'Negative'
-            procLabel = 'Negative'
-        if n in disease_positives:
-            disLabel='Positive'
-        if n in biological_process_positives:
-            procLabel='Positive'
-        final_score = d_predictions[n]*b_predictions[n]
-        if n in blacklist:
-            bl = 'YES'
-        else:
-            bl = 'NO'
-        if single_layer:
-            if n[-6:] == '_prime':
-                out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n[:-6],genemap.get(n[:-6],n[:-6]),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n[:-6]+'_E1')))
-
-                degreeList.append(G.degree(n[:-6]+'_E1'))
-        else:
-            out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\n' % (n,genemap.get(n,n),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl))
-    out.close()
-    print('Wrote to %s' % (outfile))
-    degreeList=degreeList
-
-    return
 
 # Output results for multi-layer method
 def writeResults(statsfile,outfile,times,changes,predictions,genemap, G):
+    print('Creating multi-layer output results')
     degreeList=[]
     valueList=[]
     fig = plt.figure(figsize=(4,4))
@@ -265,6 +201,7 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G):
 # Called once for each set of positives (SZ and then CM)
 # predictions is the output from the method - dictionary of {nodes:scores}
 def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
+    print('Creating single-layer output file...')
     degreeList=[] #initialize list of degrees of top unlabeled candidates 
     valueList=[]
     out = open(statsfile,'w')
@@ -314,7 +251,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     plt.ylabel('Node Score')
     plt.title('Unlabeled Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('unlab_candidate_scores_singlelayer.png')
+    plt.savefig('outfiles/unlab_candidate_scores_singlelayer.png')
 
     plt.figure()
     plt.plot(valueList,degreeList,'ob')
@@ -322,7 +259,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     plt.ylabel('Node Degrees')
     plt.title('Unlabeled Candidate Nodes')
     plt.tight_layout()
-    plt.savefig('unlab_candidate_degrees_by_score_singlelayer.png')
+    plt.savefig('outfiles/unlab_candidate_degrees_by_score_singlelayer.png')
 
     degreeList=degreeList[0:300]
     movingAverage=movingAverage[0:300]
@@ -333,7 +270,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     plt.ylabel('Node Degree')
     plt.title('Unlabeled Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('top_300_unlab_candidate_degrees_singlelayer.png')
+    plt.savefig('outfiles/top_300_unlab_candidate_degrees_singlelayer.png')
 
     valueList=valueList[0:300]
 
@@ -343,12 +280,81 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G):
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('top_300_candidate_scores_singlelayer.png')
+    plt.savefig('outfiles/top_300_candidate_scores_singlelayer.png')
 
     #print(vdfvksjdnvlkjs)
 
     return
 
+
+#Formats results as a LaTeX table
+#outfile variable is the name of the outfile, partially specified by --outprefix 
+def formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap):
+    # write output
+    print('Creating LaTeX formatted results table...')
+    out = open(outfile,'w')
+    out.write('\\begin{table}[h]\n')
+    out.write('\\centering\n')
+    out.write('\\begin{tabular}{|ll|ccc|}\\hline\n')
+    out.write('Gene Name & EntrezID & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\\\\hline\n')
+    for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
+        score = d_predictions[n]*b_predictions[n]
+        if d_predictions[n] < 0.5 or b_predictions[n] < 0.5 or score == 0.25:
+            continue
+        name = genemap.get(n,n)
+        entrezID = n
+        out.write('%s & %s ' % (name,entrezID))
+        if n in disease_positives:
+            out.write(' & \\textit{%.2f}' % (d_predictions[n]))
+        else:
+            out.write(' & \\textbf{%.2f}' % (d_predictions[n]))
+        if n in biological_process_positives:
+            out.write(' & \\textit{%.2f}' % (b_predictions[n]))
+        else:
+            out.write(' & \\textbf{%.2f}' % (b_predictions[n]))
+        out.write(' & %.2f\\\\\n' % (score))
+    out.write('\\end{tabular}\n')
+    out.write('\\end{table}\n')
+    print('Wrote to %s' % (outfile))
+    return
+
+#Writes output file of combined results (disease score * process score)
+def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap, single_layer):
+    # write output
+    print('Creating combined output file...')
+    out = open(outfile,'w')
+    fig = plt.figure(figsize=(4,4))
+    out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\n')
+    degreeList=[]
+    
+
+    for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
+        disLabel='Unlabeled'
+        procLabel='Unlabeled'
+        if n in negatives:
+            disLabel = 'Negative'
+            procLabel = 'Negative'
+        if n in disease_positives:
+            disLabel='Positive'
+        if n in biological_process_positives:
+            procLabel='Positive'
+        final_score = d_predictions[n]*b_predictions[n]
+        if n in blacklist:
+            bl = 'YES'
+        else:
+            bl = 'NO'
+        if not single_layer: #multi-layer combined output file
+            if n[-6:] == '_prime':
+                out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n[:-6],genemap.get(n[:-6],n[:-6]),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n[:-6]+'_E1')))
+
+                degreeList.append(G.degree(n[:-6]+'_E1'))
+        else: #single-layer
+            out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\n' % (n,genemap.get(n,n),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl))
+    out.close()
+    print('Wrote to %s' % (outfile))
+    degreeList=degreeList
+
+    return
 
 
 def readResults(statsfile,outfile):
