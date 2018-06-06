@@ -111,7 +111,7 @@ def parse_arguments(argv):
     group.add_option('-l', '--layers',\
         type='int', default=3,\
         help='Run the experiments for disease and biological process with n nodes per gene. Each of the gene\'s nodes are connected to a node that represents the score for the gene. Positives are distributed among these layers. Reducing the nodes to 1 eliminates the process')
-    group.add_option('', '--sinksource_constant',\
+    group.add_option('-c', '--sinksource_constant',\
         type='float',metavar='FLOAT',default=1,\
         help='How much to add to the denominator of the node value (default=1)')
     parser.add_option_group(group)
@@ -186,9 +186,8 @@ def main(argv):
             biological_process_positives = biological_process_positives.difference(overlap_set)
             blacklist.update(overlap_set)
 
-        print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.' % \
+        print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.\n' % \
             (len(disease_positives),len(biological_process_positives),len(negatives)))
-        print('')
         print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
 
     ##########################
@@ -199,17 +198,19 @@ def main(argv):
     if opts.single:
         print('\nRunning Learning Algorithms...')
 
-        print(' disease predictions...')
+        print('Disease predictions...')
         statsfile = opts.outprefix + '_disease_stats.txt'
         outfile = opts.outprefix+'_disease_output.txt'
+        name = 'disease'
         d_times,d_changes,d_predictions = learners.learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant, opts.layers,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant, opts.layers,name,write=True)
 
-        print(' biological process predictions...')
+        print('Biological process predictions...')
         statsfile = opts.outprefix + '_biological_process_stats.txt'
         outfile = opts.outprefix+'_biological_process_output.txt'
+        name = 'process'
         b_times,b_changes,b_predictions = learners.learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,write=True)
 
         ## write combined results for disease and biological process predictions, including the final score 
         ## which is the product of the two sets of predictions.
