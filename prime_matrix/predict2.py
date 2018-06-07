@@ -111,7 +111,7 @@ def parse_arguments(argv):
     group.add_option('-l', '--layers',\
         type='int', default=3,\
         help='Run the experiments for disease and biological process with n nodes per gene. Each of the gene\'s nodes are connected to a node that represents the score for the gene. Positives are distributed among these layers. Reducing the nodes to 1 eliminates the process')
-    group.add_option('', '--sinksource_constant',\
+    group.add_option('-c', '--sinksource_constant',\
         type='float',metavar='FLOAT',default=1,\
         help='How much to add to the denominator of the node value (default=1)')
     parser.add_option_group(group)
@@ -162,9 +162,8 @@ def main(argv):
         print(' ',G.number_of_nodes(), 'nodes')
 
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
-        minimum_labeled=25825
-        disease_positives, minimum_labeled = fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, minimum_labeled, opts.layers)
-        biological_process_positives, minimum_labeled = fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, minimum_labeled, opts.layers)
+        disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, opts.layers)
+        biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, opts.layers)
         # negatives, minimum_labeled = fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.single_layer, minimum_labeled, opts.gene_mania)
         negatives=set()
 
@@ -186,7 +185,7 @@ def main(argv):
             biological_process_positives = biological_process_positives.difference(overlap_set)
             blacklist.update(overlap_set)
 
-        print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.' % \
+        print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.\n' % \
             (len(disease_positives),len(biological_process_positives),len(negatives)))
         print('')
         print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
@@ -199,17 +198,19 @@ def main(argv):
     if opts.single:
         print('\nRunning Learning Algorithms...')
 
-        print(' disease predictions...')
+        print('Disease predictions...')
         statsfile = opts.outprefix + '_disease_stats.txt'
         outfile = opts.outprefix+'_disease_output.txt'
+        name = 'disease'
         d_times,d_changes,d_predictions = learners.learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant, opts.layers,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant, opts.layers,name,write=True)
 
-        print(' biological process predictions...')
+        print('Biological process predictions...')
         statsfile = opts.outprefix + '_biological_process_stats.txt'
         outfile = opts.outprefix+'_biological_process_output.txt'
+        name = 'process'
         b_times,b_changes,b_predictions = learners.learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,write=True)
 
         ## write combined results for disease and biological process predictions, including the final score 
         ## which is the product of the two sets of predictions.
@@ -299,7 +300,7 @@ def main(argv):
                 test_positives = disease_positives.difference(hidden_genes)
                 print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
                 ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,negatives,\
-                    opts.epsilon,opts.timesteps,opts.verbose, sinksource_constant)
+                    opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                 d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
 
             ## biological process k-fold validation
@@ -311,7 +312,7 @@ def main(argv):
                 test_positives = biological_process_positives.difference(hidden_genes)
                 print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
                 ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,negatives,\
-                    opts.epsilon,opts.timesteps,opts.verbose)
+                    opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                 b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
 
             ## write the output file.

@@ -1,4 +1,4 @@
-#Contains the functions that handle the edge files, write the output files, and 
+#Contains the functions that handle the edge files and write the output files, and 
 
 import random
 import matplotlib.pyplot as plt
@@ -90,7 +90,7 @@ def formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positive
                 out.write(' & \\textit{%.2f}' % (b_predictions[n]))
             else:
                 out.write(' & \\textbf{%.2f}' % (b_predictions[n]))
-        out.write(' & %.2f\\\\\n' % (score))
+            out.write(' & %.2f\\\\\n' % (score))
     out.write('\\end{tabular}\n')
     out.write('\\end{table}\n')
     print('Wrote to %s' % (outfile))
@@ -134,7 +134,7 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
 def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant):
     degreeList=[]
     valueList=[]
-    # degree_file=open('%s-layer%sconstant_degrees' % (layers, sinksource_constant), 'w')
+    degree_file=open('degree_lists/%s-layer%sconstant_degrees.txt' % (layers, sinksource_constant), 'w')
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
     for i in range(len(times)):
@@ -154,8 +154,10 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,
             if unlabeled==True:
                 degreeList.append(G.degree(n[:-6]+str(0)))
                 valueList.append(predictions[n])
-                
+                degree_file.write(str(G.degree(n[:-6]+str(0)))+'\t'+str(predictions[n])+'\n')
+
     out.close()
+    degree_file.close()
     print('Wrote to %s' % (outfile))
     # degreeList=degreeList[0:300]
     movingAverage=[]
@@ -165,65 +167,69 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,
         movingAverage.append(average)
 
     
-    # plt.plot(degreeList,'ob')
-    # plt.plot(movingAverage)
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Degree')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('candidate_degrees_multilayer.png')
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
     
 
-    # plt.figure()
-    # plt.plot(valueList,'ob')
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Score')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('candidate_scores_multilayer.png')
+    plt.figure()
+    plt.plot(valueList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    # plt.figure()
-    # plt.plot(valueList,degreeList,'ob')
-    # plt.xlabel('Node Score')
-    # plt.ylabel('Node Degrees')
-    # plt.title('Candidate Nodes')
-    # plt.tight_layout()
-    # plt.savefig('candidate_degrees_by_score_multilayer.png')
+    plt.figure()
+    plt.plot(valueList,degreeList,'ob')
+    plt.xlabel('Node Score')
+    plt.ylabel('Node Degrees')
+    plt.title('Candidate Nodes')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    # degreeList=degreeList[0:300]
-    # movingAverage=movingAverage[0:300]
-    # plt.figure()
-    # plt.plot(degreeList,'ob')
-    # plt.plot(movingAverage)
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Degree')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('top_300_candidate_degrees_multilayer.png')
+    degreeList=degreeList[0:500]
+    movingAverage=movingAverage[0:500]
+    plt.figure()
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    # valueList=valueList[0:300]
+    valueList=valueList[0:500]
 
-    # plt.figure()
-    # plt.plot(valueList,'ob')
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Score')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('top_300_candidate_scores_multilayer.png')
-
-
+    plt.figure()
+    plt.plot(valueList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
 
-    #print(fnjansfkns)
+
+
 
     return
 
 
 # Output results for single-layer method 
 # Called once for each set of positives (SZ and then CM)
-def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos):
+# predictions is the output from the method
+def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant, name):
+    print('Writing %s single-layer output files...' % name)
     degreeList=[]
-    valueList=[]
+    scoreList=[]
+    layers=1
+    degree_file=open('degree_lists/%s-layer%sconstant_degrees.txt' % (layers, sinksource_constant), 'w')
+
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
     for i in range(len(times)):
@@ -233,11 +239,13 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
 
     out = open(outfile,'w')
     out.write('#EntrezID\tName\tScore\n')
+    #predictions dictionary keys (nodes) are sorted by score from highest to lowest - this list is iterated through
     for n in sorted(predictions, key=lambda x:predictions[x], reverse=True):
         out.write('%s\t%s\t%f\t%s\n' % (n,genemap.get(n,n),predictions[n], G.degree(n)))
-        if n not in pos:
+        if n not in pos: #only add degree and score if unlabeled
             degreeList.append(G.degree(n))
-            valueList.append(predictions[n])
+            scoreList.append(predictions[n])
+            degree_file.write(str(G.degree(n))+'\t'+str(predictions[n])+'\n')
     out.close()
     print('Wrote to %s' % (outfile))
 
@@ -250,53 +258,52 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
 
         movingAverage.append(average)
 
-    # plt.plot(degreeList,'ob')
-    # plt.plot(movingAverage)
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Degree')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('candidate_degrees_singlelayer.png')
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees by rank')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
     
 
-    # plt.figure()
-    # plt.plot(valueList,'ob')
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Score')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('candidate_scores_singlelayer.png')
+    plt.figure()
+    plt.plot(valueList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    # plt.figure()
-    # plt.plot(valueList,degreeList,'ob')
-    # plt.xlabel('Node Score')
-    # plt.ylabel('Node Degrees')
-    # plt.title('Candidate Nodes')
-    # plt.tight_layout()
-    # plt.savefig('candidate_degrees_by_score_singlelayer.png')
+    plt.figure()
+    plt.plot(valueList,degreeList,'ob')
+    plt.xlabel('Node Score')
+    plt.ylabel('Node Degrees')
+    plt.title('Candidate Nodes')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    # degreeList=degreeList[0:300]
-    # movingAverage=movingAverage[0:300]
-    # plt.figure()
-    # plt.plot(degreeList,'ob')
-    # plt.plot(movingAverage)
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Degree')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('top_300_candidate_degrees_singlelayer.png')
+    degreeList=degreeList[0:500]
+    movingAverage=movingAverage[0:500]
+    plt.figure()
+    plt.plot(degreeList,'ob')
+    plt.plot(movingAverage)
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Degree')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    # valueList=valueList[0:300]
+    valueList=valueList[0:500]
 
-    # plt.figure()
-    # plt.plot(valueList,'ob')
-    # plt.xlabel('Node Rank')
-    # plt.ylabel('Node Score')
-    # plt.title('Candidate Degrees')
-    # plt.tight_layout()
-    # plt.savefig('top_300_candidate_scores_singlelayer.png')
+    plt.figure()
+    plt.plot(valueList,'ob')
+    plt.xlabel('Node Rank')
+    plt.ylabel('Node Score')
+    plt.title('Candidate Degrees')
+    plt.tight_layout()
+    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    #print(vdfvksjdnvlkjs)
 
     return
 
@@ -322,7 +329,7 @@ def readResults(statsfile,outfile):
     return times,changes,predictions
 
 
-def curatedFileReader(filename,graph,verbose, minimum_labeled, layers):
+def curatedFileReader(filename,graph,verbose, layers):
     #Note: Graph.nodes() is a list of all the nodes
     if layers==1:
         nodes = graph.nodes()
@@ -341,19 +348,13 @@ def curatedFileReader(filename,graph,verbose, minimum_labeled, layers):
                         print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
 
 
-        if len(curated)<minimum_labeled:
-            minimum_labeled=len(curated)
-        else:
-            count=minimum_labeled
-        print(minimum_labeled)
-        print(len(curated))
 
-        curated=set(random.sample(curated, minimum_labeled))
+        curated=set(random.sample(curated, len(curated)))
 
         print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
-        return curated, minimum_labeled
+        return curated
     else:
-        return curatedFileReaderMulti(filename, graph, verbose, minimum_labeled, layers)
+        return curatedFileReaderMulti(filename, graph, verbose, layers)
 
 def curatedFileReader1(filename,graph,verbose):
     #Note: Graph.nodes() is a list of all the nodes
@@ -379,7 +380,7 @@ def curatedFileReader1(filename,graph,verbose):
     return curated, minimum_labeled
 
 
-def curatedFileReaderMulti(filename,graph,verbose, minimum_labeled, layers):
+def curatedFileReaderMulti(filename,graph,verbose, layers):
     #Note: Graph.nodes() is a list of all the nodes
     nodes = graph.nodes()
     tot = 0
@@ -403,10 +404,7 @@ def curatedFileReaderMulti(filename,graph,verbose, minimum_labeled, layers):
                         continue
             if in_network:
                 count+=1
-        if count<minimum_labeled:
-            minimum_labeled=count
-        else:
-            count=minimum_labeled
+
 
         labeled_List=list(labeled_set)
         labeled_List=random.sample(labeled_List, k=len(labeled_List))
@@ -420,7 +418,7 @@ def curatedFileReaderMulti(filename,graph,verbose, minimum_labeled, layers):
 
 
     print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
-    return curated, minimum_labeled
+    return curated
 
 
 def plot_candidate_degrees(rank, Graph):
