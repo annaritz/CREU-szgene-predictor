@@ -102,6 +102,9 @@ def parse_arguments(argv):
     group.add_option('','--iterative_update',\
         action='store_true',default=False,\
         help='Run the update (original) version of the iterative method intsead of the matrix method (default=False).')
+    group.add_option('','--sinksource_method',\
+        action='store_true',default=False,\
+        help='Exclude negatives and run the sinksource+ algorithm (default=False).')
     group.add_option('-k','--k_fold',\
         type='int',metavar='INT',default=5,\
         help='k for k-fold cross validation (default=5).')
@@ -112,7 +115,7 @@ def parse_arguments(argv):
         type='int', default=3,\
         help='Run the experiments for disease and biological process with n nodes per gene. Each of the gene\'s nodes are connected to a node that represents the score for the gene. Positives are distributed among these layers. Reducing the nodes to 1 eliminates the process')
     group.add_option('-c', '--sinksource_constant',\
-        type='float',metavar='FLOAT',default=1,\
+        type='float',metavar='FLOAT',default=20,\
         help='How much to add to the denominator of the node value (default=1)')
     parser.add_option_group(group)
 
@@ -156,7 +159,6 @@ def main(argv):
 
         print(" reading edge file %s..." % (opts.interaction_graph))
         G = nx.Graph()
-        layers=3
         fileIO.read_edge_file(opts.interaction_graph,G, opts.layers)
         print(' ',G.number_of_edges(), 'edges')
         print(' ',G.number_of_nodes(), 'nodes')
@@ -164,8 +166,11 @@ def main(argv):
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
         disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, opts.layers)
         biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, opts.layers)
-        # negatives, minimum_labeled = fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.single_layer, minimum_labeled, opts.gene_mania)
         negatives=set()
+        if opts.sinksource_method==False:
+            negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.layers)
+        negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.layers)
+        
 
         ## some nodes appear in both positive and negative sets; identify these and remove
         ## them from the curated set.
@@ -187,7 +192,10 @@ def main(argv):
 
         print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.\n' % \
             (len(disease_positives),len(biological_process_positives),len(negatives)))
+        print('')
         print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
+        for node in blacklist:
+            G.remove_node(node)
 
     ##########################
     ## opts.single: run three individual learning experiments; one with disease positives, one with
@@ -202,14 +210,14 @@ def main(argv):
         outfile = opts.outprefix+'_disease_output.txt'
         name = 'disease'
         d_times,d_changes,d_predictions = learners.learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant, opts.layers,name,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant, opts.layers,name,opts.sinksource_method,write=True)
 
         print('Biological process predictions...')
         statsfile = opts.outprefix + '_biological_process_stats.txt'
         outfile = opts.outprefix+'_biological_process_output.txt'
         name = 'process'
         b_times,b_changes,b_predictions = learners.learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)
 
         ## write combined results for disease and biological process predictions, including the final score 
         ## which is the product of the two sets of predictions.
@@ -298,8 +306,13 @@ def main(argv):
                 hidden_genes = random.sample(disease_positives,int(len(disease_positives)/opts.k_fold))
                 test_positives = disease_positives.difference(hidden_genes)
                 print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
-                ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,negatives,\
-                    opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                if not opts.sinksource_method:
+                    ignore,ignore,d_predictions = learners.matrixLearn2(G,test_positives,negatives,\
+                        opts.epsilon,opts.timesteps,opts.verbose)
+                else:
+                    ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,negatives,\
+                        opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                print('Disease AUC = ',Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
                 d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
 
             ## biological process k-fold validation
@@ -310,8 +323,13 @@ def main(argv):
                 hidden_genes = random.sample(biological_process_positives,int(len(biological_process_positives)/opts.k_fold))
                 test_positives = biological_process_positives.difference(hidden_genes)
                 print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
-                ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,negatives,\
-                    opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                if not opts.sinksource_method:
+                    ignore,ignore,b_predictions = learners.matrixLearn2(G,test_positives,negatives,\
+                        opts.epsilon,opts.timesteps,opts.verbose)
+                else:
+                    ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,negatives,\
+                        opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                print('Biological Process AUC = ',Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
                 b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
 
             ## write the output file.

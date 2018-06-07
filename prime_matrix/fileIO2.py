@@ -102,9 +102,11 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
     fig = plt.figure(figsize=(4,4))
     out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\n')
     degreeList=[]
+
     
 
     for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
+        
         disLabel='Unlabeled'
         procLabel='Unlabeled'
         if n in negatives:
@@ -133,7 +135,7 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
 # Output results for multi-layer method
 def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant):
     degreeList=[]
-    valueList=[]
+    scoreList=[]
     degree_file=open('degree_lists/%s-layer%sconstant_degrees.txt' % (layers, sinksource_constant), 'w')
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
@@ -153,7 +155,7 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,
                     unlabeled=False
             if unlabeled==True:
                 degreeList.append(G.degree(n[:-6]+str(0)))
-                valueList.append(predictions[n])
+                scoreList.append(predictions[n])
                 degree_file.write(str(G.degree(n[:-6]+str(0)))+'\t'+str(predictions[n])+'\n')
 
     out.close()
@@ -177,7 +179,7 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,
     
 
     plt.figure()
-    plt.plot(valueList,'ob')
+    plt.plot(scoreList,'ob')
     plt.xlabel('Node Rank')
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')
@@ -185,7 +187,7 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,
     plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
     plt.figure()
-    plt.plot(valueList,degreeList,'ob')
+    plt.plot(scoreList,degreeList,'ob')
     plt.xlabel('Node Score')
     plt.ylabel('Node Degrees')
     plt.title('Candidate Nodes')
@@ -203,10 +205,10 @@ def writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,
     plt.tight_layout()
     plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    valueList=valueList[0:500]
+    scoreList=scoreList[0:500]
 
     plt.figure()
-    plt.plot(valueList,'ob')
+    plt.plot(scoreList,'ob')
     plt.xlabel('Node Rank')
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')
@@ -268,7 +270,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     
 
     plt.figure()
-    plt.plot(valueList,'ob')
+    plt.plot(scoreList,'ob')
     plt.xlabel('Node Rank')
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')
@@ -276,7 +278,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
     plt.figure()
-    plt.plot(valueList,degreeList,'ob')
+    plt.plot(scoreList,degreeList,'ob')
     plt.xlabel('Node Score')
     plt.ylabel('Node Degrees')
     plt.title('Candidate Nodes')
@@ -294,10 +296,10 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.tight_layout()
     plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
 
-    valueList=valueList[0:500]
+    scoreList=scoreList[0:500]
 
     plt.figure()
-    plt.plot(valueList,'ob')
+    plt.plot(scoreList,'ob')
     plt.xlabel('Node Rank')
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')

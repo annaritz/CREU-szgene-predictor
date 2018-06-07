@@ -10,13 +10,16 @@ import fileIO2 as fileIO
 
 
 
-def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force,sinksource_constant,layers,name,write=False):
+def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force,sinksource_constant,layers,name,sinksource_method,write=False):
     if not force and os.path.isfile(outfile):
         print('  File %s exists. Not running (use --force to override)' % (outfile))
         times,changes,predictions = fileIO.readResults(statsfile,outfile)
     else:
         if not iterative_update:
-            times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose,sinksource_constant)
+            if not sinksource_method:
+                times,changes,predictions = matrixLearn2(G,pos,negs,epsilon,timesteps,verbose)
+            else:
+                times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose,sinksource_constant)
 
         else:
             setGraphAttrs(G,pos,negs) #intitializes the scores
@@ -207,9 +210,12 @@ def matrixLearn2(G,pos,neg,epsilon,timesteps,verbose):
 
     # predictions is a dictionary of nodes to values.
     predictions = {}
+    for n in pos:
+        predictions[n] = 1
+    for n in neg:
+        predictions[n] = 0
     for i in range(len(unlabeled_list)):
-        if unlabeled_list[i][-6:] == '_prime':
-            predictions[unlabeled_list[i][:-6]] = f[i]
+        predictions[unlabeled_list[i]] = f[i]
 
     return timeLogger,changeLogger, predictions
 
@@ -249,6 +255,7 @@ def iterativeLearn(G,epsilon,timesteps,verbose):
     for n in neg:
         predictions[n] = 0
     for i in range(len(unlabeled_list)):
+
         predictions[unlabeled_list[i]] = f[i]
 
 
