@@ -187,7 +187,6 @@ def main(argv):
 
         print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.\n' % \
             (len(disease_positives),len(biological_process_positives),len(negatives)))
-        print('')
         print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
 
     ##########################
