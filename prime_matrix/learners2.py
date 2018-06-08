@@ -17,9 +17,9 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
     else:
         if not iterative_update:
             if not sinksource_method:
-                times,changes,predictions = matrixLearn2(G,pos,negs,epsilon,timesteps,verbose)
+                times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose)
             else:
-                times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose,sinksource_constant)
+                times,changes,predictions = matrixLearnSinkSource(G,pos,negs,epsilon,timesteps,verbose,sinksource_constant)
 
         else:
             setGraphAttrs(G,pos,negs) #intitializes the scores
@@ -28,11 +28,11 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
             if layers==1:
                 fileIO.writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant, name)
             else:
-                fileIO.writeResults(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant, name)
+                fileIO.writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant, name)
     return times,changes,predictions
 
 # Utilizes sinksource constant 
-def matrixLearn(G,pos,neg,epsilon,timesteps,verbose, sinksource_constant):
+def matrixLearnSinkSource(G,pos,neg,epsilon,timesteps,verbose, sinksource_constant):
 
     ## Takes the form of f = M * f + c where each entry for M 
     ## is calculated by dividing the weight by the weighted degree + constant from sinksource+ algorithm
@@ -128,7 +128,7 @@ def matrixLearn(G,pos,neg,epsilon,timesteps,verbose, sinksource_constant):
 
 
 # Does not utilize sinksource constant (uses original formula)
-def matrixLearn2(G,pos,neg,epsilon,timesteps,verbose):
+def matrixLearn(G,pos,neg,epsilon,timesteps,verbose):
 
     ## Takes the form of f = M * f + c.
 
