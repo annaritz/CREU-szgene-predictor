@@ -209,15 +209,15 @@ def main(argv):
         print('\nRunning Learning Algorithms...')
 
         print('Disease predictions...')
-        statsfile = opts.outprefix + '_disease_stats.txt'
-        outfile = opts.outprefix+'_disease_output.txt'
+        statsfile = opts.outprefix + str(opts.layers) + 'layers_disease_stats.txt'
+        outfile = opts.outprefix + str(opts.layers) + 'layers_disease_output.txt'
         name = 'disease'
         d_times,d_changes,d_predictions = learners.learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)
 
         print('Biological process predictions...')
-        statsfile = opts.outprefix + '_biological_process_stats.txt'
-        outfile = opts.outprefix+'_biological_process_output.txt'
+        statsfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_stats.txt'
+        outfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_output.txt'
         name = 'process'
         b_times,b_changes,b_predictions = learners.learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)

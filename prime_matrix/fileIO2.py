@@ -102,8 +102,8 @@ def curatedFileReaderMulti(filename,graph,verbose, layers):
         for line in fin:
             in_network=False
             entrezNumber=line.strip()
-            tot+=1
             for layer in range(layers):
+                tot += 1
                 if entrezNumber+'_'+str(layer) in nodes:
                     count+=1
                     labeled_set.add(entrezNumber)
@@ -158,7 +158,7 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
     out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\n')
     degreeList=[]
     for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
-        
+        print(n)
         disLabel='Unlabeled'
         procLabel='Unlabeled'
         if n in negatives:
@@ -185,10 +185,11 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
     return
 
 # Output results for multi-layer method
-def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant):
+# Called once each for CM and SZ
+def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,layers,pos,sinksource_constant,name):
     degreeList=[]
     scoreList=[]
-    degree_file=open('degree_lists/%s-layer%sconstant_degrees.txt' % (layers, sinksource_constant), 'w')
+    degree_file=open('degree_lists/%s_layer%sconstant_degrees.txt' % (layers, sinksource_constant), 'w')
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
     for i in range(len(times)):
@@ -196,19 +197,28 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, la
     out.close()
     print('Wrote to %s' % (statsfile))
 
-    out = open(outfile,'w')
-    out.write('#EntrezID\tName\tScore\tDegree\n')
+    out = open(outfile,'w') 
+    out.write('#EntrezID\tName\tScore\tDegree\n') #writes non-prime degree of nodes corresponding to prime node
     for n in sorted(predictions, key=lambda x:predictions[x], reverse=True):
         if n[-6:] == '_prime':
-            out.write('%s\t%s\t%f\t%s\n' % (n[:-6],genemap.get(n[:-6],n[:-6]),predictions[n],G.degree(n[:-6]+'0')))
+            entrez = n[:-6]
+            node = entrez+'_0' #look at the nodes in the first layer to check the degree because corresponding nodes in 
+            #layers all have the same degree
+            out.write('%s\t%s\t%f\t%s\n' % (entrez,genemap.get(entrez,entrez),predictions[n],G.degree(node)))
             unlabeled=True
             for layer in range(layers):
-                if n[:-6]+str(layer) in pos:
+                if entrez+'_'+str(layer) in pos:
                     unlabeled=False
             if unlabeled==True:
-                degreeList.append(G.degree(n[:-6]+str(0)))
-                scoreList.append(predictions[n])
-                degree_file.write(str(G.degree(n[:-6]+str(0)))+'\t'+str(predictions[n])+'\n')
+                degreeList.append(G.degree(node))
+                if type(G.degree(node))
+                print('Node\ttype\tDegree\tDegreeType', node, type(node), G.degree(node), type(G.degree(node)))
+                
+
+
+    print(klajsdlfkjsdlkfjs)
+                #scoreList.append(predictions[n])
+                #degree_file.write(str(G.degree(node))+'\t'+str(predictions[n])+'\n')
 
     out.close()
     degree_file.close()
@@ -216,7 +226,11 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, la
     # degreeList=degreeList[0:300]
     movingAverage=[]
     alpha=15
+
     for i in range(len(degreeList)-alpha):
+        print('i=', i)
+        print('TYPE:',type(degreeList[i]))
+        print('degree list', degreeList[i:i+alpha])
         average=sum(degreeList[i:i+alpha])/(alpha+1)
         movingAverage.append(average)
 
@@ -227,7 +241,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, la
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
     
 
     plt.figure()
@@ -236,7 +250,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, la
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
 
     plt.figure()
     plt.plot(scoreList,degreeList,'ob')
@@ -244,7 +258,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, la
     plt.ylabel('Node Degrees')
     plt.title('Candidate Nodes')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
 
     degreeList=degreeList[0:500]
     movingAverage=movingAverage[0:500]
@@ -255,7 +269,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, la
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
 
     scoreList=scoreList[0:500]
 
@@ -265,7 +279,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, la
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
 
     return
 
@@ -273,7 +287,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, la
 # Output results for single-layer method 
 # Called once for each set of positives (SZ and then CM)
 # predictions is the output from the method
-def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant, name):
+def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant,name):
     print('Writing %s single-layer output files...' % name)
     degreeList=[]
     scoreList=[]
@@ -302,6 +316,8 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
 
     movingAverage=[]
     alpha=15
+    print(type(degreeList[i]))
+    print(askdjfhs)
     for i in range(len(degreeList)-alpha):
         average=sum(degreeList[i:i+alpha])/(alpha+1)
 
@@ -314,7 +330,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees by rank')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
     
 
     plt.figure()
@@ -323,7 +339,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
 
     plt.figure()
     plt.plot(scoreList,degreeList,'ob')
@@ -331,7 +347,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.ylabel('Node Degrees')
     plt.title('Candidate Nodes')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
 
     degreeList=degreeList[0:500]
     movingAverage=movingAverage[0:500]
@@ -342,7 +358,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.ylabel('Node Degree')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
 
     scoreList=scoreList[0:500]
 
@@ -352,7 +368,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.ylabel('Node Score')
     plt.title('Candidate Degrees')
     plt.tight_layout()
-    plt.savefig('outfiles/%slayer_sinksource%s.png' % (layers, sinksource_constant))
+    plt.savefig('outfiles/%s_%slayer_sinksource%s.png' % (name, layers, sinksource_constant))
 
     return
 
