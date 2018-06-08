@@ -104,7 +104,7 @@ def parse_arguments(argv):
         help='Run the update (original) version of the iterative method intsead of the matrix method (default=False).')
     group.add_option('','--sinksource_method',\
         action='store_true',default=False,\
-        help='Exclude negatives and run the sinksource+ algorithm (default=False).')
+        help='Run the sinksource+ algorithm (default=False).')
     group.add_option('-k','--k_fold',\
         type='int',metavar='INT',default=5,\
         help='k for k-fold cross validation (default=5).')
@@ -117,6 +117,9 @@ def parse_arguments(argv):
     group.add_option('-c', '--sinksource_constant',\
         type='float',metavar='FLOAT',default=20,\
         help='How much to add to the denominator of the node value (default=1)')
+    group.add_option('-w', '--with_negatives',\
+        action='store_false',default=True,\
+        help='Include negative set (default=True).')
     parser.add_option_group(group)
 
     group = OptionGroup(parser,'Aggregate Analysis (combines runs into one figure)')
@@ -166,36 +169,38 @@ def main(argv):
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
         disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, opts.layers)
         biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, opts.layers)
-        negatives=set()
-        if opts.sinksource_method==False:
+        if opts.with_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
             negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.layers)
-        negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.layers)
-        
+            blacklist = set()
+            if disease_positives.intersection(negatives):
+                overlap_set = disease_positives.intersection(negatives)
+                print('WARNING: %d nodes are disease positives and negatives. Ignoring.' % (len(overlap_set)))
+                negatives = negatives.difference(overlap_set)
+                disease_positives = disease_positives.difference(overlap_set)
 
+                blacklist.update(overlap_set)
+
+            if biological_process_positives.intersection(negatives):
+                overlap_set = biological_process_positives.intersection(negatives)
+                print('WARNING: %d nodes are biological process positives and negatives. Ignoring.' % (len(overlap_set)))
+                negatives = negatives.difference(overlap_set)
+                biological_process_positives = biological_process_positives.difference(overlap_set)
+                blacklist.update(overlap_set)
+
+            print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
+            for node in blacklist:
+                G.remove_node(node)
+        else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
+            negatives = set()
+        
+        
         ## some nodes appear in both positive and negative sets; identify these and remove
         ## them from the curated set.
-        blacklist = set()
-        if disease_positives.intersection(negatives):
-            overlap_set = disease_positives.intersection(negatives)
-            print('WARNING: %d nodes are disease positives and negatives. Ignoring.' % (len(overlap_set)))
-            negatives = negatives.difference(overlap_set)
-            disease_positives = disease_positives.difference(overlap_set)
 
-            blacklist.update(overlap_set)
-
-        if biological_process_positives.intersection(negatives):
-            overlap_set = biological_process_positives.intersection(negatives)
-            print('WARNING: %d nodes are biological process positives and negatives. Ignoring.' % (len(overlap_set)))
-            negatives = negatives.difference(overlap_set)
-            biological_process_positives = biological_process_positives.difference(overlap_set)
-            blacklist.update(overlap_set)
 
         print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.\n' % \
             (len(disease_positives),len(biological_process_positives),len(negatives)))
-        print('')
-        print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
-        for node in blacklist:
-            G.remove_node(node)
+
 
     ##########################
     ## opts.single: run three individual learning experiments; one with disease positives, one with
