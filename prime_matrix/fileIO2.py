@@ -102,17 +102,24 @@ def curatedFileReaderMulti(filename,graph,verbose, layers):
         for line in fin:
             in_network=False
             entrezNumber=line.strip()
+            tot += 1
             for layer in range(layers):
-                tot += 1
                 if entrezNumber+'_'+str(layer) in nodes:
-                    count+=1
                     labeled_set.add(entrezNumber)
-                    curated.add(entrezNumber+'_'+str(layer))
                 else:
                     if verbose:
                         print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
                     else:
                         continue
+        count=len(labeled_set)
+
+        random.seed('Alexander_King') #We need the positives to be randomly distributed throughout the layers. If we have multiple
+        labeled_List=list(labeled_set) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
+        labeled_List=random.sample(labeled_List, k=len(labeled_List))
+
+        for i in range(len(labeled_List)):
+            layer=(i//(len(labeled_List)//layers))+1
+            curated.add(labeled_List[i]+'_'+str(layer))
 
     print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
     return curated
@@ -211,8 +218,8 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
                     unlabeled=False
             if unlabeled==True:
                 degreeList.append(G.degree(node))
-                if type(G.degree(node))
-                print('Node\ttype\tDegree\tDegreeType', node, type(node), G.degree(node), type(G.degree(node)))
+                if type(G.degree(node)):
+                    print('Node\ttype\tDegree\tDegreeType', node, type(node), G.degree(node), type(G.degree(node)))
                 
 
 

@@ -75,8 +75,8 @@ def parse_arguments(argv):
     ## Input Files
     group = OptionGroup(parser,'Input Files (all have default values)')
     group.add_option('-g','--interaction_graph',\
-        type='string',metavar='STR',default='networkfiles/brain_top.txt',\
-        help='Functional interaction network (default="networkfiles/brain_top.txt").')
+        type='string',metavar='STR',default='networkfiles/brain_top_geq_0.150.txt',\
+        help='Functional interaction network (default="networkfiles/brain_top_geq_0.150.txt").')
     group.add_option('-b','--biological_process_positives',\
         type='string',metavar='STR',default='infiles/motility_positives.txt',\
         help='File of positives for the biological process (default="infiles/motility_positives.txt")')
@@ -191,8 +191,8 @@ def main(argv):
                 blacklist.update(overlap_set)
 
             print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
-            for node in blacklist:
-                G.remove_node(node)
+            # for node in blacklist:
+            #     G.remove_node(node)
         else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
             negatives = set()
         
@@ -492,6 +492,7 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives):
     hiddenNodeValues=[]
     notPositiveNodeValues=[]
 
+
     for node in predictions:
         # if node[-6:] == '_prime':
         if node in hidden_nodes:
@@ -500,7 +501,6 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives):
             notPositiveNodeValues.append(predictions[node])
 
     U, p=stats.mannwhitneyu(hiddenNodeValues, notPositiveNodeValues, alternative="two-sided")
-    #print(U,p)
     AUC=U/(len(hiddenNodeValues)*len(notPositiveNodeValues))
     #print(AUC)
     return AUC
