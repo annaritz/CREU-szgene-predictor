@@ -75,7 +75,7 @@ def parse_arguments(argv):
     ## Input Files
     group = OptionGroup(parser,'Input Files (all have default values)')
     group.add_option('-g','--interaction_graph',\
-        type='string',metavar='STR',default='networkfiles/brain_top_geq_0.400.txt',\
+        type='string',metavar='STR',default='networkfiles/brain_top_geq_0.150.txt',\
         help='Functional interaction network (default="networkfiles/brain_top_geq_0.150.txt").')
     group.add_option('-b','--biological_process_positives',\
         type='string',metavar='STR',default='infiles/motility_positives.txt',\
