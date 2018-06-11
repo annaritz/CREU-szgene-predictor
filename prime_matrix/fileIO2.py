@@ -93,14 +93,13 @@ def curatedFileReader(filename,graph,verbose, layers):
 def curatedFileReaderMulti(filename,graph,verbose, layers):
     #Note: Graph.nodes() is a list of all the nodes
     nodes = graph.nodes()
-    tot = 0 #keeps track of number of nodes from curated set
+    tot = 0 #keeps track of number of nodes from curated positives
     count = 0 #keeps track of number of nodes actually in the graph
     curated = set()
     labeled_set = set()
 
     with open(filename,'r') as fin:
         for line in fin:
-            in_network=False
             entrezNumber=line.strip()
             tot += 1
             for layer in range(layers):
@@ -118,8 +117,9 @@ def curatedFileReaderMulti(filename,graph,verbose, layers):
         labeled_List=random.sample(labeled_List, k=len(labeled_List))
 
         for i in range(len(labeled_List)):
-            layer=(i//(len(labeled_List)//layers))+1
+            layer=(i//(len(labeled_List)//layers))
             curated.add(labeled_List[i]+'_'+str(layer))
+
 
     print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
     return curated
