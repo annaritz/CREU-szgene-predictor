@@ -75,7 +75,7 @@ def parse_arguments(argv):
     ## Input Files
     group = OptionGroup(parser,'Input Files (all have default values)')
     group.add_option('-g','--interaction_graph',\
-        type='string',metavar='STR',default='networkfiles/brain_top_geq_0.150.txt',\
+        type='string',metavar='STR',default='networkfiles/brain_top_geq_0.400.txt',\
         help='Functional interaction network (default="networkfiles/brain_top_geq_0.150.txt").')
     group.add_option('-b','--biological_process_positives',\
         type='string',metavar='STR',default='infiles/motility_positives.txt',\
@@ -166,8 +166,10 @@ def main(argv):
         print(' ',G.number_of_edges(), 'edges')
         print(' ',G.number_of_nodes(), 'nodes')
 
+
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
         disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, opts.layers)
+        autism_positives= fileIO.curatedFileReader('infiles/ASD_positives.txt', G, opts.verbose, opts.layers)
         biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, opts.layers)
         if opts.with_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
             negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.layers)
@@ -180,6 +182,14 @@ def main(argv):
                 print('WARNING: %d nodes are disease positives and negatives. Ignoring.' % (len(overlap_set)))
                 negatives = negatives.difference(overlap_set)
                 disease_positives = disease_positives.difference(overlap_set)
+
+                blacklist.update(overlap_set)
+
+            if autism_positives.intersection(negatives):
+                overlap_set = autism_positives.intersection(negatives)
+                print('WARNING: %d nodes are autism positives and negatives. Ignoring.' % (len(overlap_set)))
+                negatives = negatives.difference(overlap_set)
+                autism_positives = autism_positives.difference(overlap_set)
 
                 blacklist.update(overlap_set)
 
@@ -196,8 +206,8 @@ def main(argv):
         else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
             negatives = set()
         
-        print('Final Curated Sets: %d Disease Positives, %d Biological Process Positives, and %d Negatives.\n' % \
-            (len(disease_positives),len(biological_process_positives),len(negatives)))
+        print('Final Curated Sets: %d Disease Positives, %d Autism Positives,%d Biological Process Positives, and %d Negatives.\n' % \
+            (len(disease_positives),len(autism_positives),len(biological_process_positives),len(negatives)))
 
 
     ##########################
@@ -292,14 +302,17 @@ def main(argv):
 
             ## read AUC lists from the existing file.
             d_AUCs = []
+            a_AUCs = []
             b_AUCs = []
+
             with open(outfile,'r') as fin:
                 for line in fin:
                     if line[0]=='#': # skip header
                         continue
                     row = line.strip().split()
                     d_AUCs.append(float(row[0]))
-                    b_AUCs.append(float(row[1]))
+                    a_AUCs.append(float(row[1]))
+                    b_AUCs.append(float(row[12]))
         else:
             ## disease k-fold validation
             d_AUCs = []
@@ -317,6 +330,23 @@ def main(argv):
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                 print('Disease AUC = ',Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
                 d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
+
+            # autism k-fold validation
+            a_AUCs=[]
+            for i in range(opts.auc_samples):
+                print('#%d of %d' % (i,opts.auc_samples))
+                # subsample 1/k of the positives...
+                hidden_genes = random.sample(autism_positives,int(len(disease_positives)/opts.k_fold))
+                test_positives = autism_positives.difference(hidden_genes)
+                print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
+                if not opts.sinksource_method:
+                    ignore,ignore,a_predictions = learners.matrixLearn(G,test_positives,negatives,\
+                        opts.epsilon,opts.timesteps,opts.verbose)
+                else:
+                    ignore,ignore,a_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
+                        opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                print('Autism AUC = ',Mann_Whitney_U_test(a_predictions, hidden_genes,negatives))
+                a_AUCs.append(Mann_Whitney_U_test(a_predictions, hidden_genes,negatives))
 
             ## biological process k-fold validation
             b_AUCs = []
@@ -337,15 +367,15 @@ def main(argv):
 
             ## write the output file.
             out = open(outfile,'w')
-            out.write('#DiseaseAUCs\tBiologicalProcessAUCs\n')
+            out.write('#DiseaseAUCs\t#AutismAUCs\tBiologicalProcessAUCs\n')
             for i in range(len(d_AUCs)):
-                out.write('%f\t%f\n' % (d_AUCs[i],b_AUCs[i]))
+                out.write('%f\t%f\t%f\n' % (d_AUCs[i],a_AUCs[i],b_AUCs[i]))
             out.close()
 
         ## plot the AUC distribution.
         plt.clf()
-        plt.boxplot([d_AUCs,b_AUCs])
-        plt.xticks([1,2],['SZ','Cell Motility'])
+        plt.boxplot([d_AUCs,a_AUCs,b_AUCs])
+        plt.xticks([1,2],['SZ','ASD','Cell Motility'])
         plt.ylabel('AUC')
         plt.ylim([0,1])
         plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
@@ -415,6 +445,7 @@ def main(argv):
         AUC_names = []
         for i in range(len(files)):
             d = []
+            a = []
             b = []
             with open(files[i]+'_auc.txt') as fin:
                 for line in fin:
