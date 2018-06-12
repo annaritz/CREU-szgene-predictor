@@ -26,9 +26,9 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
         if write:
             if layers==1:
-                fileIO.writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, sinksource_constant, name)
+                fileIO.writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, negs,sinksource_constant, name)
             else:
-                fileIO.writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, sinksource_constant, name)
+                fileIO.writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, negs,sinksource_constant, name)
     return times,changes,predictions
 
 # Utilizes sinksource constant 
