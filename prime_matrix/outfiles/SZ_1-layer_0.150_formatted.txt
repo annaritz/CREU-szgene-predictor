@@ -1,0 +1,53 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{|ll|ccc|}\hline
+Gene Name & EntrezID & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\hline
+ERBB4 & 2066  & \textit{1.00} & \textit{1.00} & 1.00\\
+F2R & 2149  & \textit{1.00} & \textit{1.00} & 1.00\\
+NLGN1 & 22871  & \textit{1.00} & \textit{1.00} & 1.00\\
+NRG1 & 3084  & \textit{1.00} & \textit{1.00} & 1.00\\
+ABL2 & 27  & \textit{1.00} & \textit{1.00} & 1.00\\
+ARHGEF4 & 50649  & \textit{1.00} & \textit{1.00} & 1.00\\
+MPP5 & 64398  & \textit{1.00} & \textit{1.00} & 1.00\\
+TIMP2 & 7077  & \textit{1.00} & \textit{1.00} & 1.00\\
+CAMK2G & 818  & \textit{1.00} & \textit{1.00} & 1.00\\
+ACTR2 & 10097  & \textit{1.00} & \textit{1.00} & 1.00\\
+MAP2K2 & 5605  & \textit{1.00} & \textit{1.00} & 1.00\\
+BAD & 572  & \textit{1.00} & \textit{1.00} & 1.00\\
+PIKFYVE & 200576  & \textit{1.00} & \textit{1.00} & 1.00\\
+WASL & 8976  & \textit{1.00} & \textit{1.00} & 1.00\\
+SSH2 & 85464  & \textit{1.00} & \textit{1.00} & 1.00\\
+COL5A3 & 50509  & \textit{1.00} & \textit{1.00} & 1.00\\
+CGN & 57530  & \textit{1.00} & \textit{1.00} & 1.00\\
+SELPLG & 6404  & \textit{1.00} & \textit{1.00} & 1.00\\
+IGF1 & 3479  & \textit{1.00} & \textit{1.00} & 1.00\\
+CHRM4 & 1132  & \textit{1.00} & \textit{1.00} & 1.00\\
+MYL5 & 4636  & \textit{1.00} & \textit{1.00} & 1.00\\
+TENM1 & 10178  & \textit{1.00} & \textbf{1.00} & 1.00\\
+PPP1R12C & 54776  & \textit{1.00} & \textit{1.00} & 1.00\\
+NTNG2 & 84628  & \textit{1.00} & \textit{1.00} & 1.00\\
+PARD6G & 84552  & \textit{1.00} & \textit{1.00} & 1.00\\
+NINJ2 & 4815  & \textbf{1.00} & \textbf{1.00} & 1.00\\
+MYADML2 & 255275  & \textit{1.00} & \textbf{0.69} & 0.69\\
+DBX2 & 440097  & \textbf{0.69} & \textbf{1.00} & 0.69\\
+SHD & 56961  & \textit{1.00} & \textbf{0.59} & 0.59\\
+MYH4 & 4622  & \textbf{0.58} & \textit{1.00} & 0.58\\
+NPM2 & 10361  & \textit{1.00} & \textbf{0.54} & 0.54\\
+HSP90B3P & 343477  & \textbf{1.00} & \textbf{0.51} & 0.51\\
+TNF & 7124  & \textit{1.00} & \textbf{0.51} & 0.51\\
+PYDC1 & 260434  & \textit{1.00} & \textbf{0.50} & 0.50\\
+SFT2D3 & 84826  & \textbf{0.71} & \textbf{0.66} & 0.47\\
+KRTDAP & 388533  & \textbf{0.68} & \textbf{0.70} & 0.47\\
+MMRN1 & 22915  & \textbf{0.83} & \textbf{0.57} & 0.47\\
+SYTL3 & 94120  & \textbf{0.67} & \textbf{0.69} & 0.47\\
+CXCR2 & 3579  & \textbf{0.63} & \textbf{0.72} & 0.46\\
+CYSLTR1 & 10800  & \textbf{0.66} & \textbf{0.67} & 0.44\\
+STEAP1B & 256227  & \textbf{0.63} & \textbf{0.64} & 0.40\\
+ESM1 & 11082  & \textbf{0.58} & \textbf{0.66} & 0.38\\
+PSTPIP2 & 9050  & \textbf{0.58} & \textbf{0.60} & 0.35\\
+MGARP & 84709  & \textbf{0.57} & \textbf{0.60} & 0.34\\
+LRRC55 & 219527  & \textbf{0.55} & \textbf{0.60} & 0.33\\
+CYP4X1 & 260293  & \textbf{0.56} & \textbf{0.59} & 0.33\\
+OLR1 & 4973  & \textbf{0.57} & \textbf{0.53} & 0.30\\
+\end{tabular}
+\end{table}

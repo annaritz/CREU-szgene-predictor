@@ -1,0 +1,14 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{|ll|ccc|}\hline
+Gene Name & EntrezID & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\hline
+ARHGEF4 & 50649  & \textit{1.00} & \textit{1.00} & 1.00\\
+BAD & 572  & \textit{1.00} & \textit{1.00} & 1.00\\
+NRG1 & 3084  & \textit{1.00} & \textit{1.00} & 1.00\\
+CAMK2G & 818  & \textit{1.00} & \textit{1.00} & 1.00\\
+COL5A3 & 50509  & \textit{1.00} & \textit{1.00} & 1.00\\
+F2R & 2149  & \textit{1.00} & \textit{1.00} & 1.00\\
+PPP1R12C & 54776  & \textit{1.00} & \textit{1.00} & 1.00\\
+PIKFYVE & 200576  & \textit{1.00} & \textit{1.00} & 1.00\\
+\end{tabular}
+\end{table}
