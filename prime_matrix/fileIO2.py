@@ -192,7 +192,7 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
 
 # Output results for multi-layer method
 # Called once each for CM and SZ
-def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,layers,pos,neg,sinksource_constant,name):
+def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,layers,pos,neg,sinksource_constant,name,sinksource_method):
     degreePos=[] #just positives ranked by where they appear in the prime rankings
     scorePos = []
     rankPos = []
@@ -202,6 +202,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
     degreeUnlabeled = [] #just unlabeled
     scoreUnlabeled = []
     rankUnlabeled = []
+    relativerankUnlabeled = []
     degreeList = [] #all prime nodes
     degree_file=open('degree_lists/%s_layer%sconstant_degrees.txt' % (layers, sinksource_constant), 'w')
     out = open(statsfile,'w')
@@ -215,6 +216,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
     out.write('#EntrezID\tName\tScore\tDegree\n') #writes non-prime degree of nodes corresponding to prime node
     sorted_predict = sorted(predictions, key=lambda x:predictions[x], reverse=True) #list of nodes sorted by high to low rank
     rank = 1 #relative rank of prime nodes - second prime node found has rank 1, third 2, etc. (updated when a prime node seen)
+    unlabeled_rank = 1
     for n in sorted_predict:
         if n[-6:] == '_prime':
             entrez = n[:-6]
@@ -242,6 +244,8 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
                 degreeUnlabeled.append(G.degree(node))
                 scoreUnlabeled.append(predictions[n])
                 rankUnlabeled.append(rank)
+                relativerankUnlabeled.append(unlabeled_rank)
+                unlabeled_rank += 1
             rank += 1
             
 
@@ -282,22 +286,50 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
 
     plt.plot(movingAverage, color='black')
     plt.legend(loc='upper right')
-    plt.xlabel('Candidate Scores')
+    plt.xlabel('Candidate Rank')
     plt.ylabel('Candidate Degrees')
     
-    plt.savefig('outfiles/%s_%slayers_sinksource%s_rankxDegree.png' % (name, layers, sinksource_constant))
-    print('Wrote to outfiles/%s_%slayers_sinksource%s_rankxDegree.png' % (name, layers, sinksource_constant))
+    if sinksource_method: 
+        plt.savefig('outfiles/%s_%slayers_SS+%s_rankxDegree.png' % (name, layers, sinksource_constant))
+        print('Wrote to outfiles/%s_%slayers_SS+%s_rankxDegree.png' % (name, layers, sinksource_constant))
+    else:
+        plt.savefig('outfiles/%s_%slayers_rankxDegree.png' % (name, layers))
+        print('Wrote to outfiles/%s_%slayers_rankxDegree.png' % (name, layers))
 
     #Scatter plot + moving average line for just unlabeled prime rankings
     fig = plt.figure()
-    plt.scatter(rankUnlabeled, degreeUnlabeled, alpha=0.2, color=[0.3, 0, 0.8])
+    plt.scatter(relativerankUnlabeled, degreeUnlabeled, alpha=0.2, color=[0.3, 0, 0.8])
 
     plt.plot(movingAvgUnlabeled, color='black')
     plt.xlabel('Unlabeled Candidate Rank')
     plt.ylabel('Unlabeled Candidate Degree')
 
-    plt.savefig('outfiles/%s_%slayers_sinksource%s_UnlabeledrankxDegree.png' % (name, layers, sinksource_constant))
-    print('Wrote to outfiles/%s_%slayers_sinksource%s_UnlabeledrankxDegree.png' % (name, layers, sinksource_constant))
+    if sinksource_method:
+        plt.savefig('outfiles/%s_%slayers_SS+%s_UnlabeledrankxDegree.png' % (name, layers, sinksource_constant))
+        print('Wrote to outfiles/%s_%slayers_SS+%s_UnlabeledrankxDegree.png' % (name, layers, sinksource_constant))
+    else:
+        plt.savefig('outfiles/%s_%slayers_UnlabeledrankxDegree.png' % (name, layers))
+        print('Wrote to outfiles/%s_%slayers_UnlabeledrankxDegree.png' % (name, layers))
+
+    #Truncated plots
+    fig = plt.figure()
+    plt.clf()
+    plt.scatter(rankUnlabeled, degreeUnlabeled, alpha=0.2, color=[.7, .7, .7], label='Unlabeled')
+    plt.scatter(rankPos, degreePos, alpha=0.4, color='b', label='Positives')
+    plt.scatter(rankNeg, degreeNeg, alpha=0.4, color='r', label='Negatives')
+
+    plt.plot(movingAverage, color='black')
+    plt.xlim(0,1000)
+    plt.legend(loc='upper right')
+    plt.xlabel('Candidate Rank')
+    plt.ylabel('Candidate Degrees')
+
+    if sinksource_method:
+        plt.savefig('outfiles/%s_%slayers_SS+%s_Truncated_rankxDegree.png' % (name, layers, sinksource_constant))
+        print('Wrote to outfiles/%s_%slayers_SS+%s_Truncated_rankxDegree.png' % (name, layers, sinksource_constant))
+    else:
+        plt.savefig('outfiles/%s_%slayers_Truncated_rankxDegree.png' % (name, layers))
+        print('Wrote to outfiles/%s_%slayers_Truncated_rankxDegree.png' % (name, layers))
 
     return
 
@@ -305,7 +337,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
 # Output results for single-layer method 
 # Called once for each set of positives (SZ and then CM)
 # predictions is the output from the method
-def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos,neg, sinksource_constant,name):
+def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos,neg, sinksource_constant,name,sinksource_method):
     print('Writing %s single-layer output files...' % name)
     degreePos=[]
     scorePos = []
@@ -315,9 +347,11 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     rankNeg = []
     degreeUnlabeled = []
     scoreUnlabeled = []
-    rankUnlabeled = []
+    rankUnlabeled = [] #unlabeled ranked nodes relative to all ranked nodes
+    relativerankUnlabeled = [] #unlabeled ranked nodes relative to each other
     degreeList = []
     rank = 1
+    Unlabeled_rank = 1 #keeps track of rank relative to unlabeled nodes
     degree_file=open('degree_lists/1-layer%sconstant_degrees.txt' % sinksource_constant, 'w')
 
     out = open(statsfile,'w')
@@ -345,6 +379,8 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
             degreeUnlabeled.append(G.degree(n))
             scoreUnlabeled.append(predictions[n])
             rankUnlabeled.append(rank)
+            relativerankUnlabeled.append(Unlabeled_rank)
+            Unlabeled_rank +=1
         rank += 1
 
     out.close()
@@ -363,9 +399,6 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
         avg = sum(degreeUnlabeled[i:i+alpha])/(window+1)
         movingAvgUnlabeled.append(avg)
 
-    print('unlabeled deg',degreeUnlabeled)
-    print('moving avg',movingAvgUnlabeled)
-
     fig = plt.figure()
     plt.clf()
 
@@ -379,18 +412,48 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.xlabel('Candidate Rank')
     plt.ylabel('Candidate Degrees')
     
-    plt.savefig('outfiles/%s_1layer_sinksource%s_rankxDegree.png' % (name, sinksource_constant))
-    print('Wrote to outfiles/%s_1layer_sinksource%s_rankxDegree.png' % (name, sinksource_constant))
+    if sinksource_method:
+        plt.savefig('outfiles/%s_1layer_SS+%s_rankxDegree.png' % (name, sinksource_constant))
+        print('Wrote to outfiles/%s_1layer_SS+%s_rankxDegree.png' % (name, sinksource_constant))
+    else:
+        plt.savefig('outfiles/%s_1layer_rankxDegree.png' % name)
+        print('Wrote to outfiles/%s_1layer_rankxDegree.png' % name)
 
     fig = plt.figure()
-    plt.scatter(rankUnlabeled, degreeUnlabeled, alpha=0.2, color=[0.3, 0, 0.8])
+    plt.scatter(relativerankUnlabeled, degreeUnlabeled, alpha=0.2, color=[0.3, 0, 0.8])
 
     plt.plot(movingAvgUnlabeled, color='black')
     plt.xlabel('Unlabeled Candidate Rank')
     plt.ylabel('Unlabeled Candidate Degree')
 
-    plt.savefig('outfiles/%s_1layer_sinksource%s_UnlabeledrankxDegree.png' % (name, sinksource_constant))
-    print('Wrote to outfiles/%s_1layer_sinksource%s_UnlabeledrankxDegree.png' % (name, sinksource_constant))
+    if sinksource_method:
+        plt.savefig('outfiles/%s_1layer_SS+%s_UnlabeledrankxDegree.png' % (name, sinksource_constant))
+        print('Wrote to outfiles/%s_1layer_SS+%s_UnlabeledrankxDegree.png' % (name, sinksource_constant))
+    else:
+        plt.savefig('outfiles/%s_1layer_UnlabeledrankxDegree.png' % name)
+        print('Wrote to outfiles/%s_1layer_UnlabeledrankxDegree.png' % name)
+
+    #Truncated
+    fig = plt.figure()
+    plt.clf()
+
+    #color=rgb array
+    plt.scatter(rankUnlabeled, degreeUnlabeled, alpha=0.2, color=[.7, .7, .7], label='Unlabeled')
+    plt.scatter(rankPos, degreePos, alpha=0.4, color='b', label='Positives')
+    plt.scatter(rankNeg, degreeNeg, alpha=0.4, color='r', label='Negatives')
+    
+    plt.plot(movingAverage, color='black')
+    plt.xlim(0,1000)
+    plt.legend(loc='upper right')
+    plt.xlabel('Candidate Rank')
+    plt.ylabel('Candidate Degrees')
+
+    if sinksource_method:
+        plt.savefig('outfiles/%s_1layer_SS+%s_TruncatedrankxDegree.png' % (name, sinksource_constant))
+        print('Wrote to outfiles/%s_1layer_SS+%s_TruncaterankxDegree.png' % (name, sinksource_constant))
+    else:
+        plt.savefig('outfiles/%s_1layer_TruncatedrankxDegree.png' % name)
+        print('Wrote to outfiles/%s_1layer_TruncatedrankxDegree.png' % name)
 
     return
 
