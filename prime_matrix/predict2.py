@@ -115,8 +115,8 @@ def parse_arguments(argv):
         type='int', default=3,\
         help='Run the experiments for disease and biological process with n nodes per gene. Each of the gene\'s nodes are connected to a node that represents the score for the gene. Positives are distributed among these layers. Reducing the nodes to 1 eliminates the process')
     group.add_option('-c', '--sinksource_constant',\
-        type='float',metavar='FLOAT',default=20,\
-        help='How much to add to the denominator of the node value (default=1)')
+        type='float',metavar='FLOAT',default=None,\
+        help='How much to add to the denominator of the node value (must set)')
     group.add_option('-w', '--with_negatives',\
         action='store_false',default=True,\
         help='Include negative set (default=True).')
@@ -143,6 +143,10 @@ def parse_arguments(argv):
         sys.exit('ERROR: --aggregate requires --aggregate_names to be specified (and vice versa). Exiting.')
     if not (opts.stats or opts.single or opts.auc or opts.roc or opts.aggregate):
         sys.exit('ERROR: method does not specify one or more experiments to run.  At least one of the following methods/experiments must be specified:\n\t--stats: compute statistics\n\t--single: run single experiment\n\t--auc: run k-fold cross validation\n\t--roc: compute ROC of positives that appear in both curated sets.\nExiting.')
+    if opts.sinksource_constant != None and opts.sinksource_method == False:
+        sys.exit('ERROR: sinksource method must be specified to use constant.')
+    if opts.sinksource_method==True and opts.sinksource_constant==None:
+        sys.exit('ERROR: must specify constant for sinksource method.')
     return opts
 
 def main(argv):
@@ -222,25 +226,31 @@ def main(argv):
         statsfile = opts.outprefix + str(opts.layers) + 'layers_disease_stats.txt'
         outfile = opts.outprefix + str(opts.layers) + 'layers_disease_output.txt'
         name = 'disease'
-        d_times,d_changes,d_predictions = learners.learn(outfile,statsfile,genemap,G,disease_positives,negatives,\
+        d_times,d_changes,d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,disease_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)
 
         print('Biological process predictions...')
         statsfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_stats.txt'
         outfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_output.txt'
         name = 'process'
-        b_times,b_changes,b_predictions = learners.learn(outfile,statsfile,genemap,G,biological_process_positives,negatives,\
+        b_times,b_changes,b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,biological_process_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)
 
+        ## NEW 6/14 by Anna: normed=True means that both predictions are normalized so the maximum is 1.0.
+        normed=True
         ## write combined results for disease and biological process predictions, including the final score 
         ## which is the product of the two sets of predictions.
         outfile = opts.outprefix+'_combined_output.txt'
         fileIO.writeCombinedResults(G,outfile,d_predictions,b_predictions,\
-            disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers)
+            disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers,normed=normed)
 
         ## Formats the results as a LaTeX table.
         outfile = opts.outprefix+'_formatted.txt'
-        fileIO.formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers)
+        fileIO.formatCombinedResults(G,outfile,d_predictions,b_predictions,\
+            disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers,normed=normed)
+        outfile = opts.outprefix+'_formatted_unlabeled.txt'
+        fileIO.formatCombinedResults_unlabeled(G,outfile,d_predictions,b_predictions,\
+            disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers,normed=normed)
 
         ## Plot the time course of the runs per iteration.
         plt.clf()
@@ -270,26 +280,133 @@ def main(argv):
             statsfile = opts.outprefix + '_union_stats.txt'
             outfile = opts.outprefix+'_union_output.txt'
             union_positives = disease_positives.union(biological_process_positives)
-            u_times,u_changes,u_predictions = learners.learn(outfile,statsfile,genemap,G,union_positives,negatives,\
-                opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,write=True)
+            u_times,u_changes,u_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,union_positives,negatives,\
+                opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,\
+                opts.layers,name,opts.sinksource_method,write=True)
 
             ## plot node rankings.
-            plt.clf()
-            names = ['Disease Predictor $f_{\mathcal{D}}$','Biological Process Predictor $f_{\mathcal{P}}$','Union Predictor','Score $g$']
+            names = ['Disease Predictor $f_{\mathcal{D}}$','Biological Process Predictor $f_{\mathcal{P}}$','Union Predictor $f_{\mathcal{D} \cup \mathcal{P}}$','Combined Score $g$']
             colors =['g','b','k','r']
-            n = G.number_of_nodes()
-            preds = [d_predictions,b_predictions,u_predictions,{x:d_predictions[x]*u_predictions[x] for x in G.nodes()}]
+            styles = ['--',':','-','-']
+            if opts.layers > 1:
+                nodeset = set([n for n in G.nodes() if n[-6:]=='_prime'])
+            else:
+                nodeset = G.nodes()
+
+            outfile = opts.outprefix+'_combined_output_withunion.txt'
+            fileIO.writeCombinedResults(G,outfile,d_predictions,b_predictions,\
+                disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers,normed=normed,union_predictions=u_predictions)
+            outfile = opts.outprefix+'_formatted_unlabeled_withunion.txt'
+            fileIO.formatCombinedResults_unlabeled(G,outfile,d_predictions,b_predictions,\
+                disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers,normed=normed,union_predictions=u_predictions)
+
+            if normed:
+                d_max = max([d_predictions[key] for key in nodeset])
+                d_predictions = {key:d_predictions[key]/float(d_max) for key in nodeset}
+                b_max = max([b_predictions[key] for key in nodeset])
+                b_predictions = {key:b_predictions[key]/float(b_max) for key in nodeset}
+                u_max = max([u_predictions[key] for key in nodeset])
+                u_predictions = {key:u_predictions[key]/float(u_max) for key in nodeset}
+            n = len(nodeset)
+            preds = [{x:d_predictions[x] for x in nodeset},\
+                {x:b_predictions[x] for x in nodeset},\
+                {x:u_predictions[x] for x in nodeset},\
+                {x:d_predictions[x]*b_predictions[x] for x in nodeset}]
+
+            ## checking max value (should all be 1 since now normalizing)
+            print('----')
+            for i in range(len(preds)):
+                print(names[i],max(preds[i].values()))
+            print('----')
+
+            plt.figure(figsize=(5,3))
+            plt.clf()
+
             for i in range(len(names)):
-                yvals =sorted(preds[i].values(),reverse=True)
-                plt.plot(range(n),yvals,color=colors[i],label=names[i],lw=2)
-            plt.plot([0,n-1],[0.5,0.5],':k',label='_nolabel_')
+                yvals = sorted(preds[i].values(),reverse=True)
+                plt.plot(range(len(yvals)),yvals,color=colors[i],ls=styles[i],label=names[i],lw=2)
+
+            ##for i in range(len(names)):
+            ##    yvals =sorted(preds[i].values(),reverse=True)
+            ##    ax.plot(range(n),yvals,color=colors[i],ls=styles[i],label=names[i],lw=2)
+            #plt.plot([0,n-1],[0.5,0.5],':k',label='_nolabel_')
             plt.legend()
-            plt.xlabel('Node ($n=%s$)' % (n))
-            plt.ylabel('Ranking ($f$ or $g$)')
-            plt.xlim(0,n-1)
-            plt.ylim(0.01,1.01)
+            plt.xlabel('Candidate Rank')
+            plt.ylabel('Score ($f$ or $g$)')
+            plt.title('Ranked Genes by Different Predictors')
+            #plt.xlim(0,n-1)
+            #plt.ylim(0.01,1.01)
+
+            plt.tight_layout()
             plt.savefig(opts.outprefix+'_nodeRankings.png')
-            pritn('wrote to '+opts.outprefix+'_nodeRankings.png')
+            print('wrote to '+opts.outprefix+'_nodeRankings.png')
+
+            ## plot union scatter.
+            plt.figure(figsize=(5,4))
+            plt.clf()
+            ## get nodes to plot
+            top_num = 1000
+            sorted_by_combo = sorted(preds[3],key=lambda x:preds[3][x],reverse=True)
+            sorted_by_union = sorted(preds[2],key=lambda x:preds[2][x],reverse=True)
+            nodes_to_plot = set(sorted_by_union[:top_num]).union(sorted_by_combo[:top_num])
+
+            xpos=[]
+            ypos=[]
+            xbothpos=[]
+            ybothpos=[]
+            xunl=[]
+            yunl=[]
+            for n in nodes_to_plot:
+                names = [n] + [n[:-6]+'_'+str(x) for x in range(opts.layers)]
+                #print(names)
+                if any([x in disease_positives for x in names]):
+                    d_pos = True
+                else:
+                    d_pos = False
+                if any([x in biological_process_positives for x in names]):
+                    b_pos = True
+                else:
+                    b_pos = False
+                #print(n,b_pos,d_pos)
+                if d_pos and b_pos:
+                    xbothpos.append(sorted_by_combo.index(n))
+                    ybothpos.append(sorted_by_union.index(n))
+                elif d_pos or b_pos:
+                    xpos.append(sorted_by_combo.index(n))
+                    ypos.append(sorted_by_union.index(n))
+                else:
+                    xunl.append(sorted_by_combo.index(n))
+                    yunl.append(sorted_by_union.index(n))
+            #print(xunl,xbothpos,xpos)
+
+            plt.scatter(xpos, ypos, alpha=.5, color=[.7,.7,1], label='SZ or CM Positive')
+            plt.scatter(xbothpos, ybothpos, alpha=.5, color=[0,0,1], label='SZ and CM Positive')
+            if len(xunl)>0:
+                print(len(xunl))
+                plt.scatter(xunl, yunl, alpha=.5, color=[.6,.6,.6], label='Unlabeled')
+            
+            plt.plot([0,top_num],[0,top_num],':k',label='_nolabel_')
+            plt.plot([0,0,top_num,top_num,0,0],[top_num,top_num,top_num,0,0,top_num],':k',label='_nolabel_')
+            ##for i in range(len(names)):
+            ##    yvals =sorted(preds[i].values(),reverse=True)
+            ##    ax.plot(range(n),yvals,color=colors[i],ls=styles[i],label=names[i],lw=2)
+            #plt.plot([0,n-1],[0.5,0.5],':k',label='_nolabel_')
+            plt.legend()
+
+            
+            plt.xlabel('Candidate Rank by Combined Predictor $g$')
+            plt.ylabel('Candidate Rank by Union Predictor $f_{\mathcal{D} \cup \mathcal{P}}$')
+            plt.title('Ranked Genes by Combined vs. Union Predictors')
+            #plt.xlim(0,n-1)
+            #plt.ylim(0.01,1.01)
+            plt.tight_layout()
+            plt.savefig(opts.outprefix+'_scatter_union_full.png')
+            print('wrote to '+opts.outprefix+'_scatter_union_full.png')
+            plt.xlim(0,top_num*1.5)
+            plt.ylim(0,top_num*1.5)
+            plt.tight_layout()
+            plt.savefig(opts.outprefix+'_scatter_union.png')
+            print('wrote to '+opts.outprefix+'_scatter_union.png')
 
     ##########################
     ## opts.auc: subsample 1/opts.k_fold of the positives for disease, run the matrix method, calculate
@@ -397,13 +514,13 @@ def main(argv):
         print(' disease predictions...')
         statsfile = opts.outprefix + '_holdout_disease_stats.txt'
         outfile = opts.outprefix+'_holdout_disease_output.txt'
-        ignore,ignore,holdout_d_predictions = learners.learn(outfile,statsfile,genemap,G,test_disease_positives,negatives,\
+        ignore,ignore,holdout_d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_disease_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,write=True)
 
         print(' biological process predictions...')
         statsfile = opts.outprefix + '_holdout_biological_process_stats.txt'
         outfile = opts.outprefix+'_holdout_biological_process_output.txt'
-        ignore,ignore,holdout_b_predictions = learners.learn(outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
+        ignore,ignore,holdout_b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,write=True)
 
         ## write combined results for disease and biological process predictions, including the final score 

@@ -126,28 +126,48 @@ def curatedFileReaderMulti(filename,graph,verbose, layers):
 
 #Formats results as a LaTeX table
 #outfile variable is the name of the outfile, partially specified by --outprefix 
-def formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap, layers):
+def formatCombinedResults(G,outfile,d_predictions,b_predictions,\
+    disease_positives,biological_process_positives,negatives,blacklist,genemap, layers,normed=False):
+    if normed: # if true, then normalize the d_preds and b_preds to be between 0 and 1.
+        d_max = max([d_predictions[key] for key in d_predictions if key[-6:]=='_prime' or layers==1])
+        d_predictions = {key:d_predictions[key]/float(d_max) for key in d_predictions if key[-6:]=='_prime'  or layers==1}
+        b_max = max([b_predictions[key] for key in b_predictions if key[-6:]=='_prime' or layers==1])
+        b_predictions = {key:b_predictions[key]/float(b_max) for key in b_predictions if key[-6:]=='_prime'  or layers==1}
     # write output
     out = open(outfile,'w')
     out.write('\\begin{table}[h]\n')
     out.write('\\centering\n')
-    out.write('\\begin{tabular}{|ll|ccc|}\\hline\n')
-    out.write('Gene Name & EntrezID & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\\\\hline\n')
-    for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
+    out.write('\\begin{tabular}{|llc|ccc|}\\hline\n')
+    out.write('Gene Name & EntrezID & Deg & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\\\\hline\n')
+    if layers>1:
+        nodeset = set([n for n in G.nodes() if n[-6:]=='_prime'])
+    else:
+        nodeset = G.nodes()
+
+    for n in sorted(nodeset, key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
+
         if layers==1 or n[-6:] == '_prime':
             score = d_predictions[n]*b_predictions[n]
-            if d_predictions[n] < 0.5 or b_predictions[n] < 0.5 or score == 0.25:
+            if score <= 0.25:
                 continue
             if n[-6:] == '_prime':
-                n=n[:-6]
-            name = genemap.get(n,n)
-            entrezID = n
-            out.write('%s & %s ' % (name,entrezID))
-            if n in disease_positives:
+                nname=n[:-6]
+            else:
+                nname = n
+            name = genemap.get(nname,nname)
+            entrezID = nname
+            if layers > 1:
+                deg = G.degree(nname+'_0')-1
+            else:
+                deg = G.degree(n)
+            out.write('%s & %s & %d' % (name,entrezID,deg))
+            names = [nname] + [nname+'_'+str(x) for x in range(layers)]
+            #print(names)
+            if any([x in disease_positives for x in names]):
                 out.write(' & \\textit{%.2f}' % (d_predictions[n]))
             else:
                 out.write(' & \\textbf{%.2f}' % (d_predictions[n]))
-            if n in biological_process_positives:
+            if any([x in biological_process_positives for x in names]):
                 out.write(' & \\textit{%.2f}' % (b_predictions[n]))
             else:
                 out.write(' & \\textbf{%.2f}' % (b_predictions[n]))
@@ -157,34 +177,143 @@ def formatCombinedResults(G,outfile,d_predictions,b_predictions,disease_positive
     print('Wrote to %s' % (outfile))
     return
 
+#Formats results as a LaTeX table
+#outfile variable is the name of the outfile, partially specified by --outprefix 
+def formatCombinedResults_unlabeled(G,outfile,d_predictions,b_predictions,\
+    disease_positives,biological_process_positives,negatives,blacklist,genemap,layers,normed=False,union_predictions=False):
+    if normed: # if true, then normalize the d_preds and b_preds to be between 0 and 1.
+        d_max = max([d_predictions[key] for key in d_predictions if key[-6:]=='_prime' or layers==1])
+        d_predictions = {key:d_predictions[key]/float(d_max) for key in d_predictions if key[-6:]=='_prime' or layers==1}
+        b_max = max([b_predictions[key] for key in b_predictions if key[-6:]=='_prime' or layers==1])
+        b_predictions = {key:b_predictions[key]/float(b_max) for key in b_predictions if key[-6:]=='_prime' or layers==1}
+        if union_predictions:
+            u_max = max([union_predictions[key] for key in union_predictions if key[-6:]=='_prime' or layers==1])
+            union_predictions = {key:union_predictions[key]/float(u_max) for key in union_predictions if key[-6:]=='_prime' or layers==1}
+
+    # write output
+    out = open(outfile,'w')
+    out.write('\\begin{table}[h]\n')
+    out.write('\\centering\n')
+    if union_predictions:
+        out.write('\\begin{tabular}{|llcc|ccc|c|}\\hline\n')
+        out.write('Gene Name & EntrezID & Rank & Deg & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & $f_{\mathcal{D}\cup\mathcal{P}}$ & $g(v)$\\\\\\hline\n')
+    else:
+        out.write('\\begin{tabular}{|llcc|ccc|}\\hline\n')
+        out.write('Gene Name & EntrezID & Rank & Deg & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\\\\hline\n')
+    if layers>1:
+        nodeset = set([n for n in G.nodes() if n[-6:]=='_prime'])
+    else:
+        nodeset = G.nodes()
+    rank = 0
+    for n in sorted(nodeset, key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
+        rank+=1
+        if layers==1 or n[-6:] == '_prime':
+            score = d_predictions[n]*b_predictions[n]
+            if score <= 0.25:
+                continue
+            if n[-6:] == '_prime':
+                nname=n[:-6]
+            else:
+                nname = n
+            name = genemap.get(nname,nname)
+            entrezID = nname
+            if layers > 1:
+                deg = G.degree(nname+'_0')-1
+            else:
+                deg = G.degree(n)
+
+            ## NEW: ignore if node is BOTH a disease and a process positive.
+            names = [nname] + [nname+'_'+str(x) for x in range(layers)]
+            if any([x in disease_positives for x in names]) and any([x in biological_process_positives for x in names]):
+                #print('SKIPPING',nname,name,any([x in disease_positives for x in names]),any([x in biological_process_positives for x in names]))
+                continue
+            out.write('%s & %s & %d & %d' % (name,entrezID,rank,deg))
+            
+            #print(names)
+            if any([x in disease_positives for x in names]):
+                out.write(' & \\textit{%.2f}' % (d_predictions[n]))
+            else:
+                out.write(' & \\textbf{%.2f}' % (d_predictions[n]))
+
+            if any([x in biological_process_positives for x in names]):
+                out.write(' & \\textit{%.2f}' % (b_predictions[n]))
+            else:
+                out.write(' & \\textbf{%.2f}' % (b_predictions[n]))
+            if union_predictions:
+                out.write(' & %.2f & %.2f\\\\\n' % (union_predictions[n],score))
+            else:
+                out.write(' & %.2f\\\\\n' % (score))
+    out.write('\\end{tabular}\n')
+    out.write('\\end{table}\n')
+    print('Wrote to %s' % (outfile))
+    return
+
 # Write output file of nodes and process score * disease score 
-def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives,biological_process_positives,negatives,blacklist,genemap, layers):
+def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
+    disease_positives,biological_process_positives,negatives,blacklist,genemap, layers, normed=False,union_predictions=False):
+    if normed: # if true, then normalize the d_preds and b_preds to be between 0 and 1.
+        d_max = max([d_predictions[key] for key in d_predictions if key[-6:]=='_prime' or layers==1])
+        d_predictions = {key:d_predictions[key]/float(d_max) for key in d_predictions if key[-6:]=='_prime'  or layers==1}
+        b_max = max([b_predictions[key] for key in b_predictions if key[-6:]=='_prime' or layers==1])
+        b_predictions = {key:b_predictions[key]/float(b_max) for key in b_predictions if key[-6:]=='_prime'  or layers==1}
+        if union_predictions:
+            u_max = max([union_predictions[key] for key in union_predictions if key[-6:]=='_prime' or layers==1])
+            union_predictions = {key:union_predictions[key]/float(u_max) for key in union_predictions if key[-6:]=='_prime' or layers==1}
     # write output
     out = open(outfile,'w')
     fig = plt.figure(figsize=(4,4))
-    out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\n')
+    if union_predictions:
+        out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tUNION\tConflict?\tDegree\n')
+    else:
+        out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\tDegree\n')
     degreeList=[]
-    for n in sorted(G.nodes(), key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
+    if layers>1:
+        nodeset = set([n for n in G.nodes() if n[-6:]=='_prime'])
+    else:
+        nodeset = G.nodes()
+    for n in sorted(nodeset, key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
+        #print('writing out ',n)
         disLabel='Unlabeled'
         procLabel='Unlabeled'
-        if n in negatives:
-            disLabel = 'Negative'
-            procLabel = 'Negative'
-        if n in disease_positives:
-            disLabel='Positive'
-        if n in biological_process_positives:
-            procLabel='Positive'
+        if layers > 1:
+            for layer in range(layers):
+                layer_n = n[:-6]+'_'+str(layer)
+                if layer_n in negatives:
+                    disLabel = 'Negative'
+                    procLabel = 'Negative'
+                if layer_n in disease_positives:
+                    disLabel='Positive'
+                if layer_n in biological_process_positives:
+                    procLabel='Positive'
+        else:
+            if n in negatives:
+                disLabel = 'Negative'
+                procLabel = 'Negative'
+            if n in disease_positives:
+                disLabel='Positive'
+            if n in biological_process_positives:
+                procLabel='Positive'
         final_score = d_predictions[n]*b_predictions[n]
-        if n in blacklist:
+        if n in blacklist: ## "blacklist" means it was both a pos and a neg...it's now unlabeled. Mark it if it had this
             bl = 'YES'
         else:
             bl = 'NO'
-        if layers>1:
-            if n[-6:] == '_prime':
-                out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n[:-6],genemap.get(n[:-6],n[:-6]),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n[:-6]+'0')))
-                degreeList.append(G.degree(n[:-6]+'0'))
+        #if layers>1:
+        #    if n[-6:] == '_prime':
+        #        out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n,genemap.get(n,n[:-6]),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n[:-6]+'0')))
+        #        degreeList.append(G.degree(n[:-6]+'0'))
+        #else:
+        #    out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n,genemap.get(n,n),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n)))
+        if layers > 1:
+            name = n[:-6]
+            deg = G.degree(name+'_0')-1
         else:
-            out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n,genemap.get(n,n),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n)))
+            name = n
+            deg = G.degree(n)
+        if union_predictions:
+            out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%f\t%s\t%s\n' % (name,genemap.get(name,name),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,union_predictions[n],bl, deg))
+        else:
+            out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (name,genemap.get(name,name),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, deg))
     out.close()
     print('Wrote to %s' % (outfile))
 
@@ -192,7 +321,10 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,disease_positives
 
 # Output results for multi-layer method
 # Called once each for CM and SZ
-def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,layers,pos,neg,sinksource_constant,name,sinksource_method):
+def writeResultsMulti(statsfile,outprefix,outfile,times,changes,predictions,genemap,G,layers,pos,neg,sinksource_constant,name,sinksource_method):
+    #### TODO -- if ever plotting the scores (instead of the ranks), consider the normed=False option above
+    ### and normalize predictions so the max is 1.0.
+
     degreePos=[] #just positives ranked by where they appear in the prime rankings
     scorePos = []
     rankPos = []
@@ -204,7 +336,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
     rankUnlabeled = []
     relativerankUnlabeled = []
     degreeList = [] #all prime nodes
-    degree_file=open('degree_lists/%s_layer%sconstant_degrees.txt' % (layers, sinksource_constant), 'w')
+    degree_file=open(outprefix+'_degree_lists_%s_layer%sconstant_degrees.txt' % (layers, sinksource_constant), 'w')
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
     for i in range(len(times)):
@@ -290,11 +422,11 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
     plt.ylabel('Candidate Degrees')
     
     if sinksource_method: 
-        plt.savefig('outfiles/%s_%slayers_SS+%s_rankxDegree.png' % (name, layers, sinksource_constant))
-        print('Wrote to outfiles/%s_%slayers_SS+%s_rankxDegree.png' % (name, layers, sinksource_constant))
+        plt.savefig(outprefix+'_%s_%slayers_SS+%s_rankxDegree.png' % (name, layers, sinksource_constant))
+        print('Wrote to %s_%s_%slayers_SS+%s_rankxDegree.png' % (outprefix,name, layers, sinksource_constant))
     else:
-        plt.savefig('outfiles/%s_%slayers_rankxDegree.png' % (name, layers))
-        print('Wrote to outfiles/%s_%slayers_rankxDegree.png' % (name, layers))
+        plt.savefig(outprefix+'_%s_%slayers_rankxDegree.png' % (name, layers))
+        print('Wrote to %s_%s_%slayers_rankxDegree.png' % (outprefix,name, layers))
 
     #Scatter plot + moving average line for just unlabeled prime rankings
     fig = plt.figure()
@@ -305,11 +437,11 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
     plt.ylabel('Unlabeled Candidate Degree')
 
     if sinksource_method:
-        plt.savefig('outfiles/%s_%slayers_SS+%s_UnlabeledrankxDegree.png' % (name, layers, sinksource_constant))
-        print('Wrote to outfiles/%s_%slayers_SS+%s_UnlabeledrankxDegree.png' % (name, layers, sinksource_constant))
+        plt.savefig(outprefix+'_%s_%slayers_SS+%s_UnlabeledrankxDegree.png' % (name, layers, sinksource_constant))
+        print('Wrote to %s_%s_%slayers_SS+%s_UnlabeledrankxDegree.png' % (outprefix,name, layers, sinksource_constant))
     else:
-        plt.savefig('outfiles/%s_%slayers_UnlabeledrankxDegree.png' % (name, layers))
-        print('Wrote to outfiles/%s_%slayers_UnlabeledrankxDegree.png' % (name, layers))
+        plt.savefig(outprefix+'_%s_%slayers_UnlabeledrankxDegree.png' % (name, layers))
+        print('Wrote to %s_%s_%slayers_UnlabeledrankxDegree.png' % (outprefix,name, layers))
 
     #Truncated plots
     fig = plt.figure()
@@ -325,11 +457,11 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
     plt.ylabel('Candidate Degrees')
 
     if sinksource_method:
-        plt.savefig('outfiles/%s_%slayers_SS+%s_Truncated_rankxDegree.png' % (name, layers, sinksource_constant))
-        print('Wrote to outfiles/%s_%slayers_SS+%s_Truncated_rankxDegree.png' % (name, layers, sinksource_constant))
+        plt.savefig(outprefix+'_%s_%slayers_SS+%s_Truncated_rankxDegree.png' % (name, layers, sinksource_constant))
+        print('Wrote to %s_%s_%slayers_SS+%s_Truncated_rankxDegree.png' % (outprefix,name, layers, sinksource_constant))
     else:
-        plt.savefig('outfiles/%s_%slayers_Truncated_rankxDegree.png' % (name, layers))
-        print('Wrote to outfiles/%s_%slayers_Truncated_rankxDegree.png' % (name, layers))
+        plt.savefig(outprefix+'_%s_%slayers_Truncated_rankxDegree.png' % (name, layers))
+        print('Wrote to %s_%s_%slayers_Truncated_rankxDegree.png' % (outprefix,name, layers))
 
     return
 
@@ -337,7 +469,7 @@ def writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap,G,laye
 # Output results for single-layer method 
 # Called once for each set of positives (SZ and then CM)
 # predictions is the output from the method
-def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos,neg, sinksource_constant,name,sinksource_method):
+def writeResultsSingle(statsfile,outprefix,outfile,times,changes,predictions,genemap, G,pos,neg, sinksource_constant,name,sinksource_method):
     print('Writing %s single-layer output files...' % name)
     degreePos=[]
     scorePos = []
@@ -352,7 +484,7 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     degreeList = []
     rank = 1
     Unlabeled_rank = 1 #keeps track of rank relative to unlabeled nodes
-    degree_file=open('degree_lists/1-layer%sconstant_degrees.txt' % sinksource_constant, 'w')
+    degree_file=open(outprefix+'_degree_lists_1-layer%sconstant_degrees.txt' % sinksource_constant, 'w')
 
     out = open(statsfile,'w')
     out.write('#Iter\tTime\tChange\n')
@@ -413,11 +545,11 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.ylabel('Candidate Degrees')
     
     if sinksource_method:
-        plt.savefig('outfiles/%s_1layer_SS+%s_rankxDegree.png' % (name, sinksource_constant))
-        print('Wrote to outfiles/%s_1layer_SS+%s_rankxDegree.png' % (name, sinksource_constant))
+        plt.savefig(outprefix+'_%s_1layer_SS+%s_rankxDegree.png' % (name, sinksource_constant))
+        print('Wrote to %s_%s_1layer_SS+%s_rankxDegree.png' % (outprefix,name, sinksource_constant))
     else:
-        plt.savefig('outfiles/%s_1layer_rankxDegree.png' % name)
-        print('Wrote to outfiles/%s_1layer_rankxDegree.png' % name)
+        plt.savefig('%s_%s_1layer_rankxDegree.png' % (outprefix,name))
+        print('Wrote to %s_%s_1layer_rankxDegree.png' % (outprefix,name))
 
     fig = plt.figure()
     plt.scatter(relativerankUnlabeled, degreeUnlabeled, alpha=0.2, color=[0.3, 0, 0.8])
@@ -427,11 +559,11 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.ylabel('Unlabeled Candidate Degree')
 
     if sinksource_method:
-        plt.savefig('outfiles/%s_1layer_SS+%s_UnlabeledrankxDegree.png' % (name, sinksource_constant))
-        print('Wrote to outfiles/%s_1layer_SS+%s_UnlabeledrankxDegree.png' % (name, sinksource_constant))
+        plt.savefig('%s_%s_1layer_SS+%s_UnlabeledrankxDegree.png' % (outprefix,name, sinksource_constant))
+        print('Wrote to %s_%s_1layer_SS+%s_UnlabeledrankxDegree.png' % (outprefix,name, sinksource_constant))
     else:
-        plt.savefig('outfiles/%s_1layer_UnlabeledrankxDegree.png' % name)
-        print('Wrote to outfiles/%s_1layer_UnlabeledrankxDegree.png' % name)
+        plt.savefig('%s_%s_1layer_UnlabeledrankxDegree.png' % (outprefix,name))
+        print('Wrote to %s_%s_1layer_UnlabeledrankxDegree.png' % (outprefix,name))
 
     #Truncated
     fig = plt.figure()
@@ -449,16 +581,16 @@ def writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,po
     plt.ylabel('Candidate Degrees')
 
     if sinksource_method:
-        plt.savefig('outfiles/%s_1layer_SS+%s_TruncatedrankxDegree.png' % (name, sinksource_constant))
-        print('Wrote to outfiles/%s_1layer_SS+%s_TruncaterankxDegree.png' % (name, sinksource_constant))
+        plt.savefig('%s_%s_1layer_SS+%s_TruncatedrankxDegree.png' % (outprefix,name, sinksource_constant))
+        print('Wrote to %s_%s_1layer_SS+%s_TruncaterankxDegree.png' % (outprefix,name, sinksource_constant))
     else:
-        plt.savefig('outfiles/%s_1layer_TruncatedrankxDegree.png' % name)
-        print('Wrote to outfiles/%s_1layer_TruncatedrankxDegree.png' % name)
+        plt.savefig('%s_%s_1layer_TruncatedrankxDegree.png' % (outprefix,name))
+        print('Wrote to %s_%s_1layer_TruncatedrankxDegree.png' % (outprefix,name))
 
     return
 
 
-def readResults(statsfile,outfile):
+def readResults(statsfile,outfile,layers):
     times = []
     changes = []
     predictions = {}
@@ -474,6 +606,8 @@ def readResults(statsfile,outfile):
             if line[0] == '#' or 'EntrezID' in line:
                 continue
             row = line.strip().split('\t')
+            if layers > 1:
+                row[0] = row[0]+'_prime'
             predictions[row[0]] = float(row[2])
 
     return times,changes,predictions

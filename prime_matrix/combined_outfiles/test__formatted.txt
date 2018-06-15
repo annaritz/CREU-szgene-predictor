@@ -1,0 +1,20 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{|llc|ccc|}\hline
+Gene Name & EntrezID & Deg & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\hline
+ACTR2 & 10097 & 62 & \textit{0.96} & \textit{0.90} & 0.86\\
+MAP2K2 & 5605 & 84 & \textit{0.94} & \textit{0.92} & 0.86\\
+PIKFYVE & 200576 & 64 & \textit{0.96} & \textit{0.87} & 0.83\\
+BAD & 572 & 95 & \textit{0.97} & \textit{0.86} & 0.83\\
+ARHGEF4 & 50649 & 10 & \textit{0.91} & \textit{0.85} & 0.78\\
+TIMP2 & 7077 & 18 & \textit{0.89} & \textit{0.87} & 0.77\\
+MPP5 & 64398 & 5 & \textit{0.89} & \textit{0.86} & 0.77\\
+NRG1 & 3084 & 2 & \textit{0.88} & \textit{0.86} & 0.76\\
+ABL2 & 27 & 1 & \textit{0.88} & \textit{0.86} & 0.76\\
+WASL & 8976 & 4 & \textit{0.89} & \textit{0.83} & 0.74\\
+CAMK2G & 818 & 4 & \textit{0.89} & \textit{0.83} & 0.74\\
+COL5A3 & 50509 & 3 & \textit{0.88} & \textit{0.83} & 0.73\\
+ERBB4 & 2066 & 8 & \textit{0.88} & \textit{0.83} & 0.73\\
+SOS1 & 6654 & 13 & \textbf{0.87} & \textit{0.82} & 0.72\\
+\end{tabular}
+\end{table}

@@ -8,12 +8,11 @@ import numpy as np
 
 import fileIO2 as fileIO
 
-
-
-def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_update,verbose,force,sinksource_constant,layers,name,sinksource_method,write=False):
+def learn(outprefix,outfile,statsfile,genemap,G,pos,negs,\
+    epsilon,timesteps,iterative_update,verbose,force,sinksource_constant,layers,name,sinksource_method,write=False):
     if not force and os.path.isfile(outfile):
         print('  File %s exists. Not running (use --force to override)' % (outfile))
-        times,changes,predictions = fileIO.readResults(statsfile,outfile)
+        times,changes,predictions = fileIO.readResults(statsfile,outfile,layers)
     else:
         if not iterative_update:
             if not sinksource_method:
@@ -26,9 +25,9 @@ def learn(outfile,statsfile,genemap,G,pos,negs,epsilon,timesteps,iterative_updat
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
         if write:
             if layers==1:
-                fileIO.writeResultsSingle(statsfile,outfile,times,changes,predictions,genemap, G,pos, negs,sinksource_constant, name, sinksource_method)
+                fileIO.writeResultsSingle(statsfile,outprefix,outfile,times,changes,predictions,genemap, G,pos, negs,sinksource_constant, name, sinksource_method)
             else:
-                fileIO.writeResultsMulti(statsfile,outfile,times,changes,predictions,genemap, G, layers,pos, negs,sinksource_constant, name, sinksource_method)
+                fileIO.writeResultsMulti(statsfile,outprefix,outfile,times,changes,predictions,genemap, G, layers,pos, negs,sinksource_constant, name, sinksource_method)
     return times,changes,predictions
 
 # Utilizes sinksource constant 
