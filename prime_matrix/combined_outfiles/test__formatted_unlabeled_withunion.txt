@@ -2,6 +2,5 @@
 \centering
 \begin{tabular}{|llcc|ccc|c|}\hline
 Gene Name & EntrezID & Rank & Deg & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & $f_{\mathcal{D}\cup\mathcal{P}}$ & $g(v)$\\\hline
-SOS1 & 6654 & 14 & 13 & \textbf{0.87} & \textit{0.82} & 0.50 & 0.72\\
 \end{tabular}
 \end{table}

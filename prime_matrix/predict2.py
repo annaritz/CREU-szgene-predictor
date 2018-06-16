@@ -356,6 +356,11 @@ def main(argv):
             ybothpos=[]
             xunl=[]
             yunl=[]
+            ob_union = []
+            ob_combo = []
+            ob_union2 = []
+            ob_combo2 = []
+
             for n in nodes_to_plot:
                 names = [n] + [n[:-6]+'_'+str(x) for x in range(opts.layers)]
                 #print(names)
@@ -377,8 +382,19 @@ def main(argv):
                 else:
                     xunl.append(sorted_by_combo.index(n))
                     yunl.append(sorted_by_union.index(n))
+                if sorted_by_union.index(n) <= top_num and sorted_by_combo.index(n) > top_num:
+                    ob_union.append(sorted_by_union.index(n))
+                    ob_combo.append(sorted_by_combo.index(n))
+                if sorted_by_union.index(n) > top_num and sorted_by_combo.index(n) <= top_num:
+                    ob_union2.append(sorted_by_union.index(n))
+                    ob_combo2.append(sorted_by_combo.index(n))
             #print(xunl,xbothpos,xpos)
 
+            print('Out of Bounds for COMBO:')
+            print('UNION (%d total): %d-%d avg %.2f; COMBO ranks from %d-%d avg %.2f' % (len(ob_union),min(ob_union),max(ob_union),sum(ob_union)/len(ob_union),min(ob_combo),max(ob_combo),sum(ob_combo)/len(ob_combo)))
+            print('Out of Bounds for UNION:')
+            print('COMBO (%d total): %d-%d avg %.2f; UNION ranks from %d-%d avg %.2f' % (len(ob_union2),min(ob_combo2),max(ob_combo2),sum(ob_combo2)/len(ob_combo2),min(ob_union2),max(ob_union2),sum(ob_union2)/len(ob_union2)))
+            
             plt.scatter(xpos, ypos, alpha=.5, color=[.7,.7,1], label='SZ or CM Positive')
             plt.scatter(xbothpos, ybothpos, alpha=.5, color=[0,0,1], label='SZ and CM Positive')
             if len(xunl)>0:

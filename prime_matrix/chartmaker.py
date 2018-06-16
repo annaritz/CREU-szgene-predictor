@@ -1,16 +1,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+#SET USE_SD=False to get Error is IQR, not standard deviation
+USE_SD=True
 
 def main():
-    # figure_1()
+    figure_1()
     figure_2()
-    # figure_3()
+    figure_3()
     return
 
 def figure_1():
 
-    #Error is IQR, not standard deviation
+    
+
+    #SET SD=False to get Error is IQR, not standard deviation
+    #SD=False
     
     zero_file='outfiles/SZ_1-layer_0.150_auc.txt'
     zero=file_parser(zero_file)
@@ -65,8 +70,11 @@ def figure_1():
 
 
 
-
-    fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
+    fig1 = plt.figure(figsize=(7,4))
+    ax1 = plt.subplot(1,3,1)
+    ax2 = plt.subplot(1,3,2)
+    ax3 = plt.subplot(1,3,3)
+    #fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
 
     x_axis=np.arange(len(values))
     ax1.bar(x_axis,sz_means, tick_label=['0','0.01','0.1','10','50'], yerr=sz_err, capsize=7, color='b', alpha=0.8)
@@ -79,7 +87,7 @@ def figure_1():
 
     ax2.bar(x_axis,asd_means,tick_label=['0','0.01','0.1','10','50'], yerr=asd_err, capsize=7,color='b', alpha=0.8) 
     ax2.set_title('ASD')
-    ax2.set_xlabel('sinksource+ constant') #Try to see if there is a way to put the set name above the chart
+    ax2.set_xlabel('$\lambda$') #Try to see if there is a way to put the set name above the chart
     ax2.set_ylim(0.5,0.85)
     ax2.tick_params(labelsize=9)
 
@@ -95,7 +103,7 @@ def figure_1():
 
     fig1.tight_layout()
     plt.savefig('Figure_1.png')
-    plt.show()
+    #plt.show()
     return
 
 
@@ -212,16 +220,21 @@ def figure_2():
     
 
 
-
-    fig2, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
+    fig2 = plt.figure(figsize=(7,4))
+    ax1 = plt.subplot(1,3,1)
+    ax2 = plt.subplot(1,3,2)
+    ax3 = plt.subplot(1,3,3)
+    #fig2, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
     bar_width = 0.3
     error_config = {'ecolor': '0.3'}
     x_axis=np.arange(len(values))
 
     # rects1=ax1.bar(x_axis,neg_means, bar_width, tick_label=['0','0.1','10','50'], yerr=neg_err, capsize=7)
     # rects2=ax1.bar(x_axis,no_neg_means,bar_width, tick_label=['0','0.1','10','50'], yerr=no_neg_err, capsize=7, color='r')
-    rects1=ax1.bar(x_axis,SZ_neg_means, bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=SZ_neg_err, capsize=2,error_kw=error_config, label='with Negatives', color='b', alpha=0.8)
-    rects2=ax1.bar(x_axis+bar_width,SZ_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=SZ_no_neg_err, capsize=7, color='r',error_kw=error_config, label='without Negatives', alpha=0.8)
+    rects1=ax1.bar(x_axis,SZ_neg_means, bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=SZ_neg_err, capsize=2,\
+        error_kw=error_config, label='Pseudo-SS+', color='b', alpha=0.8)
+    rects2=ax1.bar(x_axis+bar_width,SZ_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=SZ_no_neg_err, capsize=7, \
+            color='#67CB8A',edgecolor='k',error_kw=error_config, label='SS+', alpha=0.8)
     ax1.set_ylabel('AUC')
     ax1.set_xticks(x_axis + bar_width / 2)
     ax1.set_ylim(0.5,0.85)
@@ -231,15 +244,15 @@ def figure_2():
 
 
     rects1=ax2.bar(x_axis,ASD_neg_means, bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=ASD_neg_err, capsize=2,error_kw=error_config, label='with Negatives', color='b', alpha=0.8)
-    rects2=ax2.bar(x_axis+bar_width,ASD_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=ASD_no_neg_err, capsize=7, color='r',error_kw=error_config, label='without Negatives', alpha=0.8)
-    ax2.set_xlabel('sinksource+ constant')
+    rects2=ax2.bar(x_axis+bar_width,ASD_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=ASD_no_neg_err, capsize=7, color='#67CB8A',edgecolor='k',error_kw=error_config, label='without Negatives', alpha=0.8)
+    ax2.set_xlabel('$\lambda$')
     ax2.set_xticks(x_axis + bar_width / 2)
     ax2.set_ylim(0.5,0.85)
     ax2.set_title('ASD')
 
 
-    rects1=ax3.bar(x_axis,CM_neg_means, bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=CM_neg_err, capsize=2,error_kw=error_config, label='with Negatives', color='b', alpha=0.8)
-    rects2=ax3.bar(x_axis+bar_width,CM_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=CM_no_neg_err, capsize=7, color='r',error_kw=error_config, label='without Negatives', alpha=0.8)
+    rects1=ax3.bar(x_axis,CM_neg_means, bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=CM_neg_err, capsize=2,error_kw=error_config, label='Pseudo-SS+', color='b', alpha=0.8)
+    rects2=ax3.bar(x_axis+bar_width,CM_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=CM_no_neg_err, capsize=7, color='#67CB8A',edgecolor='k',error_kw=error_config, label='without Negatives', alpha=0.8)
     ax3.set_xticks(x_axis + bar_width / 2)
     ax3.set_ylim(0.5,0.85)
     ax3.set_title('Cell Motility')
@@ -248,7 +261,7 @@ def figure_2():
 
     fig2.tight_layout()
     plt.savefig('Figure_2.png')
-    plt.show()
+    #plt.show()
 
 
 def figure_3():
@@ -316,8 +329,11 @@ def figure_3():
 
 
 
-
-    fig3, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
+    fig3 = plt.figure(figsize=(7,4))
+    ax1 = plt.subplot(1,3,1)
+    ax2 = plt.subplot(1,3,2)
+    ax3 = plt.subplot(1,3,3)
+    #fig3, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
 
     x_axis=np.arange(len(values))
     ax1.bar(x_axis,sz_means, tick_label=['1','2','3'], yerr=sz_err, capsize=7,color='b', alpha=0.8)
@@ -339,11 +355,13 @@ def figure_3():
 
 
 
+    print('SZ means:',sz_means)
+    print('ASD means:',asd_means)
+    print('motility means:',cm_means)
 
-
-    fig3.tight_layout()
+    plt.tight_layout()
     plt.savefig('Figure_3.png')
-    plt.show()
+    #plt.show()
     return
     
 
@@ -364,7 +382,13 @@ def file_parser(auc_file):
             CM.append(float(line[2].strip('\'')))
         x+=1
 
-    return [np.mean(SZ),np.mean(ASD),np.mean(CM),IQR(SZ),IQR(ASD),IQR(CM)]
+    if USE_SD:
+        return [np.mean(SZ),np.mean(ASD),np.mean(CM),SD(SZ),SD(ASD),SD(CM)]
+    else:    
+        return [np.mean(SZ),np.mean(ASD),np.mean(CM),IQR(SZ),IQR(ASD),IQR(CM)]
+
+def SD(dist):
+    return [np.std(dist),np.std(dist)]
 
 def IQR(dist):
     return [np.percentile(dist, 75) - np.mean(dist), np.mean(dist)-np.percentile(dist, 25)]

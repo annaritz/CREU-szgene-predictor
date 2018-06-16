@@ -15,6 +15,6 @@ WASL & 8976 & 4 & \textit{0.89} & \textit{0.83} & 0.74\\
 CAMK2G & 818 & 4 & \textit{0.89} & \textit{0.83} & 0.74\\
 COL5A3 & 50509 & 3 & \textit{0.88} & \textit{0.83} & 0.73\\
 ERBB4 & 2066 & 8 & \textit{0.88} & \textit{0.83} & 0.73\\
-SOS1 & 6654 & 13 & \textbf{0.87} & \textit{0.82} & 0.72\\
+SOS1 & 6654 & 13 & \textit{0.87} & \textit{0.82} & 0.72\\
 \end{tabular}
 \end{table}
