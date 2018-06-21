@@ -1,372 +1,21 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.stats as stats 
+from matplotlib.patches import Polygon
 
-#SET USE_SD=False to get Error is IQR, not standard deviation
+
+#SET USE_SD=False to get Error is IRQ, not standard deviation
 USE_SD=True
 
 def main():
+    
     figure_1()
     figure_2()
     figure_3()
+    
     return
 
-def figure_1():
-
-    
-
-    #SET SD=False to get Error is IQR, not standard deviation
-    #SD=False
-    
-    zero_file='outfiles/SZ_1-layer_0.150_auc.txt'
-    zero=file_parser(zero_file)
-
-    point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
-    point_zero_one=file_parser(point_zero_one_file)
-
-    point_one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
-    point_one=file_parser(point_one_file)
-
-    ten_file='outfiles/SZ_1-layer_10-sinksource_0.150_auc.txt'
-    ten=file_parser(ten_file)
-
-    fifty_file='outfiles/SZ_1-layer_50-sinksource_0.150_auc.txt'
-    fifty=file_parser(fifty_file)
-
-    values=[zero,point_zero_one,point_one, ten, fifty]
-    
-    sz_means=[]
-    sz_plus_err=[]
-    sz_minus_err=[]
-    
-    asd_means=[]
-    asd_plus_err=[]
-    asd_minus_err=[]
-
-    cm_means=[]
-    cm_plus_err=[]
-    cm_minus_err=[]
-
-
-    for test in values:
-        sz_means.append(test[0])
-        sz_plus_err.append(test[3][0])
-        sz_minus_err.append(test[3][1])
-
-        asd_means.append(test[1])
-        asd_plus_err.append(test[4][0])
-        asd_minus_err.append(test[4][1])
-
-        cm_means.append(test[2])
-        cm_plus_err.append(test[5][0])
-        cm_minus_err.append(test[5][1])
-
-    sz_err=[sz_plus_err]+[sz_minus_err]
-    asd_err=[asd_plus_err]+[asd_minus_err]
-    cm_err=[cm_plus_err]+[cm_minus_err]
-
-
-
-    
-
-
-
-    fig1 = plt.figure(figsize=(7,4))
-    ax1 = plt.subplot(1,3,1)
-    ax2 = plt.subplot(1,3,2)
-    ax3 = plt.subplot(1,3,3)
-    #fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
-
-    x_axis=np.arange(len(values))
-    ax1.bar(x_axis,sz_means, tick_label=['0','0.01','0.1','10','50'], yerr=sz_err, capsize=7, color='b', alpha=0.8)
-    ax1.set_title('SZ')
-    ax1.set_ylabel('AUC')
-    ax1.set_ylim(0.5,0.85)
-    ax1.tick_params(labelsize=9)
-
-
-
-    ax2.bar(x_axis,asd_means,tick_label=['0','0.01','0.1','10','50'], yerr=asd_err, capsize=7,color='b', alpha=0.8) 
-    ax2.set_title('ASD')
-    ax2.set_xlabel('$\lambda$') #Try to see if there is a way to put the set name above the chart
-    ax2.set_ylim(0.5,0.85)
-    ax2.tick_params(labelsize=9)
-
-    ax3.bar(x_axis,cm_means,tick_label=['0','0.01','0.1','10','50'], yerr=cm_err, capsize=7,color='b', alpha=0.8) 
-    ax3.set_title('Cell Motility')
-    ax3.set_ylim(0.5,0.85)
-    ax3.tick_params(labelsize=9)
-
-
-
-
-
-
-    fig1.tight_layout()
-    plt.savefig('Figure_1.png')
-    #plt.show()
-    return
-
-
-def figure_2():
-
-    #Error is IQR, not standard deviation
-
-    
-    zero_file='outfiles/SZ_1-layer_0.150_auc.txt'
-    zero=file_parser(zero_file)
-
-    point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
-    point_zero_one=file_parser(point_zero_one_file)
-
-    point_one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
-    point_one=file_parser(point_one_file)
-
-    ten_file='outfiles/SZ_1-layer_10-sinksource_0.150_auc.txt'
-    ten=file_parser(ten_file)
-
-    fifty_file='outfiles/SZ_1-layer_50-sinksource_0.150_auc.txt'
-    fifty=file_parser(fifty_file)
-
-
-    no_neg_zero_file='outfiles/SZ_1-layer_no_neg_0.150_auc.txt'
-    no_neg_zero=file_parser(no_neg_zero_file)
-
-
-
-
-    no_neg_point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_no_neg_0.150_auc.txt'
-    no_neg_point_zero_one=file_parser(no_neg_point_zero_one_file)
-
-    no_neg_point_one_file='outfiles/SZ_1-layer_0.1-sinksource_no_neg_0.150_auc.txt'
-    no_neg_point_one=file_parser(no_neg_point_one_file)
-
-    no_neg_ten_file='outfiles/SZ_1-layer_10-sinksource_no_neg_0.150_auc.txt'
-    no_neg_ten=file_parser(no_neg_ten_file)
-
-    no_neg_fifty_file='outfiles/SZ_1-layer_50-sinksource_no_neg_0.150_auc.txt'
-    no_neg_fifty=file_parser(no_neg_fifty_file)
-
-    # values=[zero,point_zero_one, ten, fifty]
-    # no_neg_values=[no_neg_zero,no_neg_point_zero_one,no_neg_ten,no_neg_fifty]
-
-    values=[zero, point_zero_one,point_one,ten, fifty]
-    no_neg_values=[no_neg_zero,no_neg_point_zero_one,no_neg_point_one, no_neg_ten,no_neg_fifty]
-
-    SZ_neg_means=[]
-    SZ_neg_plus_err=[]
-    SZ_neg_minus_err=[]
-
-    SZ_no_neg_means=[]
-    SZ_no_neg_plus_err=[]
-    SZ_no_neg_minus_err=[]
-
-    ASD_neg_means=[]
-    ASD_neg_plus_err=[]
-    ASD_neg_minus_err=[]
-
-    ASD_no_neg_means=[]
-    ASD_no_neg_plus_err=[]
-    ASD_no_neg_minus_err=[]
-
-    CM_neg_means=[]
-    CM_neg_plus_err=[]
-    CM_neg_minus_err=[]
-
-    CM_no_neg_means=[]
-    CM_no_neg_plus_err=[]
-    CM_no_neg_minus_err=[]
-    
-    x_axis=np.arange(len(values))
-
-    for test in values:
-        SZ_neg_means.append(test[0])
-        SZ_neg_plus_err.append(test[3][0])
-        SZ_neg_minus_err.append(test[3][1])
-
-        ASD_neg_means.append(test[1])
-        ASD_neg_plus_err.append(test[4][0])
-        ASD_neg_minus_err.append(test[4][1])
-
-        CM_neg_means.append(test[2])
-        CM_neg_plus_err.append(test[5][0])
-        CM_neg_minus_err.append(test[5][1])
-
-    for test in no_neg_values:
-        SZ_no_neg_means.append(test[0])
-        SZ_no_neg_plus_err.append(test[3][0])
-        SZ_no_neg_minus_err.append(test[3][1])
-
-        ASD_no_neg_means.append(test[1])
-        ASD_no_neg_plus_err.append(test[4][0])
-        ASD_no_neg_minus_err.append(test[4][1])
-
-        CM_no_neg_means.append(test[2])
-        CM_no_neg_plus_err.append(test[5][0])
-        CM_no_neg_minus_err.append(test[5][1])
-
-
-    SZ_neg_err=[SZ_neg_plus_err]+[SZ_neg_minus_err]
-    SZ_no_neg_err=[SZ_no_neg_plus_err]+[SZ_no_neg_minus_err]
-
-    ASD_neg_err=[ASD_neg_plus_err]+[ASD_neg_minus_err]
-    ASD_no_neg_err=[ASD_no_neg_plus_err]+[ASD_no_neg_minus_err]
-
-    CM_neg_err=[CM_neg_plus_err]+[CM_neg_minus_err]
-    CM_no_neg_err=[CM_no_neg_plus_err]+[CM_no_neg_minus_err]
-
-
-
-
-    
-
-
-    fig2 = plt.figure(figsize=(7,4))
-    ax1 = plt.subplot(1,3,1)
-    ax2 = plt.subplot(1,3,2)
-    ax3 = plt.subplot(1,3,3)
-    #fig2, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
-    bar_width = 0.3
-    error_config = {'ecolor': '0.3'}
-    x_axis=np.arange(len(values))
-
-    # rects1=ax1.bar(x_axis,neg_means, bar_width, tick_label=['0','0.1','10','50'], yerr=neg_err, capsize=7)
-    # rects2=ax1.bar(x_axis,no_neg_means,bar_width, tick_label=['0','0.1','10','50'], yerr=no_neg_err, capsize=7, color='r')
-    rects1=ax1.bar(x_axis,SZ_neg_means, bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=SZ_neg_err, capsize=2,\
-        error_kw=error_config, label='Pseudo-SS+', color='b', alpha=0.8)
-    rects2=ax1.bar(x_axis+bar_width,SZ_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=SZ_no_neg_err, capsize=7, \
-            color='#67CB8A',edgecolor='k',error_kw=error_config, label='SS+', alpha=0.8)
-    ax1.set_ylabel('AUC')
-    ax1.set_xticks(x_axis + bar_width / 2)
-    ax1.set_ylim(0.5,0.85)
-    ax1.legend()
-    ax1.set_title('SZ')
-
-
-
-    rects1=ax2.bar(x_axis,ASD_neg_means, bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=ASD_neg_err, capsize=2,error_kw=error_config, label='with Negatives', color='b', alpha=0.8)
-    rects2=ax2.bar(x_axis+bar_width,ASD_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=ASD_no_neg_err, capsize=7, color='#67CB8A',edgecolor='k',error_kw=error_config, label='without Negatives', alpha=0.8)
-    ax2.set_xlabel('$\lambda$')
-    ax2.set_xticks(x_axis + bar_width / 2)
-    ax2.set_ylim(0.5,0.85)
-    ax2.set_title('ASD')
-
-
-    rects1=ax3.bar(x_axis,CM_neg_means, bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=CM_neg_err, capsize=2,error_kw=error_config, label='Pseudo-SS+', color='b', alpha=0.8)
-    rects2=ax3.bar(x_axis+bar_width,CM_no_neg_means,bar_width, tick_label=['0','0.01','0.1','10','50'], yerr=CM_no_neg_err, capsize=7, color='#67CB8A',edgecolor='k',error_kw=error_config, label='without Negatives', alpha=0.8)
-    ax3.set_xticks(x_axis + bar_width / 2)
-    ax3.set_ylim(0.5,0.85)
-    ax3.set_title('Cell Motility')
-
-
-
-    fig2.tight_layout()
-    plt.savefig('Figure_2.png')
-    #plt.show()
-
-
-def figure_3():
-
-    #Error is IQR, not standard deviation
-    
-    
-
-    one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
-    first_one=file_parser(one_file)
-
-    one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
-    other_one=file_parser(one_file)
-
-    two_file='outfiles/SZ_2-layer_10-sinksource_0.150_auc.txt'
-    two=file_parser(two_file)
-
-    three_file='outfiles/SZ_3-layer_10-sinksource_0.150_auc.txt'
-    three=file_parser(three_file)
-
-
-    one=[first_one[0],other_one[1], other_one[2], first_one[3], other_one[4], other_one[5]]
-
-
-
-    
-
-    values=[one,two,three]
-    
-    sz_means=[]
-    sz_plus_err=[]
-    sz_minus_err=[]
-    
-    asd_means=[]
-    asd_plus_err=[]
-    asd_minus_err=[]
-
-    cm_means=[]
-    cm_plus_err=[]
-    cm_minus_err=[]
-
-
-    for test in values:
-        sz_means.append(test[0])
-        sz_plus_err.append(test[3][0])
-        sz_minus_err.append(test[3][1])
-
-        asd_means.append(test[1])
-        asd_plus_err.append(test[4][0])
-        asd_minus_err.append(test[4][1])
-
-        cm_means.append(test[2])
-        cm_plus_err.append(test[5][0])
-        cm_minus_err.append(test[5][1])
-
-    sz_err=[sz_plus_err]+[sz_minus_err]
-    asd_err=[asd_plus_err]+[asd_minus_err]
-    cm_err=[cm_plus_err]+[cm_minus_err]
-
-    
-
-
-
-    
-
-
-
-    fig3 = plt.figure(figsize=(7,4))
-    ax1 = plt.subplot(1,3,1)
-    ax2 = plt.subplot(1,3,2)
-    ax3 = plt.subplot(1,3,3)
-    #fig3, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1)
-
-    x_axis=np.arange(len(values))
-    ax1.bar(x_axis,sz_means, tick_label=['1','2','3'], yerr=sz_err, capsize=7,color='b', alpha=0.8)
-    ax1.set_title('SZ')
-    ax1.set_ylabel('AUC')
-    ax1.set_ylim(0.5,0.85)
-
-
-
-    ax2.bar(x_axis,asd_means,tick_label=['1','2','3'], yerr=asd_err, capsize=7,color='b', alpha=0.8) 
-    ax2.set_title('ASD')
-    ax2.set_xlabel('Layers') #Try to see if there is a way to put the set name above the chart
-    ax2.set_ylim(0.5,0.85)
-
-    ax3.bar(x_axis,cm_means,tick_label=['1','2','3'], yerr=cm_err, capsize=7,color='b', alpha=0.8) 
-    ax3.set_title('Cell Motility')
-    ax3.set_ylim(0.5,0.85)
-
-
-
-
-    print('SZ means:',sz_means)
-    print('ASD means:',asd_means)
-    print('motility means:',cm_means)
-
-    plt.tight_layout()
-    plt.savefig('Figure_3.png')
-    #plt.show()
-    return
-    
-
-
-
+#Appends AUC values of each positive set to a list and returns the 3 lists 
 def file_parser(auc_file):
     file=open(auc_file,'r')
     x=0
@@ -376,22 +25,281 @@ def file_parser(auc_file):
     for line in file:
         if x>0:
             line=line.strip('\n').split('\t')
-            SZ.append(float(line[0].strip('\'')))
+            SZ.append(float(line[0].strip('\''))) #SZ AUCs are always in first column
 
-            ASD.append(float(line[1].strip('\'')))
-            CM.append(float(line[2].strip('\'')))
+            ASD.append(float(line[1].strip('\''))) #ASD AUCs always in second column
+            CM.append(float(line[2].strip('\''))) #CM AUCs always in third column
         x+=1
 
-    if USE_SD:
-        return [np.mean(SZ),np.mean(ASD),np.mean(CM),SD(SZ),SD(ASD),SD(CM)]
-    else:    
-        return [np.mean(SZ),np.mean(ASD),np.mean(CM),IQR(SZ),IQR(ASD),IQR(CM)]
+    means_IRQs = [np.mean(SZ),np.mean(ASD),np.mean(CM),IQR(SZ),IQR(ASD),IQR(CM)]
 
-def SD(dist):
-    return [np.std(dist),np.std(dist)]
+    #return SZ, ASD, CM, means_IRQs
+    return SZ, ASD, CM
+
 
 def IQR(dist):
     return [np.percentile(dist, 75) - np.mean(dist), np.mean(dist)-np.percentile(dist, 25)]
+
+
+def figure_1():
+    
+    zero_file='outfiles/SZ_1-layer_0.150_auc.txt'
+    SZ_zero, ASD_zero, CM_zero = file_parser(zero_file)
+
+    point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
+    SZ_pt_zero_one, ASD_pt_zero_one, CM_pt_zero_one = file_parser(point_zero_one_file)
+
+    point_one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
+    SZ_pt_one, ASD_pt_one, CM_pt_one = file_parser(point_one_file)
+
+    ten_file='outfiles/SZ_1-layer_10-sinksource_0.150_auc.txt'
+    SZ_ten, ASD_ten, CM_ten = file_parser(ten_file)
+
+    fifty_file='outfiles/SZ_1-layer_50-sinksource_0.150_auc.txt'
+    SZ_fifty, ASD_fifty, CM_fifty = file_parser(fifty_file)
+
+    SZ_data = [SZ_zero, SZ_pt_zero_one, SZ_pt_one, SZ_ten, SZ_fifty]
+    ASD_data = [ASD_zero, ASD_pt_zero_one, ASD_pt_one, ASD_ten, ASD_fifty]
+    CM_data = [CM_zero, CM_pt_zero_one, CM_pt_one, CM_ten, CM_fifty]
+
+    fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True)
+
+    bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6,8,10], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','10','50'])
+    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax1.set_xlim(0,12)
+    ax1.set_ylabel('AUC')
+    ax1.set_title('Schizophrenia')
+    
+
+    bp3 = ax2.boxplot(ASD_data, notch=True, positions=[2,4,6,8,10], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','10','50'])
+    ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax2.set_xlim(0,12)
+    ax2.set_xlabel('$\lambda$')
+    ax2.set_title('Autism')
+
+
+    bp5 = ax3.boxplot(CM_data, notch=True, positions=[2,4,6,8,10], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','10','50'])
+    ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax3.set_xlim(0,12)
+    ax3.set_title('Cell Motility')
+
+    plt.savefig('outfiles/Figure1.png')
+
+    print('Created outfiles/Figure1.png')
+    
+    return
+
+
+def figure_2():
+
+    #Error is IQR, not standard deviation
+
+    #file parser returns 4 lists: list of SZ aucs, list of ASD aucs, list of SZ aucs, list of means + IRQs
+    #The last list we want to plot
+    #The first three lists we need for mann whitney U test for p-values of negatives vs no negatives for each lambda
+    
+    #Get negative data
+    zero_file='outfiles/SZ_1-layer_0.150_auc.txt'
+    SZ_zero, ASD_zero, CM_zero = file_parser(zero_file)
+
+    point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
+    SZ_pt_zo, ASD_pt_zo, CM_pt_zo = file_parser(point_zero_one_file)
+
+    point_one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
+    SZ_pt_o, ASD_pt_o, CM_pt_o = file_parser(point_one_file)
+
+    ten_file='outfiles/SZ_1-layer_10-sinksource_0.150_auc.txt'
+    SZ_ten, ASD_ten, CM_ten = file_parser(ten_file)
+
+    fifty_file='outfiles/SZ_1-layer_50-sinksource_0.150_auc.txt'
+    SZ_fifty, ASD_fifty, CM_fifty = file_parser(fifty_file)
+
+    #Get no negative data
+    no_neg_zero_file='outfiles/SZ_1-layer_no_neg_0.150_auc.txt'
+    SZ_no_neg_zero, ASD_no_neg_zero, CM_no_neg_zero = file_parser(no_neg_zero_file)
+
+    no_neg_point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_no_neg_0.150_auc.txt'
+    SZ_no_neg_pt_zo, ASD_no_neg_pt_zo, CM_no_neg_pt_zo = file_parser(no_neg_point_zero_one_file)
+
+    no_neg_point_one_file='outfiles/SZ_1-layer_0.1-sinksource_no_neg_0.150_auc.txt'
+    SZ_no_neg_pt_o, ASD_no_neg_pt_o, CM_no_neg_pt_o = file_parser(no_neg_point_one_file)
+
+    no_neg_ten_file='outfiles/SZ_1-layer_10-sinksource_no_neg_0.150_auc.txt'
+    SZ_no_neg_ten, ASD_no_neg_ten, CM_no_neg_ten = file_parser(no_neg_ten_file)
+
+    no_neg_fifty_file='outfiles/SZ_1-layer_50-sinksource_no_neg_0.150_auc.txt'
+    SZ_no_neg_fifty, ASD_no_neg_fifty, CM_no_neg_fifty = file_parser(no_neg_fifty_file)
+
+    #For each lambda value, generate three p-values: SZ neg vs no neg, ASD neg vs no neg, CM neg vs no neg
+    #Create lists to iterate through for each set 
+
+    zero_neg = [SZ_zero, ASD_zero, CM_zero]
+    zero_no_neg = [SZ_no_neg_zero, ASD_no_neg_zero, CM_no_neg_zero]
+
+    pt_zo_neg = [SZ_pt_zo, ASD_pt_zo, CM_pt_zo]
+    pt_zo_no_neg = [SZ_no_neg_pt_zo, ASD_no_neg_pt_zo, CM_no_neg_pt_zo]
+
+    pt_one_neg = [SZ_pt_o, ASD_pt_o, CM_pt_o]
+    pt_one_no_neg = [SZ_no_neg_pt_o, ASD_no_neg_pt_o, CM_no_neg_pt_o]
+
+    pt_ten_neg = [SZ_ten, ASD_ten, CM_ten]
+    pt_ten_no_neg = [SZ_no_neg_ten, ASD_no_neg_ten, CM_no_neg_ten]
+
+    pt_fifty_neg = [SZ_fifty, ASD_fifty, CM_fifty] 
+    pt_fifty_no_neg = [SZ_no_neg_fifty, ASD_no_neg_fifty, CM_no_neg_fifty]
+
+    neg_lists = [zero_neg, pt_zo_neg, pt_one_neg, pt_ten_neg, pt_fifty_neg]
+    no_neg_lists = [zero_no_neg, pt_zo_no_neg, pt_one_no_neg, pt_ten_no_neg, pt_fifty_no_neg]
+
+    #Compare no negatives to negatives and print p-values to an outfile
+
+    with open('outfiles/MWU_PVALUES_Neg_vs_NoNeg.txt', 'w') as out:
+        #first iterate through each constant, then iterate through each positive set for that constant to get the list of AUCs
+        for i in range(len(neg_lists)): #the two data set lists are always the same length 
+            if i == 0:
+                out.write('Lambda=0\n\n')
+            elif i == 1:
+                out.write('Lambda=0.01\n\n')
+            elif i == 2:
+                out.write('Lambda=0.1\n\n')
+            elif i == 3:
+                out.write('Lambda=10\n\n')
+            else:
+                out.write('Lambda=50\n\n')
+            for j in range(len(zero_neg)):
+                if j == 0:
+                    out.write('Schizophrenia\t')
+                elif j == 1:
+                    out.write('Autism\t')
+                else:
+                    out.write('Cell Motility\t')
+                U, p_value = stats.mannwhitneyu(neg_lists[i][j], no_neg_lists[i][j], alternative='two-sided')
+                out.write(str(p_value)+'\n')
+            out.write('\n')
+
+
+    
+    #SZ_data = [SZ_zero, SZ_no_neg_zero, SZ_pt_zo, SZ_no_neg_pt_zo, SZ_pt_o, SZ_no_neg_pt_o, SZ_ten, SZ_no_neg_ten, SZ_fifty, SZ_no_neg_fifty]
+    SZ_neg_data = [SZ_zero, SZ_pt_zo, SZ_pt_o, SZ_ten, SZ_fifty]
+    SZ_no_neg_data = [SZ_no_neg_zero, SZ_no_neg_pt_zo, SZ_no_neg_pt_o, SZ_no_neg_ten, SZ_no_neg_fifty]
+
+    #ASD_data = [ASD_zero, ASD_no_neg_zero, ASD_pt_zo, ASD_no_neg_pt_zo, ASD_pt_o, ASD_no_neg_pt_o, ASD_ten, ASD_no_neg_ten, ASD_fifty, ASD_no_neg_fifty]
+    ASD_neg_data = [ASD_zero, ASD_pt_zo, ASD_pt_o, ASD_ten, ASD_fifty]
+    ASD_no_neg_data = [ASD_no_neg_zero, ASD_no_neg_pt_zo, ASD_no_neg_pt_o, ASD_no_neg_ten, ASD_no_neg_fifty]
+
+    #CM_data = [CM_zero, CM_no_neg_zero, CM_pt_zo, CM_no_neg_pt_zo, CM_pt_o, CM_no_neg_pt_o, CM_ten, CM_no_neg_ten, CM_fifty, CM_no_neg_fifty]
+    CM_neg_data = [CM_zero, CM_pt_zo, CM_pt_o, CM_ten, CM_fifty]
+    CM_no_neg_data = [CM_no_neg_zero, CM_no_neg_pt_zo, CM_no_neg_pt_o, CM_no_neg_ten, CM_no_neg_fifty]
+
+
+    fig2, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True)
+    
+    bp1 = ax1.boxplot(SZ_neg_data, notch=True, positions=[2,7,12,17,22], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp2 = ax1.boxplot(SZ_no_neg_data, notch=True, positions=[4,9,14,19,24], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','10','50'])
+    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax1.set_xlim(0,26)
+    ax1.set_ylabel('AUC')
+    ax1.set_title('Schizophrenia')
+    ax1.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='upper left', fontsize='x-small')
+    
+
+    bp3 = ax2.boxplot(ASD_neg_data, notch=True, positions=[2,7,12,17,22], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp4 = ax2.boxplot(ASD_no_neg_data, notch=True, positions=[4,9,14,19,24], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','10','50'])
+    ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax2.set_xlim(0,26)
+    ax2.set_xlabel('$\lambda$')
+    ax2.set_title('Autism')
+
+
+    bp5 = ax3.boxplot(CM_neg_data, notch=True, positions=[2,7,12,17,22], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp6 = ax3.boxplot(CM_no_neg_data, notch=True, positions=[4,9,14,19,24], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','10','50'])
+    ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax3.set_xlim(0,26)
+    ax3.set_title('Cell Motility')
+
+    plt.savefig('outfiles/Figure2.png')
+
+    print('Created outfiles/Figure2.png')
+
+    return
+    
+
+
+def figure_3():
+
+    one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
+    SZ_first_one, ASD_first_one, CM_first_one = file_parser(one_file)
+
+    one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
+    SZ_other_one, ASD_other_one, CM_other_one = file_parser(one_file)
+
+    two_file='outfiles/SZ_2-layer_10-sinksource_0.150_auc.txt'
+    SZ_two, ASD_two, CM_two = file_parser(two_file)
+
+    three_file='outfiles/SZ_3-layer_10-sinksource_0.150_auc.txt'
+    SZ_three, ASD_three, CM_three = file_parser(three_file)
+
+    #Compare 2 layer to 1 layer and 3 layer for each positive set
+    #Create lists for each positive set of what data to compare [2 layer AUCs, 1 layer, 3 layer]
+
+    SZ_sets = [SZ_two, SZ_first_one, SZ_three]
+    ASD_sets = [ASD_two, ASD_other_one, ASD_three]
+    CM_sets = [CM_two, CM_other_one, CM_three]
+
+    Mann_test_lists = [SZ_sets, ASD_sets, CM_sets]
+
+    with open('outfiles/MWU_PVALUES_123layers.txt', 'w') as out:
+        for i in range(len(Mann_test_lists)):
+            if i == 0:
+                out.write('Schizophrenia\t')
+            elif i == 1:
+                out.write('Autism\t')
+            else:
+                out.write('Cell Motility\t')
+            out.write('\n')
+            U1, p1 = stats.mannwhitneyu(Mann_test_lists[i][0], Mann_test_lists[i][1], alternative='two-sided') 
+            out.write('2 layer vs. 1 layer\t')
+            out.write(str(p1) + '\n')
+            U3, p3 = stats.mannwhitneyu(Mann_test_lists[i][0], Mann_test_lists[i][2], alternative='two-sided')
+            out.write('2 layer vs. 3 layer\t')
+            out.write(str(p3) + '\n') 
+            out.write('\n')
+
+    SZ_data = [SZ_first_one, SZ_two, SZ_three]
+    ASD_data = [ASD_other_one, ASD_two, ASD_three]
+    CM_data = [CM_other_one, CM_two, CM_three]
+
+    fig3, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True)
+
+    bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
+    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax1.set_xlim(0,8)
+    ax1.set_ylabel('AUC')
+    ax1.set_title('Schizophrenia')
+    
+
+    bp3 = ax2.boxplot(ASD_data, notch=True, positions=[2,4,6], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
+    ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax2.set_xlim(0,8)
+    ax2.set_xlabel('Layers')
+    ax2.set_title('Autism')
+
+
+    bp5 = ax3.boxplot(CM_data, notch=True, positions=[2,4,6], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
+    ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax3.set_xlim(0,8)
+    ax3.set_title('Cell Motility')
+
+    plt.savefig('outfiles/Figure3.png')
+
+    print('Created outfiles/Figure3.png')
+
+
+    return
+    
+
+
+
 
 
 main()
