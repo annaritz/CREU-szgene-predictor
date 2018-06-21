@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats 
-from matplotlib.patches import Polygon
 
 
 #SET USE_SD=False to get Error is IRQ, not standard deviation
@@ -62,7 +61,7 @@ def figure_1():
     ASD_data = [ASD_zero, ASD_pt_zero_one, ASD_pt_one, ASD_ten, ASD_fifty]
     CM_data = [CM_zero, CM_pt_zero_one, CM_pt_one, CM_ten, CM_fifty]
 
-    fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True)
+    fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True, figsize)
 
     bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6,8,10], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','10','50'])
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)

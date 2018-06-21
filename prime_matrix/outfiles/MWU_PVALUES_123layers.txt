@@ -1,0 +1,12 @@
+Schizophrenia	
+2 layer vs. 1 layer	7.06607193039e-18
+2 layer vs. 3 layer	1.27321215879e-12
+
+Autism	
+2 layer vs. 1 layer	7.06607193039e-18
+2 layer vs. 3 layer	1.5524133621e-15
+
+Cell Motility	
+2 layer vs. 1 layer	2.07101371904e-17
+2 layer vs. 3 layer	4.42253541791e-13
+
