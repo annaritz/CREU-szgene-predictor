@@ -1,2 +1,5 @@
 # Mac os .DS_Store Files
 .DS_Store
+
+#__pycache__
+.pyc
