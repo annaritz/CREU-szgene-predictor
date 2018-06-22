@@ -61,7 +61,7 @@ def figure_1():
     ASD_data = [ASD_zero, ASD_pt_zero_one, ASD_pt_one, ASD_ten, ASD_fifty]
     CM_data = [CM_zero, CM_pt_zero_one, CM_pt_one, CM_ten, CM_fifty]
 
-    fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True, figsize)
+    fig1, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True, figsize=(7,4))
 
     bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6,8,10], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','10','50'])
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
@@ -82,20 +82,14 @@ def figure_1():
     ax3.set_xlim(0,12)
     ax3.set_title('Cell Motility')
 
-    plt.savefig('outfiles/Figure1.png')
+    plt.savefig('outfiles/compare_lambda.png')
 
-    print('Created outfiles/Figure1.png')
+    print('Created outfiles/compare_lambda.png')
     
     return
 
 
 def figure_2():
-
-    #Error is IQR, not standard deviation
-
-    #file parser returns 4 lists: list of SZ aucs, list of ASD aucs, list of SZ aucs, list of means + IRQs
-    #The last list we want to plot
-    #The first three lists we need for mann whitney U test for p-values of negatives vs no negatives for each lambda
     
     #Get negative data
     zero_file='outfiles/SZ_1-layer_0.150_auc.txt'
@@ -191,7 +185,7 @@ def figure_2():
     CM_no_neg_data = [CM_no_neg_zero, CM_no_neg_pt_zo, CM_no_neg_pt_o, CM_no_neg_ten, CM_no_neg_fifty]
 
 
-    fig2, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True)
+    fig2, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True, figsize=(7,4))
     
     bp1 = ax1.boxplot(SZ_neg_data, notch=True, positions=[2,7,12,17,22], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
     bp2 = ax1.boxplot(SZ_no_neg_data, notch=True, positions=[4,9,14,19,24], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','10','50'])
@@ -216,9 +210,9 @@ def figure_2():
     ax3.set_xlim(0,26)
     ax3.set_title('Cell Motility')
 
-    plt.savefig('outfiles/Figure2.png')
+    plt.savefig('outfiles/compare_neg_noneg.png')
 
-    print('Created outfiles/Figure2.png')
+    print('Created outfiles/compare_neg_noneg.png')
 
     return
     
@@ -268,7 +262,7 @@ def figure_3():
     ASD_data = [ASD_other_one, ASD_two, ASD_three]
     CM_data = [CM_other_one, CM_two, CM_three]
 
-    fig3, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True)
+    fig3, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True, figsize=(7,4))
 
     bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
@@ -289,9 +283,9 @@ def figure_3():
     ax3.set_xlim(0,8)
     ax3.set_title('Cell Motility')
 
-    plt.savefig('outfiles/Figure3.png')
+    plt.savefig('outfiles/comparing_layers.png')
 
-    print('Created outfiles/Figure3.png')
+    print('Created outfiles/comparing_layers.png')
 
 
     return

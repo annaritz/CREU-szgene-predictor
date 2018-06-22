@@ -1,1 +1,0 @@
-#EntrezID	Name	DisLabel	DisScore	ProcLabel	ProcScore	Combined	Conflict?
