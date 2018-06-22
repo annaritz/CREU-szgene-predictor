@@ -16,7 +16,7 @@ def parse_arguments(argv):
     #Input Files
     group = OptionGroup(parser,'Input Files')
     group.add_option('-n', '--network',\
-        type='string',metavar='STR',default='networkfiles/brain_top_geq_0.150.txt',\
+        type='string',metavar='STR',default='../networkfiles/brain_top_geq_0.150.txt',\
         help='Functional interaction network (default 0.150 threshold)')
     
     #Method Arguments
@@ -47,12 +47,12 @@ def main(argv):
     if opts.gene and opts.network:
         print('Reading gene edge file %s' % (opts.network))
 
-        genemap = geneMapReader('infiles/Homo_sapiens.txt')
+        genemap = geneMapReader('../infiles/Homo_sapiens.txt')
         cand_neighbors = read_edge_file(opts.network, opts.gene)
 
-        neg_neighbors = create_set('infiles/SZ_negatives.txt', cand_neighbors, opts.gene)
-        SZ_pos_neighbors = create_set('infiles/SZ_positives.txt', cand_neighbors, opts.gene)
-        CM_pos_neighbors = create_set('infiles/motility_positives.txt', cand_neighbors, opts.gene)
+        neg_neighbors = create_set('../infiles/SZ_negatives.txt', cand_neighbors, opts.gene)
+        SZ_pos_neighbors = create_set('../infiles/SZ_positives.txt', cand_neighbors, opts.gene)
+        CM_pos_neighbors = create_set('../infiles/motility_positives.txt', cand_neighbors, opts.gene)
 
         print('Visualizing local graph...')
 

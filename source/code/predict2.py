@@ -44,8 +44,8 @@ def parse_arguments(argv):
 
     ## Common Options.
     parser.add_option('-o','--outprefix',\
-        type='string',metavar='STR',default='outfiles/out',\
-        help='output file prefixes (default="outfiles/out").')
+        type='string',metavar='STR',default='../outfiles/out',\
+        help='output file prefixes (default="../outfiles/out").')
     parser.add_option('','--force',\
         action='store_true',default=False,\
         help='Run the learner on both positive sets, overwriting files if necessary.  Default=False.')
@@ -75,20 +75,20 @@ def parse_arguments(argv):
     ## Input Files
     group = OptionGroup(parser,'Input Files (all have default values)')
     group.add_option('-g','--interaction_graph',\
-        type='string',metavar='STR',default='networkfiles/brain_top_geq_0.150.txt',\
-        help='Functional interaction network (default="networkfiles/brain_top_geq_0.150.txt").')
+        type='string',metavar='STR',default='../infiles/networkfiles/brain_top_geq_0.150.txt',\
+        help='Functional interaction network (default="../infiles/networkfiles/brain_top_geq_0.150.txt").')
     group.add_option('-b','--biological_process_positives',\
-        type='string',metavar='STR',default='infiles/motility_positives.txt',\
-        help='File of positives for the biological process (default="infiles/motility_positives.txt")')
+        type='string',metavar='STR',default='../infiles/motility_positives.txt',\
+        help='File of positives for the biological process (default="../infiles/motility_positives.txt")')
     group.add_option('-d','--disease_positives',\
-        type='string',metavar='STR',default='infiles/SZ_positives.txt',\
-        help='File of positives for the disease (default="infiles/SZ_positives.txt")')
+        type='string',metavar='STR',default='../infiles/SZ_positives.txt',\
+        help='File of positives for the disease (default="../infiles/SZ_positives.txt")')
     group.add_option('-n','--negatives',\
-        type='string',metavar='STR',default='infiles/SZ_negatives.txt',\
-        help='File of negatives (default="infiles/SZ_negatives.txt")')
+        type='string',metavar='STR',default='../infiles/SZ_negatives.txt',\
+        help='File of negatives (default="../infiles/SZ_negatives.txt")')
     group.add_option('-m','--gene_map_file',\
-        type='string',metavar='STR',default='infiles/Homo_sapiens.txt',\
-        help='File of EntrezID to Common Names (default="infiles/Homo_sapiens.txt")')
+        type='string',metavar='STR',default='../infiles/Homo_sapiens.txt',\
+        help='File of EntrezID to Common Names (default="../infiles/Homo_sapiens.txt")')
     parser.add_option_group(group)
 
     ## Algorithms/Method Arguments
@@ -173,7 +173,7 @@ def main(argv):
 
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
         disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, opts.layers)
-        autism_positives= fileIO.curatedFileReader('infiles/ASD_positives.txt', G, opts.verbose, opts.layers)
+        autism_positives= fileIO.curatedFileReader('../infiles/ASD_positives.txt', G, opts.verbose, opts.layers)
         biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, opts.layers)
         if opts.with_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
             negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.layers)

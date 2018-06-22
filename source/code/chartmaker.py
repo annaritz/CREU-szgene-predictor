@@ -42,19 +42,19 @@ def IQR(dist):
 
 def figure_1():
     
-    zero_file='outfiles/SZ_1-layer_0.150_auc.txt'
+    zero_file='../outfiles/SZ_1-layer_0.150_auc.txt'
     SZ_zero, ASD_zero, CM_zero = file_parser(zero_file)
 
-    point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
+    point_zero_one_file='../outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
     SZ_pt_zero_one, ASD_pt_zero_one, CM_pt_zero_one = file_parser(point_zero_one_file)
 
-    point_one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
+    point_one_file='../outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
     SZ_pt_one, ASD_pt_one, CM_pt_one = file_parser(point_one_file)
 
-    ten_file='outfiles/SZ_1-layer_10-sinksource_0.150_auc.txt'
+    ten_file='../outfiles/SZ_1-layer_10-sinksource_0.150_auc.txt'
     SZ_ten, ASD_ten, CM_ten = file_parser(ten_file)
 
-    fifty_file='outfiles/SZ_1-layer_50-sinksource_0.150_auc.txt'
+    fifty_file='../outfiles/SZ_1-layer_50-sinksource_0.150_auc.txt'
     SZ_fifty, ASD_fifty, CM_fifty = file_parser(fifty_file)
 
     SZ_data = [SZ_zero, SZ_pt_zero_one, SZ_pt_one, SZ_ten, SZ_fifty]
@@ -82,7 +82,7 @@ def figure_1():
     ax3.set_xlim(0,12)
     ax3.set_title('Cell Motility')
 
-    plt.savefig('outfiles/compare_lambda.png')
+    plt.savefig('../outfiles/compare_lambda.png')
 
     print('Created outfiles/compare_lambda.png')
     
@@ -92,35 +92,35 @@ def figure_1():
 def figure_2():
     
     #Get negative data
-    zero_file='outfiles/SZ_1-layer_0.150_auc.txt'
+    zero_file='../outfiles/SZ_1-layer_0.150_auc.txt'
     SZ_zero, ASD_zero, CM_zero = file_parser(zero_file)
 
-    point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
+    point_zero_one_file='../outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
     SZ_pt_zo, ASD_pt_zo, CM_pt_zo = file_parser(point_zero_one_file)
 
-    point_one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
+    point_one_file='../outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
     SZ_pt_o, ASD_pt_o, CM_pt_o = file_parser(point_one_file)
 
-    ten_file='outfiles/SZ_1-layer_10-sinksource_0.150_auc.txt'
+    ten_file='../outfiles/SZ_1-layer_10-sinksource_0.150_auc.txt'
     SZ_ten, ASD_ten, CM_ten = file_parser(ten_file)
 
-    fifty_file='outfiles/SZ_1-layer_50-sinksource_0.150_auc.txt'
+    fifty_file='../outfiles/SZ_1-layer_50-sinksource_0.150_auc.txt'
     SZ_fifty, ASD_fifty, CM_fifty = file_parser(fifty_file)
 
     #Get no negative data
-    no_neg_zero_file='outfiles/SZ_1-layer_no_neg_0.150_auc.txt'
+    no_neg_zero_file='../outfiles/SZ_1-layer_no_neg_0.150_auc.txt'
     SZ_no_neg_zero, ASD_no_neg_zero, CM_no_neg_zero = file_parser(no_neg_zero_file)
 
-    no_neg_point_zero_one_file='outfiles/SZ_1-layer_0.01-sinksource_no_neg_0.150_auc.txt'
+    no_neg_point_zero_one_file='../outfiles/SZ_1-layer_0.01-sinksource_no_neg_0.150_auc.txt'
     SZ_no_neg_pt_zo, ASD_no_neg_pt_zo, CM_no_neg_pt_zo = file_parser(no_neg_point_zero_one_file)
 
-    no_neg_point_one_file='outfiles/SZ_1-layer_0.1-sinksource_no_neg_0.150_auc.txt'
+    no_neg_point_one_file='../outfiles/SZ_1-layer_0.1-sinksource_no_neg_0.150_auc.txt'
     SZ_no_neg_pt_o, ASD_no_neg_pt_o, CM_no_neg_pt_o = file_parser(no_neg_point_one_file)
 
-    no_neg_ten_file='outfiles/SZ_1-layer_10-sinksource_no_neg_0.150_auc.txt'
+    no_neg_ten_file='../outfiles/SZ_1-layer_10-sinksource_no_neg_0.150_auc.txt'
     SZ_no_neg_ten, ASD_no_neg_ten, CM_no_neg_ten = file_parser(no_neg_ten_file)
 
-    no_neg_fifty_file='outfiles/SZ_1-layer_50-sinksource_no_neg_0.150_auc.txt'
+    no_neg_fifty_file='../outfiles/SZ_1-layer_50-sinksource_no_neg_0.150_auc.txt'
     SZ_no_neg_fifty, ASD_no_neg_fifty, CM_no_neg_fifty = file_parser(no_neg_fifty_file)
 
     #For each lambda value, generate three p-values: SZ neg vs no neg, ASD neg vs no neg, CM neg vs no neg
@@ -146,7 +146,7 @@ def figure_2():
 
     #Compare no negatives to negatives and print p-values to an outfile
 
-    with open('outfiles/MWU_PVALUES_Neg_vs_NoNeg.txt', 'w') as out:
+    with open('../outfiles/MWU_PVALUES_Neg_vs_NoNeg.txt', 'w') as out:
         #first iterate through each constant, then iterate through each positive set for that constant to get the list of AUCs
         for i in range(len(neg_lists)): #the two data set lists are always the same length 
             if i == 0:
@@ -210,7 +210,7 @@ def figure_2():
     ax3.set_xlim(0,26)
     ax3.set_title('Cell Motility')
 
-    plt.savefig('outfiles/compare_neg_noneg.png')
+    plt.savefig('../outfiles/compare_neg_noneg.png')
 
     print('Created outfiles/compare_neg_noneg.png')
 
@@ -220,16 +220,16 @@ def figure_2():
 
 def figure_3():
 
-    one_file='outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
+    one_file='../outfiles/SZ_1-layer_0.01-sinksource_0.150_auc.txt'
     SZ_first_one, ASD_first_one, CM_first_one = file_parser(one_file)
 
-    one_file='outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
+    one_file='../outfiles/SZ_1-layer_0.1-sinksource_0.150_auc.txt'
     SZ_other_one, ASD_other_one, CM_other_one = file_parser(one_file)
 
-    two_file='outfiles/SZ_2-layer_10-sinksource_0.150_auc.txt'
+    two_file='../outfiles/SZ_2-layer_10-sinksource_0.150_auc.txt'
     SZ_two, ASD_two, CM_two = file_parser(two_file)
 
-    three_file='outfiles/SZ_3-layer_10-sinksource_0.150_auc.txt'
+    three_file='../outfiles/SZ_3-layer_10-sinksource_0.150_auc.txt'
     SZ_three, ASD_three, CM_three = file_parser(three_file)
 
     #Compare 2 layer to 1 layer and 3 layer for each positive set
@@ -241,7 +241,7 @@ def figure_3():
 
     Mann_test_lists = [SZ_sets, ASD_sets, CM_sets]
 
-    with open('outfiles/MWU_PVALUES_123layers.txt', 'w') as out:
+    with open('../outfiles/MWU_PVALUES_123layers.txt', 'w') as out:
         for i in range(len(Mann_test_lists)):
             if i == 0:
                 out.write('Schizophrenia\t')
@@ -283,7 +283,7 @@ def figure_3():
     ax3.set_xlim(0,8)
     ax3.set_title('Cell Motility')
 
-    plt.savefig('outfiles/comparing_layers.png')
+    plt.savefig('../outfiles/comparing_layers.png')
 
     print('Created outfiles/comparing_layers.png')
 

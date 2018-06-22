@@ -3,7 +3,7 @@ import networkx as nx
 
 def main():
 
-    GIANT = nx.read_weighted_edgelist("brain_top.txt")
+    GIANT = nx.read_weighted_edgelist("../source/infiles/networkfiles/brain_top_geq_0.150.txt")
     GIANT_nodes = GIANT.nodes()
     print(type(GIANT_nodes))
     print("Number of GIANT nodes: ",len(GIANT_nodes))
