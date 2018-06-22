@@ -84,7 +84,7 @@ def figure_1():
 
     plt.savefig('../outfiles/compare_lambda.png')
 
-    print('Created outfiles/compare_lambda.png')
+    print('Created ../outfiles/compare_lambda.png')
     
     return
 
@@ -212,7 +212,7 @@ def figure_2():
 
     plt.savefig('../outfiles/compare_neg_noneg.png')
 
-    print('Created outfiles/compare_neg_noneg.png')
+    print('Created ../outfiles/compare_neg_noneg.png')
 
     return
     
@@ -285,7 +285,7 @@ def figure_3():
 
     plt.savefig('../outfiles/comparing_layers.png')
 
-    print('Created outfiles/comparing_layers.png')
+    print('Created ../outfiles/comparing_layers.png')
 
 
     return
