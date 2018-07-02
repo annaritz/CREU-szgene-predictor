@@ -658,8 +658,9 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives):
 
 
     for node in predictions:
-        # if node[-6:] == '_prime':
-        if node in hidden_nodes:
+        if node[-6:] == '_prime':
+            continue
+        elif node in hidden_nodes:
             hiddenNodeValues.append(predictions[node])
         else:
             notPositiveNodeValues.append(predictions[node])
