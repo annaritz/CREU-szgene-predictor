@@ -461,15 +461,15 @@ def main(argv):
                 else:
                     ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                print('Disease AUC = ',Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
-                d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives))
-
+                print('Disease AUC = ',Mann_Whitney_U_test(d_predictions, hidden_genes,negatives,test_positives))
+                d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives,test_positives))
+            '''
             # autism k-fold validation
             a_AUCs=[]
             for i in range(opts.auc_samples):
                 print('#%d of %d' % (i,opts.auc_samples))
                 # subsample 1/k of the positives...
-                hidden_genes = random.sample(autism_positives,int(len(disease_positives)/opts.k_fold))
+                hidden_genes = random.sample(autism_positives,int(len(autism_positives)/opts.k_fold))
                 test_positives = autism_positives.difference(hidden_genes)
                 print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
                 if not opts.sinksource_method:
@@ -478,8 +478,8 @@ def main(argv):
                 else:
                     ignore,ignore,a_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                print('Autism AUC = ',Mann_Whitney_U_test(a_predictions, hidden_genes,negatives))
-                a_AUCs.append(Mann_Whitney_U_test(a_predictions, hidden_genes,negatives))
+                print('Autism AUC = ',Mann_Whitney_U_test(a_predictions, hidden_genes,negatives,test_positives))
+                a_AUCs.append(Mann_Whitney_U_test(a_predictions, hidden_genes,negatives,test_positives))
 
             ## biological process k-fold validation
             b_AUCs = []
@@ -495,20 +495,27 @@ def main(argv):
                 else:
                     ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                print('Biological Process AUC = ',Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
-                b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives))
-
+                print('Biological Process AUC = ',Mann_Whitney_U_test(b_predictions, hidden_genes,negatives, test_positives))
+                b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives,test_positives))
+            
             ## write the output file.
             out = open(outfile,'w')
             out.write('#DiseaseAUCs\t#AutismAUCs\tBiologicalProcessAUCs\n')
             for i in range(len(d_AUCs)):
                 out.write('%f\t%f\t%f\n' % (d_AUCs[i],a_AUCs[i],b_AUCs[i]))
+            '''
+            out = open(outfile,'w')
+            out.write('DiseaseAUCs')
+            for i in range(len(d_AUCs)):
+                out.write('%f\t' % d_AUCs[i])
             out.close()
 
         ## plot the AUC distribution.
         plt.clf()
-        plt.boxplot([d_AUCs,a_AUCs,b_AUCs])
-        plt.xticks([1,2],['SZ','ASD','Cell Motility'])
+        #plt.boxplot([d_AUCs,a_AUCs,b_AUCs])
+        plt.boxplot([d_AUCs])
+        #plt.xticks([1,2],['SZ','ASD','Cell Motility'])
+        plt.xticks([1], ['SZ'])
         plt.ylabel('AUC')
         plt.ylim([0,1])
         plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
@@ -647,23 +654,44 @@ def getROCvalues(preds,pos,hidden):
             break
     return x,y
 
-def Mann_Whitney_U_test(predictions, hidden_nodes, negatives):
+def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives):
+    #predictions is a dictionary of nodes:scores
     #Runs a Mann-Whitney U test on the lists
     kfold_ranks=[] #This will be the results we have computed without the positives
     test_ranks=[] #This will be the results we have computed with all positives
 
     nodeValues=[] #This is the vehicle by which we extract graph information
     hiddenNodeValues=[]
-    notPositiveNodeValues=[]
+    notPositiveNodeValues=[] #Newest version: holds value of unlabeled prime nodes (positives and negative excluded)
 
-
+    negative_count = 0
+    positive_count = 0 
     for node in predictions:
-        if node[-6:] == '_prime':
-            continue
-        elif node in hidden_nodes:
+        if node in hidden_nodes:
             hiddenNodeValues.append(predictions[node])
-        else:
-            notPositiveNodeValues.append(predictions[node])
+        elif node[-6:] == '_prime': #seeks out prime nodes, which will never been in the hidden set 
+            #Need to go back and have it take as input the # of layers, right now this just works for 2 layers
+            entrez = node[:-6]
+            node0 = entrez + '_0'
+            node1 = entrez + '_1'
+            pos_or_neg = False
+            if node0 in test_positives or node1 in test_positives:
+                positive_count += 1
+                pos_or_neg = True
+            if node0 in negatives or node1 in negatives:
+                negative_count += 1 
+                pos_or_neg = True
+            if pos_or_neg == True:
+                continue
+            else: #all other unlabeled nodes that are not in test positive, negative, or hidden set
+                notPositiveNodeValues.append(predictions[node])
+        #if a node is not a prime node then we don't do anything
+
+    print('Negative count: ', negative_count)
+    print('Positive count: ', positive_count)
+    print('# hidden nodes: ', len(hiddenNodeValues))
+    print('# unlabeled prime nodes: ', len(notPositiveNodeValues))
+    sys.exit('DONE')
 
     U, p=stats.mannwhitneyu(hiddenNodeValues, notPositiveNodeValues, alternative="two-sided")
     AUC=U/(len(hiddenNodeValues)*len(notPositiveNodeValues))
