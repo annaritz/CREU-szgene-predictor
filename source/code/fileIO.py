@@ -123,27 +123,27 @@ def curatedFileReader(filename,graph,verbose):
 def partitionCurated(original_curated,graph,verbose,layers):
     #Note: Graph.nodes() is a list of all the nodes
     nodes = graph.nodes()
-    curated = set()
-    labeled_set = set()
 
     print('Partitioning curated set...')
 
-    # TODO: clean up.
-    for entrezNumber in original_curated:
-        for layer in range(layers):
-            if entrezNumber+'_'+str(layer) in nodes:
-                labeled_set.add(entrezNumber)
-            else:
-                if verbose:
-                    print('ERROR: EntrezID %s is not in graph.' % (entrezNumber))
-                else:
-                    continue
+    #I'm questioning if we need this check - 
+    #There is already a check in predict.py to make sure all original curated positives/negatives are in the graph,
+    # which is used to create the multi-layer network
+    #for entrezNumber in original_curated:
+    #    for layer in range(layers):
+    #        if entrezNumber+'_'+str(layer) in nodes:
+    #            labeled_set.add(entrezNumber)
+    #        else:
+    #            if verbose:
+    #                print('ERROR: EntrezID %s is not in graph.' % (entrezNumber))
+    #            else:
+    #                continue
                 # TODO suggestion: if this id is not in the graph - quit.
                 #sys.exit()
 
-    # TODO: confirm this tab.
+ 
     #We need the positives to be randomly distributed throughout the layers. If we have multiple
-    labeled_List=list(labeled_set) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
+    labeled_List=list(original_curated) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
 
     ## "shuffle" the list randomly. random.sample() sample without replacement. TODO: confirm & put the link. 
     labeled_List=random.sample(labeled_List, k=len(labeled_List))
