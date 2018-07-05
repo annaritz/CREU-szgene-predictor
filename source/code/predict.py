@@ -212,8 +212,6 @@ def main(argv):
         
         print('Final Curated Sets: %d Disease Positives, %d Autism Positives,%d Biological Process Positives, and %d Negatives.\n' % \
             (len(disease_positives),len(autism_positives),len(biological_process_positives),len(negatives)))
-        print('%d nodes overlap SZ and motility positives' % (len(disease_positives.intersection(biological_process_positives))))
-
 
     ##########################
     ## opts.single: run three individual learning experiments; one with disease positives, one with
@@ -570,20 +568,20 @@ def main(argv):
             hidden_genes = set([x[:-2] for x in hidden_genes])
 
         ## plot ROC.
-        names = ['Disease Predictor $f_{\mathcal{D}}$','Biological Process Predictor $f_{\mathcal{P}}$','Score $g$']
+        names = ['SZ $f_{\mathcal{D}}$','CM $f_{\mathcal{P}}$','Combined $g$']
         colors =['g','b','r']
         preds = [holdout_d_predictions,holdout_b_predictions,{x:holdout_d_predictions[x]*holdout_b_predictions[x] for x in holdout_d_predictions}]
         test_union_positives=test_disease_positives.union(test_biological_process_positives)
         pos = [test_disease_positives,test_biological_process_positives,test_union_positives]
         plt.clf()
         for i in range(len(names)):
-            x,y = getROCvalues(preds[i],hidden_genes,pos[i])
-            plt.plot(x,y,color=colors[i],label=names[i])
             AUC = Mann_Whitney_U_test(preds[i], hidden_genes, pos[i])
+            x,y = getROCvalues(preds[i],hidden_genes,pos[i])
+            plt.plot(x,y,color=colors[i],label=names[i]+' (AUC=%.2f)' % AUC)
             print(names[i],AUC)
         plt.xlabel('# False Positives')
         plt.ylabel('# True Positives')
-        plt.title('Receiver Operator Characteristic (ROC)')
+        plt.title('ROC (%d layers, $\lambda$=%.2f)' % (opts.layers,opts.sinksource_constant))
         plt.legend(loc='lower right')
         plt.savefig(opts.outprefix+'_ROC.png')
         print('wrote to '+opts.outprefix+'_ROC.png')
