@@ -123,6 +123,7 @@ def curatedFileReader(filename,graph,verbose):
 def partitionCurated(original_curated,graph,verbose,layers):
     #Note: Graph.nodes() is a list of all the nodes
     nodes = graph.nodes()
+    curated = set()
 
     print('Partitioning curated set...')
 
