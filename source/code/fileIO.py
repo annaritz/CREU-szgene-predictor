@@ -1,7 +1,9 @@
-#Contains the functions that handle the edge files and write the output files, and 
+#Contains the functions that handle the edge files and write the output files
+#Fixe partitionCurated
 
 import random
 import matplotlib.pyplot as plt
+import networkx as nx 
 
 
 def geneMapReader(infile):
@@ -17,100 +19,110 @@ def geneMapReader(infile):
     return genemap
 
 
-#Takes in edge list file from Humanbase - 3 columns gene 1, gene 2, functional interaction probability
+def read_edge_file_multi(graph, layers):
+    multi_layer_dict = {} #dictionary that maps from original entrez ID to multi_layer/prime name {node:(node_prime, node_0, node_1)}
+    seen_nodes = set() #keeps track of which nodes we've already seen in the edges
 
-def read_edge_file(filename, graph, layers):
-    if layers > 1: #creates new edges for multi-layered method (default)
-        all_nodes = set()
-        with open(filename,'r') as fin:
-            for line in fin:
-                line=line.split('\t')
-                line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
-                for i in range(0,2):
-                    node=line[i]
-                    if node not in all_nodes:
-                        graph.add_node(node+'_prime', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=layers)
-                        for layer in range(layers):
-                            graph.add_node(node+'_'+str(layer), prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
-                            graph.add_edge(node+'_'+str(layer),node+'_prime', weight=1.0)
-                        all_nodes.add(node)
+    print('Creating multi-layer network...')
+
+    single_layer_edges = list(graph.edges()) #turns the single layer graph edges into a list 
+    #this prevents it from being updated while trying to iterate the original edges
+    weight_dict = nx.get_edge_attributes(graph,'weight') #dictionary of edges and weights
+
+    for edge in single_layer_edges:
+        for i in range(0,2):
+            node = edge[i]
+            if node not in seen_nodes:
+                node_names = set()
+                node_names.add(node+'_prime')
+                graph.add_node(node+'_prime', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=layers)
                 for layer in range(layers):
-                    node0 = line[0]+'_'+str(layer)
-                    node1 = line[1]+'_'+str(layer)
-                    graph.nodes[node0]['weighted_degree'] += line[2]
-                    graph.nodes[node1]['weighted_degree'] += line[2]
-                    graph.add_edge(node0,node1, weight=line[2])
+                    node_names.add(node+'_'+str(layer))
+                    graph.add_node(node+'_'+str(layer), prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
+                    graph.add_edge(node+'_'+str(layer), node+'_prime', weight=1.0)
+                seen_nodes.add(node)
+                multi_layer_dict[node] = node_names
 
-    else: #Single-layered method 
-        all_nodes = set()
-        with open(filename,'r') as fin:
-            for line in fin:
-                line=line.split('\t')
-                line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
-                for i in range(0,2):
-                    node=line[i]
-                    if node not in all_nodes:
-                        graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=0)
-                        all_nodes.add(node)
-                graph.add_edge(line[0],line[1], weight=line[2])
-                graph.nodes[line[0]]['weighted_degree'] += line[2]
-                graph.nodes[line[1]]['weighted_degree'] += line[2]
-        # nodes_to_remove=set()
-        # for node in graph.nodes():
-        #     adj_dict=graph.adj[node]
-        #     if len(adj_dict)<2:
-        #         nodes_to_remove.add(node)
-        # for node in nodes_to_remove:
-        #     graph.remove_node(node)
+        for layer in range(layers):
+            node0 = edge[0]+'_'+str(layer)
+            node1 = edge[1]+'_'+str(layer)
+            graph.nodes[node0]['weighted_degree'] += weight_dict[edge] #get edge weight 
+            graph.nodes[node1]['weighted_degree'] += weight_dict[edge]
+            graph.add_edge(node0, node1, weight=weight_dict[edge])
 
-# Handles reading curated files when there is one layer 
-def curatedFileReader(filename,graph,verbose, layers):
-    #Note: Graph.nodes() is a list of all the nodes
-    if layers==1:
-        nodes = graph.nodes()
-        tot = 0 #keeps track of number of nodes from curated set
-        count = 0 #keeps track of number of nodes actually in the graph 
-        curated = set()
-        with open(filename,'r') as fin:
-            for line in fin:
-                entrezNumber = line.strip()
-                tot+=1
-                if entrezNumber in nodes:
-                    count+=1
-                    curated.add(entrezNumber)
-                else:
-                    if verbose:
-                        print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
+    #At the end, remove the old nodes, which have now been replaced with their layer duplicates + prime nodes
+    #Edges are removed when nodes are removed
+    for old_node in seen_nodes:
+        graph.remove_node(old_node)
+    
+    print('The multi-layer network contains %d edges and %d nodes' % (graph.number_of_edges(), graph.number_of_nodes()))
 
-        print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
-        return curated
-    else:
-        return curatedFileReaderMulti(filename, graph, verbose, layers)
+    return multi_layer_dict
+
+def read_edge_file_single(filename, graph):
+    all_nodes = set()
+    with open(filename,'r') as fin:
+        for line in fin:
+            line=line.split('\t')
+            line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
+            for i in range(0,2):
+                node=line[i]
+                if node not in all_nodes:
+                    graph.add_node(node, prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=0)
+                    all_nodes.add(node)
+            graph.add_edge(line[0],line[1], weight=line[2])
+            graph.nodes[line[0]]['weighted_degree'] += line[2]
+            graph.nodes[line[1]]['weighted_degree'] += line[2]
 
 
-# This handles reading the curated files when there is more than one layer 
-# read_edge_file has already created multiple layers, this checks if the nodes are in the graph
-def curatedFileReaderMulti(filename,graph,verbose, layers):
+# Handles reading curated files when there is one layer and the initial reading when there is more than one layer
+# If # layers > 1, it'll read this, then check for overlap between positives and negatives
+def curatedFileReader(filename,graph,verbose):
+    #Issue: The multi graph is made so none of the original positives/negatives are in the graph 
+    #Figure out a way to make the single graph, then make a multi graph and use that one instead
     #Note: Graph.nodes() is a list of all the nodes
     nodes = graph.nodes()
-    tot = 0 #keeps track of number of nodes from curated positives
-    count = 0 #keeps track of number of nodes actually in the graph
+    tot = 0 #keeps track of number of nodes from curated set
+    count = 0 #keeps track of number of nodes actually in the graph 
+    curated = set()
+    with open(filename,'r') as fin:
+        for line in fin:
+            entrezNumber = line.strip()
+            tot+=1
+            if entrezNumber in nodes:
+                count+=1
+                curated.add(entrezNumber)
+            else:
+                if verbose:
+                    print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
+
+    print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
+    return curated
+
+
+
+# The curated file has already been read and is taken as input here as a set 
+# read_edge_file has already created multiple layers, this checks if the nodes are in the graph 
+# partitions the positives/negatives and returns that set
+def partitionCurated(curated_set,graph,verbose,layers):
+    #Note: Graph.nodes() is a list of all the nodes
+    nodes = graph.nodes()
     curated = set()
     labeled_set = set()
 
-    with open(filename,'r') as fin:
-        for line in fin:
-            entrezNumber=line.strip()
-            tot += 1
-            for layer in range(layers):
-                if entrezNumber+'_'+str(layer) in nodes:
-                    labeled_set.add(entrezNumber)
+    print('Partitioning curated set...')
+
+    for entrezNumber in curated_set:
+        print(entrezNumber) 
+        for layer in range(layers):
+            if entrezNumber+'_'+str(layer) in nodes:
+                print('In graph')
+                labeled_set.add(entrezNumber)
+            else:
+                if verbose:
+                    print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
                 else:
-                    if verbose:
-                        print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
-                    else:
-                        continue
-        count=len(labeled_set)
+                    continue
 
         random.seed('Alexander_King') #We need the positives to be randomly distributed throughout the layers. If we have multiple
         labeled_List=list(labeled_set) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
@@ -121,7 +133,7 @@ def curatedFileReaderMulti(filename,graph,verbose, layers):
             curated.add(labeled_List[i]+'_'+str(layer))
 
 
-    print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
+    #print('%d of %d nodes are in graph from file %s' % (len(labeled_set),len(curated_set),filename))
     return curated
 
 #Formats results as a LaTeX table

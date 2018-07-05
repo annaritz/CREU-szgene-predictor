@@ -166,17 +166,17 @@ def main(argv):
 
         print(" reading edge file %s..." % (opts.interaction_graph))
         G = nx.Graph()
-        fileIO.read_edge_file(opts.interaction_graph,G, opts.layers)
-        print(' ',G.number_of_edges(), 'edges')
-        print(' ',G.number_of_nodes(), 'nodes')
+        fileIO.read_edge_file_single(opts.interaction_graph,G)
+    
+        print(' The network contains %d edges and %d nodes' % (G.number_of_edges(), G.number_of_nodes()))
 
 
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
-        disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose, opts.layers)
-        autism_positives= fileIO.curatedFileReader('../infiles/ASD_positives.txt', G, opts.verbose, opts.layers)
-        biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose, opts.layers)
+        disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose)
+        autism_positives= fileIO.curatedFileReader('../infiles/ASD_positives.txt', G, opts.verbose)
+        biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose)
         if opts.with_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
-            negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose, opts.layers)
+            negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
 
             ## some nodes appear in both positive and negative sets; identify these and remove
             ## them from the curated set.
@@ -207,11 +207,38 @@ def main(argv):
             print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
             # for node in blacklist:
             #     G.remove_node(node)
+       
         else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
             negatives = set()
-        
+
+        if opts.layers > 1: #If multi-layer, we need to call function to partition the positives and negatives between layers
+            #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
+            #and keep track of original and partitioned positives 
+
+            print('Layers > 1')
+
+            #After checking the graph, we need to modify it to include multiple layers + primes
+            multi_node_dict = fileIO.read_edge_file_multi(G, opts.layers)
+
+            orig_disease_positives = disease_positives
+            disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
+
+            orig_autism_positives = autism_positives
+            autism_positives = fileIO.partitionCurated(orig_autism_positives,G,opts.verbose,opts.layers)
+
+            orig_biological_process_positives = biological_process_positives
+            biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
+
+            orig_negatives = negatives
+            negatives = fileIO.partitionCurated(orig_negatives,G,opts.verbose,opts.layers)
+
+            
+
+
         print('Final Curated Sets: %d Disease Positives, %d Autism Positives,%d Biological Process Positives, and %d Negatives.\n' % \
-            (len(disease_positives),len(autism_positives),len(biological_process_positives),len(negatives)))
+        (len(disease_positives),len(autism_positives),len(biological_process_positives),len(negatives)))
+        
+
 
 
     ##########################
@@ -221,7 +248,7 @@ def main(argv):
     ## Note that the learner functions won't overwrite the files if they exist unless the --force option is used.
     if opts.single:
         print('\nRunning Learning Algorithms...')
-
+       
         print('Disease predictions...')
         statsfile = opts.outprefix + str(opts.layers) + 'layers_disease_stats.txt'
         outfile = opts.outprefix + str(opts.layers) + 'layers_disease_output.txt'
@@ -461,9 +488,10 @@ def main(argv):
                 else:
                     ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                print('Disease AUC = ',Mann_Whitney_U_test(d_predictions, hidden_genes,negatives,test_positives))
-                d_AUCs.append(Mann_Whitney_U_test(d_predictions, hidden_genes,negatives,test_positives))
-            '''
+                MWU = Mann_Whitney_U_test(d_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
+                print('Disease AUC = ', MWU)
+                d_AUCs.append(MWU)
+    
             # autism k-fold validation
             a_AUCs=[]
             for i in range(opts.auc_samples):
@@ -478,8 +506,9 @@ def main(argv):
                 else:
                     ignore,ignore,a_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                print('Autism AUC = ',Mann_Whitney_U_test(a_predictions, hidden_genes,negatives,test_positives))
-                a_AUCs.append(Mann_Whitney_U_test(a_predictions, hidden_genes,negatives,test_positives))
+                MWU = Mann_Whitney_U_test(a_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
+                print('Disease AUC = ', MWU)
+                d_AUCs.append(MWU)
 
             ## biological process k-fold validation
             b_AUCs = []
@@ -495,27 +524,22 @@ def main(argv):
                 else:
                     ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                print('Biological Process AUC = ',Mann_Whitney_U_test(b_predictions, hidden_genes,negatives, test_positives))
-                b_AUCs.append(Mann_Whitney_U_test(b_predictions, hidden_genes,negatives,test_positives))
+                MWU = Mann_Whitney_U_test(b_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
+                print('Disease AUC = ', MWU)
+                d_AUCs.append(MWU)
             
             ## write the output file.
             out = open(outfile,'w')
             out.write('#DiseaseAUCs\t#AutismAUCs\tBiologicalProcessAUCs\n')
             for i in range(len(d_AUCs)):
                 out.write('%f\t%f\t%f\n' % (d_AUCs[i],a_AUCs[i],b_AUCs[i]))
-            '''
-            out = open(outfile,'w')
-            out.write('DiseaseAUCs')
-            for i in range(len(d_AUCs)):
-                out.write('%f\t' % d_AUCs[i])
+    
             out.close()
 
         ## plot the AUC distribution.
         plt.clf()
-        #plt.boxplot([d_AUCs,a_AUCs,b_AUCs])
-        plt.boxplot([d_AUCs])
-        #plt.xticks([1,2],['SZ','ASD','Cell Motility'])
-        plt.xticks([1], ['SZ'])
+        plt.boxplot([d_AUCs,a_AUCs,b_AUCs])
+        plt.xticks([1,2],['SZ','ASD','Cell Motility'])
         plt.ylabel('AUC')
         plt.ylim([0,1])
         plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
@@ -654,7 +678,7 @@ def getROCvalues(preds,pos,hidden):
             break
     return x,y
 
-def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives):
+def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, layer_dict):
     #predictions is a dictionary of nodes:scores
     #Runs a Mann-Whitney U test on the lists
     kfold_ranks=[] #This will be the results we have computed without the positives
@@ -667,25 +691,18 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives):
     negative_count = 0
     positive_count = 0 
     for node in predictions:
-        if node in hidden_nodes:
-            hiddenNodeValues.append(predictions[node])
-        elif node[-6:] == '_prime': #seeks out prime nodes, which will never been in the hidden set 
-            #Need to go back and have it take as input the # of layers, right now this just works for 2 layers
-            entrez = node[:-6]
-            node0 = entrez + '_0'
-            node1 = entrez + '_1'
-            pos_or_neg = False
-            if node0 in test_positives or node1 in test_positives:
-                positive_count += 1
-                pos_or_neg = True
-            if node0 in negatives or node1 in negatives:
-                negative_count += 1 
-                pos_or_neg = True
-            if pos_or_neg == True:
-                continue
-            else: #all other unlabeled nodes that are not in test positive, negative, or hidden set
+        if node[-6:] == '_prime': #only want to look at prime nodes
+            entrez = node[:-6] 
+            names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+            if bool(names.intersection(hidden_nodes)): #bool() is True if the prime node is attached to a hidden node, False if not
+                hiddenNodeValues.append(predictions[node])
+            else:
                 notPositiveNodeValues.append(predictions[node])
-        #if a node is not a prime node then we don't do anything
+            #Checks if prime node is connected to a positive or negative
+            if bool(names.intersection(test_positives)):
+                continue
+            if bool(names.intersection(negatives)):
+                continue
 
     print('Negative count: ', negative_count)
     print('Positive count: ', positive_count)
