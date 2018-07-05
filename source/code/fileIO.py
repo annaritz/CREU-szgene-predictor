@@ -20,6 +20,11 @@ def geneMapReader(infile):
 
 
 def read_edge_file_multi(graph, layers):
+    '''
+    Inputs:
+    Outputs:
+    Note: Graph is modified in place (since it's a pointer to the networkx object) and isn't explicitly returned.
+    '''
     multi_layer_dict = {} #dictionary that maps from original entrez ID to multi_layer/prime name {node:(node_prime, node_0, node_1)}
     seen_nodes = set() #keeps track of which nodes we've already seen in the edges
 
@@ -30,28 +35,39 @@ def read_edge_file_multi(graph, layers):
     weight_dict = nx.get_edge_attributes(graph,'weight') #dictionary of edges and weights
 
     for edge in single_layer_edges:
-        for i in range(0,2):
+        for i in range(0,2):  ## iterates over the 2 nodes that are in each edge
             node = edge[i]
-            if node not in seen_nodes:
-                node_names = set()
+            if node not in seen_nodes: # if the node hasn't been seen yet...
+                node_names = set() # node_names will contain all the copies of this node.
+                # create and add the prime node
                 node_names.add(node+'_prime')
                 graph.add_node(node+'_prime', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=layers)
-                for layer in range(layers):
+                for layer in range(layers): 
+                    # for every layer, create and add the layer node.
                     node_names.add(node+'_'+str(layer))
                     graph.add_node(node+'_'+str(layer), prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
+                    # also add the edge from this layer's node to the prime node.
                     graph.add_edge(node+'_'+str(layer), node+'_prime', weight=1.0)
+
+                # update seen_nodes and the node dictionary
                 seen_nodes.add(node)
                 multi_layer_dict[node] = node_names
 
         for layer in range(layers):
+            # generate new node names for this layer
             node0 = edge[0]+'_'+str(layer)
             node1 = edge[1]+'_'+str(layer)
+            # add the edge with the original edge weight
+            graph.add_edge(node0, node1, weight=weight_dict[edge])
+
+            # add the edge weights to the weighted degree attr.
             graph.nodes[node0]['weighted_degree'] += weight_dict[edge] #get edge weight 
             graph.nodes[node1]['weighted_degree'] += weight_dict[edge]
-            graph.add_edge(node0, node1, weight=weight_dict[edge])
+            
 
     #At the end, remove the old nodes, which have now been replaced with their layer duplicates + prime nodes
     #Edges are removed when nodes are removed
+    ## TODO Suggestion: remove original nodes (from graph.nodes() before you add layer stuff)
     for old_node in seen_nodes:
         graph.remove_node(old_node)
     
@@ -112,24 +128,34 @@ def partitionCurated(original_curated,graph,verbose,layers):
 
     print('Partitioning curated set...')
 
+    # TODO: clean up.
     for entrezNumber in original_curated:
         for layer in range(layers):
             if entrezNumber+'_'+str(layer) in nodes:
                 labeled_set.add(entrezNumber)
             else:
                 if verbose:
-                    print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
+                    print('ERROR: EntrezID %s is not in graph.' % (entrezNumber))
                 else:
                     continue
+                # TODO suggestion: if this id is not in the graph - quit.
+                #sys.exit()
 
-        random.seed('Alexander_King') #We need the positives to be randomly distributed throughout the layers. If we have multiple
-        labeled_List=list(labeled_set) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
-        labeled_List=random.sample(labeled_List, k=len(labeled_List))
+    # TODO: confirm this tab.
+    #We need the positives to be randomly distributed throughout the layers. If we have multiple
+    labeled_List=list(labeled_set) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
 
+    ## "shuffle" the list randomly. random.sample() sample without replacement. TODO: confirm & put the link. 
+    labeled_List=random.sample(labeled_List, k=len(labeled_List))
+
+    ## Go through each curated positive
     for i in range(len(labeled_List)):
+        ##Pick a layer.  Uses integer division (e.g., layer will be 0,1,2,0,1,2,etc. for 3 layers)
         layer=(i//(len(labeled_List)//layers))
-        curated.add(labeled_List[i]+'_'+str(layer))
 
+        ## Once a layer is specified, append this to the curated positive node name.
+        ## This "places" the positive in a particular layer.
+        curated.add(labeled_List[i]+'_'+str(layer))
 
     #print('%d of %d nodes are in graph from file %s' % (len(labeled_set),len(curated_set),filename))
     return curated

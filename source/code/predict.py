@@ -9,6 +9,8 @@ matplotlib.use('Agg')
 import sys
 import os.path
 import random
+random.seed('Alexander_King') #TODO: every once in a while comment this out and re-run a couple times. 
+
 import time
 from operator import itemgetter
 
@@ -170,7 +172,6 @@ def main(argv):
     
         print(' The network contains %d edges and %d nodes' % (G.number_of_edges(), G.number_of_nodes()))
 
-
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
         disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose)
         autism_positives= fileIO.curatedFileReader('../infiles/ASD_positives.txt', G, opts.verbose)
@@ -246,6 +247,7 @@ def main(argv):
     ## biological process positives, and one with the union of the two positive sets.  
     ##
     ## Note that the learner functions won't overwrite the files if they exist unless the --force option is used.
+    ## TODO: single is a bad name -- individual? 
     if opts.single:
         print('\nRunning Learning Algorithms...')
        
@@ -387,6 +389,9 @@ def main(argv):
             ob_combo = []
             ob_union2 = []
             ob_combo2 = []
+
+            ## TODO: double-check we're using correct positive and negative sets for multiple layers.
+            ## TODO: pull out all figures and put in chartmaker.py?
 
             for n in nodes_to_plot:
                 names = [n] + [n[:-6]+'_'+str(x) for x in range(opts.layers)]
@@ -698,9 +703,10 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
                 hiddenNodeValues.append(predictions[node])
             else:
                 notPositiveNodeValues.append(predictions[node])
+            ## TODO: do IF statements below before adding to nonPosNodeVals.
             #Checks if prime node is connected to a positive or negative
             if bool(names.intersection(test_positives)):
-                continue
+                continue # I think just check this one. 
             if bool(names.intersection(negatives)):
                 continue
 
@@ -709,6 +715,8 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
     print('# hidden nodes: ', len(hiddenNodeValues))
     print('# unlabeled prime nodes: ', len(notPositiveNodeValues))
     sys.exit('DONE')
+
+    ## TODO suggestion: sys.exit() with an error if these numbesr aren't what we expect.  
 
     U, p=stats.mannwhitneyu(hiddenNodeValues, notPositiveNodeValues, alternative="two-sided")
     AUC=U/(len(hiddenNodeValues)*len(notPositiveNodeValues))
