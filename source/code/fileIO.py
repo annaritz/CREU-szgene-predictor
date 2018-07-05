@@ -104,7 +104,7 @@ def curatedFileReader(filename,graph,verbose):
 # The curated file has already been read and is taken as input here as a set 
 # read_edge_file has already created multiple layers, this checks if the nodes are in the graph 
 # partitions the positives/negatives and returns that set
-def partitionCurated(curated_set,graph,verbose,layers):
+def partitionCurated(original_curated,graph,verbose,layers):
     #Note: Graph.nodes() is a list of all the nodes
     nodes = graph.nodes()
     curated = set()
@@ -112,11 +112,9 @@ def partitionCurated(curated_set,graph,verbose,layers):
 
     print('Partitioning curated set...')
 
-    for entrezNumber in curated_set:
-        print(entrezNumber) 
+    for entrezNumber in original_curated:
         for layer in range(layers):
             if entrezNumber+'_'+str(layer) in nodes:
-                print('In graph')
                 labeled_set.add(entrezNumber)
             else:
                 if verbose:
@@ -128,9 +126,9 @@ def partitionCurated(curated_set,graph,verbose,layers):
         labeled_List=list(labeled_set) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
         labeled_List=random.sample(labeled_List, k=len(labeled_List))
 
-        for i in range(len(labeled_List)):
-            layer=(i//(len(labeled_List)//layers))
-            curated.add(labeled_List[i]+'_'+str(layer))
+    for i in range(len(labeled_List)):
+        layer=(i//(len(labeled_List)//layers))
+        curated.add(labeled_List[i]+'_'+str(layer))
 
 
     #print('%d of %d nodes are in graph from file %s' % (len(labeled_set),len(curated_set),filename))
