@@ -512,8 +512,8 @@ def main(argv):
                     ignore,ignore,a_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                 MWU = Mann_Whitney_U_test(a_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
-                print('Disease AUC = ', MWU)
-                d_AUCs.append(MWU)
+                print('Autism AUC = ', MWU)
+                a_AUCs.append(MWU)
 
             ## biological process k-fold validation
             b_AUCs = []
@@ -530,8 +530,8 @@ def main(argv):
                     ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                 MWU = Mann_Whitney_U_test(b_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
-                print('Disease AUC = ', MWU)
-                d_AUCs.append(MWU)
+                print('Biological Process AUC = ', MWU)
+                b_AUCs.append(MWU)
             
             ## write the output file.
             out = open(outfile,'w')
@@ -692,7 +692,6 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
     nodeValues=[] #This is the vehicle by which we extract graph information
     hiddenNodeValues=[]
     notPositiveNodeValues=[] #Newest version: holds value of unlabeled prime nodes (positives and negative excluded)
-
     negative_count = 0
     positive_count = 0 
     for node in predictions:
@@ -706,15 +705,16 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
             ## TODO: do IF statements below before adding to nonPosNodeVals.
             #Checks if prime node is connected to a positive or negative
             if bool(names.intersection(test_positives)):
-                continue # I think just check this one. 
+                positive_count += 1
+                continue ## I tihnk just check this one.
             if bool(names.intersection(negatives)):
+                negative_count += 1
                 continue
 
     print('Negative count: ', negative_count)
     print('Positive count: ', positive_count)
     print('# hidden nodes: ', len(hiddenNodeValues))
     print('# unlabeled prime nodes: ', len(notPositiveNodeValues))
-    sys.exit('DONE')
 
     ## TODO suggestion: sys.exit() with an error if these numbesr aren't what we expect.  
 
