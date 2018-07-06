@@ -77,8 +77,8 @@ def parse_arguments(argv):
     ## Input Files
     group = OptionGroup(parser,'Input Files (all have default values)')
     group.add_option('-g','--interaction_graph',\
-        type='string',metavar='STR',default='../infiles/networkfiles/brain_top_geq_0.150.txt',\
-        help='Functional interaction network (default="../infiles/networkfiles/brain_top_geq_0.150.txt").')
+        type='string',metavar='STR',default='../infiles/networkfiles/brain_top_geq_0.400.txt',\
+        help='Functional interaction network (default="../infiles/networkfiles/brain_top_geq_0.400.txt").')
     group.add_option('-b','--biological_process_positives',\
         type='string',metavar='STR',default='../infiles/motility_positives.txt',\
         help='File of positives for the biological process (default="../infiles/motility_positives.txt")')
@@ -114,7 +114,7 @@ def parse_arguments(argv):
         type='int',metavar='INT',default=50,\
         help='number of cross validation iterations to compute AUC (default=50).')
     group.add_option('-l', '--layers',\
-        type='int', default=3,\
+        type='int', default=4,\
         help='Run the experiments for disease and biological process with n nodes per gene. Each of the gene\'s nodes are connected to a node that represents the score for the gene. Positives are distributed among these layers. Reducing the nodes to 1 eliminates the process')
     group.add_option('-c', '--sinksource_constant',\
         type='float',metavar='FLOAT',default=None,\
@@ -122,6 +122,9 @@ def parse_arguments(argv):
     group.add_option('-w', '--with_negatives',\
         action='store_false',default=True,\
         help='Include negative set (default=True).')
+    group.add_option('-E', '--evidence_levels',\
+        action='store_false', default=True,\
+        help='Factor evidence levels for gold standards (default=True)')
     parser.add_option_group(group)
 
     group = OptionGroup(parser,'Aggregate Analysis (combines runs into one figure)')
@@ -173,18 +176,26 @@ def main(argv):
         print(' The network contains %d edges and %d nodes' % (G.number_of_edges(), G.number_of_nodes()))
 
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
-        disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose)
-        autism_positives= fileIO.curatedFileReader('../infiles/ASD_positives.txt', G, opts.verbose)
-        biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose)
-        if opts.with_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
-            negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
+        if opts.evidence_levels:
+            disease_positives, disease_evidence_dictionary = fileIO.curatedEvidenceFileReader(opts.disease_positives,G,opts.verbose)
+            autism_positives, autism_evidence_dictionary = fileIO.curatedEvidenceFileReader('../infiles/ASD_positives_E.txt',G,opts.verbose)
+            biological_process_positives, biological_process_evidence_dictionary = fileIO.curatedEvidenceFileReader(opts.biological_process_positives,G,opts.verbose)
+        else:
+            disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose)
+            autism_positives= fileIO.curatedFileReader('../infiles/ASD_positives.txt', G, opts.verbose)
+            biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose)
 
+        if opts.with_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
+            if opts.evidence_levels:
+                negatives, negatives_evidence_dictionary= fileIO.curatedEvidenceFileReader(opts.negatives,G,opts.verbose)
+            else:
+                negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
             ## some nodes appear in both positive and negative sets; identify these and remove
             ## them from the curated set.
             blacklist = set()
             if disease_positives.intersection(negatives):
                 overlap_set = disease_positives.intersection(negatives)
-                print('WARNING: %d nodes are disease positives and negatives. Ignoring.' % (len(overlap_set)))
+                print('WARNING: %d genes are disease positives and negatives. Ignoring.' % (len(overlap_set)))
                 negatives = negatives.difference(overlap_set)
                 disease_positives = disease_positives.difference(overlap_set)
 
@@ -192,7 +203,7 @@ def main(argv):
 
             if autism_positives.intersection(negatives):
                 overlap_set = autism_positives.intersection(negatives)
-                print('WARNING: %d nodes are autism positives and negatives. Ignoring.' % (len(overlap_set)))
+                print('WARNING: %d genes are autism positives and negatives. Ignoring.' % (len(overlap_set)))
                 negatives = negatives.difference(overlap_set)
                 autism_positives = autism_positives.difference(overlap_set)
 
@@ -200,43 +211,46 @@ def main(argv):
 
             if biological_process_positives.intersection(negatives):
                 overlap_set = biological_process_positives.intersection(negatives)
-                print('WARNING: %d nodes are biological process positives and negatives. Ignoring.' % (len(overlap_set)))
+                print('WARNING: %d genes are biological process positives and negatives. Ignoring.' % (len(overlap_set)))
                 negatives = negatives.difference(overlap_set)
                 biological_process_positives = biological_process_positives.difference(overlap_set)
                 blacklist.update(overlap_set)
 
-            print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
+            print('%d genes have had their labels removed because they were in both positive and negative sets.' % (len(blacklist)))
             # for node in blacklist:
             #     G.remove_node(node)
        
         else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
             negatives = set()
 
-        if opts.layers > 1: #If multi-layer, we need to call function to partition the positives and negatives between layers
-            #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
-            #and keep track of original and partitioned positives 
+        #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
+        #and keep track of original and partitioned positives 
 
-            print('Layers > 1')
+        #After checking the graph, we need to modify it to include multiple layers + primes
+        multi_node_dict = fileIO.read_edge_file_multi(G, opts.layers)
 
-            #After checking the graph, we need to modify it to include multiple layers + primes
-            multi_node_dict = fileIO.read_edge_file_multi(G, opts.layers)
+        orig_disease_positives = disease_positives
+        orig_autism_positives = autism_positives
+        orig_biological_process_positives = biological_process_positives
+        orig_negatives = negatives
 
-            orig_disease_positives = disease_positives
+
+        if opts.evidence_levels:
+            disease_positives = fileIO.partitionEvidenceCurated(orig_disease_positives,G,opts.verbose,opts.layers, disease_evidence_dictionary)
+            autism_positives = fileIO.partitionEvidenceCurated(orig_autism_positives,G,opts.verbose,opts.layers, autism_evidence_dictionary)
+            biological_process_positives = fileIO.partitionEvidenceCurated(orig_biological_process_positives,G,opts.verbose,opts.layers, biological_process_evidence_dictionary)
+            negatives = fileIO.partitionEvidenceCurated(orig_negatives,G,opts.verbose,opts.layers, negatives_evidence_dictionary)
+
+        else:
             disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
-
-            orig_autism_positives = autism_positives
             autism_positives = fileIO.partitionCurated(orig_autism_positives,G,opts.verbose,opts.layers)
-
-            orig_biological_process_positives = biological_process_positives
             biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
-
-            orig_negatives = negatives
             negatives = fileIO.partitionCurated(orig_negatives,G,opts.verbose,opts.layers)
 
             
 
 
-        print('Final Curated Sets: %d Disease Positives, %d Autism Positives,%d Biological Process Positives, and %d Negatives.\n' % \
+        print('Final Curated Sets: %d Labeled Disease Nodes, %d Labeled Autism Nodes,%d Labeled Biological Process Nodes, and %d Labeled Negative Nodes.\n' % \
         (len(disease_positives),len(autism_positives),len(biological_process_positives),len(negatives)))
         
 
@@ -480,56 +494,83 @@ def main(argv):
                     b_AUCs.append(float(row[12]))
         else:
             ## disease k-fold validation
+            print('\nDisease Tests')
             d_AUCs = []
+            start=time.time()
+            
             for i in range(opts.auc_samples):
-                print('#%d of %d' % (i,opts.auc_samples))
+                done=float(i)/float(opts.auc_samples)
+                if done!=0:
+                    time_remaining=(3.0-done)*(time.time()-start)/done
+                    print('Estimated Time Remaining:', time_remaining, 'seconds')
+                    print('Estimated Time of Completion:', time.strftime('%I:%M:%S %p',time.localtime(time.time()+time_remaining)))
+                print('#%d of %d' % (i+1,opts.auc_samples))
                 # subsample 1/k of the positives...
-                hidden_genes = random.sample(disease_positives,int(len(disease_positives)/opts.k_fold))
-                test_positives = disease_positives.difference(hidden_genes)
-                print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
+                hidden_genes=random.sample(orig_disease_positives,int(len(orig_disease_positives)/opts.k_fold))
+                hidden_nodes = set(node for gene in hidden_genes for node in multi_node_dict[gene] if node in disease_positives)
+                test_positives = disease_positives.difference(hidden_nodes)
+                print('%d hidden %d test nodes' % (len(hidden_nodes),len(test_positives)))
                 if not opts.sinksource_method:
                     ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose)
                 else:
                     ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                MWU = Mann_Whitney_U_test(d_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
+                MWU = Mann_Whitney_U_test(d_predictions, hidden_nodes, negatives, test_positives, multi_node_dict)
                 print('Disease AUC = ', MWU)
                 d_AUCs.append(MWU)
+
     
             # autism k-fold validation
             a_AUCs=[]
+            start=time.time()
+            done=0
+            print('\nASD Tests')
             for i in range(opts.auc_samples):
-                print('#%d of %d' % (i,opts.auc_samples))
+                done=float(i)/float(opts.auc_samples)
+                if done!=0:
+                    time_remaining=(2.0-done)*(time.time()-start)/done
+                    print('Estimated Time Remaining:', time_remaining, 'seconds')
+                    print('Estimated Time of Completion:', time.strftime('%I:%M:%S %p',time.localtime(time.time()+time_remaining)))
+                print('#%d of %d' % (i+1,opts.auc_samples))
                 # subsample 1/k of the positives...
-                hidden_genes = random.sample(autism_positives,int(len(autism_positives)/opts.k_fold))
-                test_positives = autism_positives.difference(hidden_genes)
-                print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
+                hidden_genes = random.sample(orig_autism_positives,int(len(orig_autism_positives)/opts.k_fold))
+                hidden_nodes = set(node for gene in hidden_genes for node in multi_node_dict[gene] if node in autism_positives)
+                test_positives = autism_positives.difference(hidden_nodes)
+                print('%d hidden %d test nodes' % (len(hidden_nodes),len(test_positives)))
                 if not opts.sinksource_method:
                     ignore,ignore,a_predictions = learners.matrixLearn(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose)
                 else:
                     ignore,ignore,a_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                MWU = Mann_Whitney_U_test(a_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
+                MWU = Mann_Whitney_U_test(a_predictions, hidden_nodes, negatives, test_positives, multi_node_dict)
                 print('Autism AUC = ', MWU)
                 a_AUCs.append(MWU)
 
             ## biological process k-fold validation
+            print('\nBiological Process Tests')
             b_AUCs = []
+            start=time.time()
             for i in range(opts.auc_samples):
-                print('#%d of %d' % (i,opts.auc_samples))
+                done=float(i)/float(opts.auc_samples)
+                if done!=0:
+                    time_remaining=(1.0-done)*(time.time()-start)/done
+                    print('Estimated Time Remaining:', time_remaining, 'seconds')
+                    print('Estimated Time of Completion:', time.strftime('%I:%M:%S %p',time.localtime(time.time()+time_remaining)))
+                print('#%d of %d' % (i+1,opts.auc_samples))
                 # subsample 1/k of the positives...
-                hidden_genes = random.sample(biological_process_positives,int(len(biological_process_positives)/opts.k_fold))
-                test_positives = biological_process_positives.difference(hidden_genes)
-                print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
+                hidden_genes = random.sample(orig_biological_process_positives,int(len(orig_biological_process_positives)/opts.k_fold))
+                hidden_nodes = set(node for gene in hidden_genes for node in multi_node_dict[gene] if node in biological_process_positives)
+                test_positives = biological_process_positives.difference(hidden_nodes)
+                print('%d hidden %d test nodes' % (len(hidden_nodes),len(test_positives)))
                 if not opts.sinksource_method:
                     ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose)
                 else:
                     ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
                         opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                MWU = Mann_Whitney_U_test(b_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
+                MWU = Mann_Whitney_U_test(b_predictions, hidden_nodes, negatives, test_positives, multi_node_dict)
                 print('Biological Process AUC = ', MWU)
                 b_AUCs.append(MWU)
             
@@ -694,23 +735,26 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
     notPositiveNodeValues=[] #Newest version: holds value of unlabeled prime nodes (positives and negative excluded)
     negative_count = 0
     positive_count = 0 
-
+    sorted_preds = sorted(predictions, key=lambda x:predictions[x], reverse=True)
     #Iterate through layer_dict instead?
-    
-    for node in predictions:
+    i=1
+    for node in sorted_preds:
         if node[-6:] == '_prime': #only want to look at prime nodes
             entrez = node[:-6] 
             names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
             if bool(names.intersection(hidden_nodes)): #bool() is True if the prime node is attached to a hidden node, False if not
                 hiddenNodeValues.append(predictions[node])
+                if i < 100:
+                    i=i+1
             else: #if it's not a hidden node, check if it's unlabeled
                 if bool(names.intersection(test_positives)):
                     positive_count += 1
                     continue ## I think just check this one.
-                #if bool(names.intersection(negatives)):
-                #    negative_count += 1
-                #    continue
+                if bool(names.intersection(negatives)):
+                    negative_count += 1
                 notPositiveNodeValues.append(predictions[node])
+                if i < 100:
+
             
 
     print('Negative count: ', negative_count)
