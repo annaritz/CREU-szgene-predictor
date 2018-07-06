@@ -693,24 +693,36 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
     hiddenNodeValues=[]
     notPositiveNodeValues=[] #Newest version: holds value of unlabeled prime nodes (positives and negative excluded)
     
+    hidden_count = 0
+    prime_count = 0
+    test_positive_count = 0
+
+
 
     #Iterate through layer_dict instead?
     
     for node in predictions:
         if node[-6:] == '_prime': #only want to look at prime nodes
+            prime_count =+ 1
             entrez = node[:-6] 
             names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
             if bool(names.intersection(hidden_nodes)): #bool() is True if the prime node is attached to a hidden node, False if not
+                hidden_count += 1
                 hiddenNodeValues.append(predictions[node])
             else: #if it's not a hidden node, check if it's unlabeled
                 if bool(names.intersection(test_positives)):
+                    test_positive_count += 1
                     continue 
                 #if bool(names.intersection(negatives)):
                 #    continue
                 notPositiveNodeValues.append(predictions[node])
             
 
-    ## TODO suggestion: sys.exit() with an error if these numbesr aren't what we expect.  
+    ## TODO suggestion: sys.exit() with an error if these numbesr aren't what we expect. 
+    print('Prime count: ', prime_count)
+    print('Hidden count: ', hidden_count)
+    print('Test positive count: ', test_positive_count)
+
 
     U, p=stats.mannwhitneyu(hiddenNodeValues, notPositiveNodeValues, alternative="two-sided")
     AUC=U/(len(hiddenNodeValues)*len(notPositiveNodeValues))
