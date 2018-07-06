@@ -127,36 +127,26 @@ def partitionCurated(original_curated,graph,verbose,layers):
 
     print('Partitioning curated set...')
 
-    #I'm questioning if we need this check - 
-    #There is already a check in predict.py to make sure all original curated positives/negatives are in the graph,
-    # which is used to create the multi-layer network
-    #for entrezNumber in original_curated:
-    #    for layer in range(layers):
-    #        if entrezNumber+'_'+str(layer) in nodes:
-    #            labeled_set.add(entrezNumber)
-    #        else:
-    #            if verbose:
-    #                print('ERROR: EntrezID %s is not in graph.' % (entrezNumber))
-    #            else:
-    #                continue
-                # TODO suggestion: if this id is not in the graph - quit.
-                #sys.exit()
+    partitions = [] #List of lists containing original curated nodes - len(partitions) = layers
 
- 
-    #We need the positives to be randomly distributed throughout the layers. If we have multiple
-    labeled_List=list(original_curated) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
+    i = layers
 
-    ## "shuffle" the list randomly. random.sample() sample without replacement. TODO: confirm & put the link. 
-    labeled_List=random.sample(labeled_List, k=len(labeled_List))
+    #This while loop partitions the original curated set into (roughly) equal groups
+    #The number of groups = number of layers 
+    while i > 1:
+        group = random.sample(original_curated, len(original_curated)//i)
+        partitions.append(group)
+        group = set(group) #converts to a set to easily get the difference 
+        original_curated = original_curated.difference(group) #removes the randomly selected group from the original curated
+        #to ensure that no node is selected twice
+        i -= 1
+    partitions.append(original_curated)
 
-    ## Go through each curated positive
-    for i in range(len(labeled_List)):
-        ##Pick a layer.  Uses integer division (e.g., layer will be 0,1,2,0,1,2,etc. for 3 layers)
-        layer=(i//(len(labeled_List)//layers))
+    #Each group in the partitions list will all be in one layer
+    for layer in range(layers):
+        for node in partitions[layer]:
+            curated.add(node+'_'+str(layer))
 
-        ## Once a layer is specified, append this to the curated positive node name.
-        ## This "places" the positive in a particular layer.
-        curated.add(labeled_List[i]+'_'+str(layer))
 
     #print('%d of %d nodes are in graph from file %s' % (len(labeled_set),len(curated_set),filename))
     return curated
