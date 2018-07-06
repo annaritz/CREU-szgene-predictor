@@ -698,7 +698,6 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
     
     for node in predictions:
         if node[-6:] == '_prime': #only want to look at prime nodes
-            prime_count += 1
             entrez = node[:-6] 
             names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
             if bool(names.intersection(hidden_nodes)): #bool() is True if the prime node is attached to a hidden node, False if not
