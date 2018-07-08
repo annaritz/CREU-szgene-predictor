@@ -233,7 +233,8 @@ def main(argv):
             orig_negatives = negatives
             negatives = fileIO.partitionCurated(orig_negatives,G,opts.verbose,opts.layers)
 
-            
+        else: ## make multi-node dictionary that maps names to names.
+            multi_node_dict = {n:n for n in G.nodes()}
 
 
         print('Final Curated Sets: %d Disease Positives, %d Autism Positives,%d Biological Process Positives, and %d Negatives.\n' % \
@@ -556,6 +557,7 @@ def main(argv):
     ## experiment, there's only one run of each method (we're not subsampling).
     if opts.roc:
         print('\nHolding out overlap set and running method.')
+
         if opts.layers == 1:
             hidden_genes = disease_positives.intersection(biological_process_positives)
             test_biological_process_positives = biological_process_positives.difference(hidden_genes)
@@ -570,7 +572,7 @@ def main(argv):
 
         print('ROC CURVE: %d hidden genes, %d test disease genes, and %d test biological process genes' % \
             (len(hidden_genes),len(test_disease_positives),len(test_biological_process_positives)))
-        print(sorted([x for x in hidden_genes]))
+        print('Hidden Genes:',sorted([x for x in hidden_genes]))
         print(' disease predictions...')
         statsfile = opts.outprefix + '_holdout_disease_stats.txt'
         outfile = opts.outprefix+'_holdout_disease_output.txt'
@@ -611,7 +613,7 @@ def main(argv):
         pos = [test_disease_positives,test_biological_process_positives,test_union_positives]
         plt.clf()
         for i in range(len(names)):
-            AUC = Mann_Whitney_U_test(preds[i], hidden_genes, pos[i])
+            AUC = Mann_Whitney_U_test(preds[i], hidden_genes, None, pos[i], multi_node_dict)
             x,y = getROCvalues(preds[i],hidden_genes,pos[i])
             plt.plot(x,y,color=colors[i],label=names[i]+' (AUC=%.2f)' % AUC)
             print(names[i],AUC)
@@ -622,84 +624,42 @@ def main(argv):
         plt.savefig(opts.outprefix+'_ROC.png')
         print('wrote to '+opts.outprefix+'_ROC.png')
 
-
-    ##########################
-    ## opts.aggregate: take all AUC files for the list of netorks and plot the result.
-    if opts.aggregate:
-        print('\nAggregating information')
-        files = opts.aggregate
-        names = opts.aggregate_names
-        # aggregate AUCs
-        plt.clf()
-        plt.figure(figsize=(8,4))
-        AUCs = []
-        AUC_names = []
-        for i in range(len(files)):
-            d = []
-            a = []
-            b = []
-            with open(files[i]+'_auc.txt') as fin:
-                for line in fin:
-                    if line[0]=='#':
-                        continue
-                    row = line.strip().split()
-                    d.append(float(row[0]))
-                    b.append(float(row[1]))
-            print(names[i]+' Disease Average:',sum(d)/len(d))
-            print(names[i]+' Biological Process Average:',sum(b)/len(b))
-            AUCs = AUCs + [d,b]
-            AUC_names = AUC_names + [names[i]+'\n$\mathcal{D}$',names[i]+'\n$\mathcal{P}$']
-
-        bplot = plt.boxplot(AUCs,patch_artist=True)
-        for patch in bplot['boxes']:
-            patch.set_facecolor('lightblue')
-        plt.xticks(range(1,len(files)*2+1),AUC_names)
-        plt.ylabel('AUC')
-        plt.ylim([0,1])
-        plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
-        plt.savefig(opts.outprefix+'_aggregate_auc.png')
-        print('wrote to '+opts.outprefix+'_aggregate_auc.png')
-
-
-        plt.clf()
-        vals = []
-        colors =['g','b','k','r','y','c','m']
-        for i in range(len(files)):
-            vals.append([])
-            with open(files[i]+'_combined_output.txt') as fin:
-                for line in fin:
-                    if line[0]=='#':
-                        continue
-                    vals[i].append(float(line.strip().split()[6]))
-        for i in range(len(vals)):
-            yvals =sorted(vals[i],reverse=True)
-            plt.plot(range(len(vals[i])),yvals,color=colors[i],label=names[i],lw=2)
-        plt.plot([0,len(yvals)-1],[0.5,0.5],':k',label='_nolabel_')
-        plt.legend()
-        plt.xlabel('Node')
-        plt.ylabel('Combined Score $g$')
-        plt.xlim(0,500)
-        plt.ylim(0.01,1.01)
-        plt.savefig(opts.outprefix+'_aggregate_nodeRankings.png')
-        print('wrote to '+opts.outprefix+'_aggregate_nodeRankings.png')
     print('Done.')
 
     return
 
-def getROCvalues(preds,hidden,pos):
-    x = [0]
-    y = [0]
-    sorted_preds = sorted(preds, key=lambda x:preds[x], reverse=True)
-    runningx = 0
-    runningy = 0
+def getROCvalues(preds, hidden, pos):
+    '''
+    Return two lists, which contain coordiantes (x,y) representing
+    the number of false positives (x) and the number of true positives (y) 
+    as we walk down the list of predictions.
+    '''
+    
+    # x and y are lists of the same length.
+    x = [0] # this will be a list of false positives
+    y = [0] # this will be a list of truw positives
+
+    # sort the predictions by their value, largest to smallest
+    # this will be a list of nodes
+    sorted_preds = sorted(preds.keys(), key=lambda x:preds[x], reverse=True)
+
+    runningx = 0 # current FP counter
+    runningy = 0 # current TP counter
     for node in sorted_preds:
+        
+        ## update running y value (increment if a true positive)
         if node in hidden:
             runningy += 1
+        ## update running x value (increment if a false positive)
         elif node not in pos: # ignore positives
             runningx += 1
+
+        ## append (runningx,runningy) as a coordinate
+        ## if it's a new coordinate (one of x or y was incremented)
         if runningx != x[-1] or runningy != y[-1]:
             x.append(runningx)
             y.append(runningy)
+
     return x,y
 
 def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, layer_dict):
@@ -715,8 +675,6 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
     hidden_count = 0
     prime_count = 0
     test_positive_count = 0
-
-
 
     #Iterate through layer_dict instead?
     
