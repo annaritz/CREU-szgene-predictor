@@ -186,7 +186,7 @@ def partitionCurated(original_curated,graph,verbose,layers):
 
         ## Once a layer is specified, append this to the curated positive node name.
         ## This "places" the positive in a particular layer.
-        curated.add(labeled_List[i]+'_'+str(layer))
+        curated.add(labeled_List[i]+'_'+str(0))
 
     #print('%d of %d nodes are in graph from file %s' % (len(labeled_set),len(curated_set),filename))
     return curated
