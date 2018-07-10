@@ -592,131 +592,154 @@ def main(argv):
     ## experiment, there's only one run of each method (we're not subsampling).
     if opts.roc:
         print('\nHolding out overlap set and running procedure.')
-        hidden_genes = disease_positives.intersection(biological_process_positives)
-        test_biological_process_positives = biological_process_positives.difference(hidden_genes)
-        test_disease_positives = disease_positives.difference(hidden_genes)
+        hidden_positive_genes = orig_disease_positives.intersection(orig_biological_process_positives)
+        hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in disease_positives and node in biological_process_positives)
 
-        print('%d hidden genes, %d test disease genes, and %d test biological process genes' % \
-            (len(hidden_genes),len(test_disease_positives),len(test_biological_process_positives)))
+        test_disease_positives = disease_positives.difference(hidden_positive_nodes)
+        test_biological_process_positives = biological_process_positives.difference(hidden_positive_nodes)
+
+        if opts.with_negatives:
+            hidden_negative_genes = random.sample(orig_negatives,int(len(orig_negatives)/opts.k_fold))
+            hidden_negative_nodes = set(node for gene in hidden_negative_genes for node in multi_node_dict[gene] if node in negatives)
+            test_negatives = negatives.difference(hidden_negative_nodes)
+        else:
+            test_negatives=negatives
+        
+
+        print('ROC CURVE: %d hidden genes, %d test disease genes, and %d test biological process genes' % \
+            (len(hidden_positive_nodes),len(test_disease_positives),len(test_biological_process_positives)))
+        print('Hidden Genes:',sorted([genemap[x] for x in hidden_positive_genes]))
         print(' disease predictions...')
         statsfile = opts.outprefix + '_holdout_disease_stats.txt'
         outfile = opts.outprefix+'_holdout_disease_output.txt'
-        ignore,ignore,holdout_d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_disease_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,write=True)
+        name='holdout_disease'
+        ignore,ignore,holdout_d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_disease_positives,test_negatives,\
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,\
+            name,opts.sinksource_method,write=True)
 
         print(' biological process predictions...')
         statsfile = opts.outprefix + '_holdout_biological_process_stats.txt'
         outfile = opts.outprefix+'_holdout_biological_process_output.txt'
-        ignore,ignore,holdout_b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,write=True)
+        name = 'holdout_biological_process'
+        ignore,ignore,holdout_b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_biological_process_positives,test_negatives,\
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,\
+            name,opts.sinksource_method,write=True)
 
+
+        ## NEW 7/2 by Anna: normed=True means that both predictions are normalized so the maximum is 1.0.
+        normed=True
         ## write combined results for disease and biological process predictions, including the final score 
         ## which is the product of the two sets of predictions.
-        outfile = opts.outprefix+'_holdout_combined_output.txt'
         fileIO.writeCombinedResults(G,outfile,holdout_d_predictions,holdout_b_predictions,\
-            test_disease_positives,test_biological_process_positives,negatives,hidden_genes,genemap)
+            disease_positives,biological_process_positives,test_negatives,blacklist,genemap,opts.layers,normed=normed)
 
-        ## plot ROC.
-        names = ['Disease Predictor $f_{\mathcal{D}}$','Biological Process Predictor $f_{\mathcal{P}}$','Score $g$']
+
+      ## plot ROC.
+        names = ['SZ $f_{\mathcal{D}}$','CM $f_{\mathcal{P}}$','Combined $g$']
         colors =['g','b','r']
-        preds = [holdout_d_predictions,holdout_b_predictions,{x:holdout_d_predictions[x]*holdout_b_predictions[x] for x in G.nodes()}]
+        preds = [holdout_d_predictions,holdout_b_predictions,{x:holdout_d_predictions[x]*holdout_b_predictions[x] for x in holdout_d_predictions}]
         test_union_positives=test_disease_positives.union(test_biological_process_positives)
         pos = [test_disease_positives,test_biological_process_positives,test_union_positives]
         plt.clf()
         for i in range(len(names)):
-            x,y = getROCvalues(preds[i],pos[i],hidden_genes)
-            plt.plot(x,y,color=colors[i],label=names[i])
-            AUC = Mann_Whitney_U_test(preds[i], hidden_genes,negatives)
+            if opts.with_negatives:
+                AUC = Mann_Whitney_U_test2(preds[i], multi_node_dict, pos[i],hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                x,y = getROCvalues2(preds[i],hidden_positive_nodes,pos[i], multi_node_dict, hidden_negative_nodes)
+
+            else:
+                AUC = Mann_Whitney_U_test(preds[i], multi_node_dict, pos[i],hidden_positive_nodes, negatives)
+                x,y = getROCvalues(preds[i],hidden_positive_nodes,pos[i], multi_node_dict)
+            plt.plot(x,y,color=colors[i],label=names[i]+' (AUC=%.2f)' % AUC)
+            # plt.xlim(0,len(preds)/(opts.layers+1))
             print(names[i],AUC)
         plt.xlabel('# False Positives')
         plt.ylabel('# True Positives')
-        plt.title('Receiver Operator Characteristic (ROC)')
+        plt.title('ROC (%d layers, $\lambda$=%.2f)' % (opts.layers,opts.sinksource_constant))
         plt.legend(loc='lower right')
         plt.savefig(opts.outprefix+'_ROC.png')
         print('wrote to '+opts.outprefix+'_ROC.png')
+        print('Done.')
+        return
 
 
-    ##########################
-    ## opts.aggregate: take all AUC files for the list of netorks and plot the result.
-    if opts.aggregate:
-        print('\nAggregating information')
-        files = opts.aggregate
-        names = opts.aggregate_names
-        # aggregate AUCs
-        plt.clf()
-        plt.figure(figsize=(8,4))
-        AUCs = []
-        AUC_names = []
-        for i in range(len(files)):
-            d = []
-            a = []
-            b = []
-            with open(files[i]+'_auc.txt') as fin:
-                for line in fin:
-                    if line[0]=='#':
-                        continue
-                    row = line.strip().split()
-                    d.append(float(row[0]))
-                    b.append(float(row[1]))
-            print(names[i]+' Disease Average:',sum(d)/len(d))
-            print(names[i]+' Biological Process Average:',sum(b)/len(b))
-            AUCs = AUCs + [d,b]
-            AUC_names = AUC_names + [names[i]+'\n$\mathcal{D}$',names[i]+'\n$\mathcal{P}$']
 
-        bplot = plt.boxplot(AUCs,patch_artist=True)
-        for patch in bplot['boxes']:
-            patch.set_facecolor('lightblue')
-        plt.xticks(range(1,len(files)*2+1),AUC_names)
-        plt.ylabel('AUC')
-        plt.ylim([0,1])
-        plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
-        plt.savefig(opts.outprefix+'_aggregate_auc.png')
-        print('wrote to '+opts.outprefix+'_aggregate_auc.png')
+def getROCvalues(preds, hidden, pos, layer_dict):
+    '''
+    Return two lists, which contain coordiantes (x,y) representing
+    the number of false positives (x) and the number of true positives (y) 
+    as we walk down the list of predictions.
+    '''
+    
+    # x and y are lists of the same length.
+    x = [0] # this will be a list of false positives
+    y = [0] # this will be a list of truw positives
 
+    # sort the predictions by their value, largest to smallest
+    # this will be a list of nodes
+    sorted_preds = sorted(preds.keys(), key=lambda x:preds[x], reverse=True)
 
-        plt.clf()
-        vals = []
-        colors =['g','b','k','r','y','c','m']
-        for i in range(len(files)):
-            vals.append([])
-            with open(files[i]+'_combined_output.txt') as fin:
-                for line in fin:
-                    if line[0]=='#':
-                        continue
-                    vals[i].append(float(line.strip().split()[6]))
-        for i in range(len(vals)):
-            yvals =sorted(vals[i],reverse=True)
-            plt.plot(range(len(vals[i])),yvals,color=colors[i],label=names[i],lw=2)
-        plt.plot([0,len(yvals)-1],[0.5,0.5],':k',label='_nolabel_')
-        plt.legend()
-        plt.xlabel('Node')
-        plt.ylabel('Combined Score $g$')
-        plt.xlim(0,500)
-        plt.ylim(0.01,1.01)
-        plt.savefig(opts.outprefix+'_aggregate_nodeRankings.png')
-        print('wrote to '+opts.outprefix+'_aggregate_nodeRankings.png')
-    print('Done.')
-
-    return
-
-def getROCvalues(preds,pos,hidden_positives):
-    x = [0]
-    y = [0]
-    sorted_preds = sorted(preds, key=lambda x:preds[x], reverse=True)
-    runningx = 0
-    runningy = 0
+    runningx = 0 # current FP counter
+    runningy = 0 # current TP counter
     for node in sorted_preds:
-        if node in hidden:
-            runningy += 1
-        elif node not in pos: # ignore positives
-            runningx += 1
-        x.append(runningx)
-        y.append(runningy)
-        if runningy == len(hidden):
-            x.append(1)
-            y.append(runningy)
-            break
+        if node[-6:] == '_prime': 
+            entrez = node[:-6] 
+            names = layer_dict[entrez]
+        
+            ## update running y value (increment if a true positive)
+            if bool(names.intersection(hidden)):
+                runningy += 1
+            ## update running x value (increment if a false positive)
+            elif not bool(names.intersection(pos)): # ignore positives
+                runningx += 1
+
+            ## append (runningx,runningy) as a coordinate
+            ## if it's a new coordinate (one of x or y was incremented)
+            if runningx != x[-1] or runningy != y[-1]:
+                x.append(runningx)
+                y.append(runningy)
+
     return x,y
+
+
+def getROCvalues2(preds, hidden_pos, pos, layer_dict, hidden_neg):
+    '''
+    Return two lists, which contain coordiantes (x,y) representing
+    the number of false positives (x) and the number of true positives (y) 
+    as we walk down the list of predictions.
+    '''
+    
+    # x and y are lists of the same length.
+    x = [0] # this will be a list of false positives
+    y = [0] # this will be a list of truw positives
+
+    # sort the predictions by their value, largest to smallest
+    # this will be a list of nodes
+    sorted_preds = sorted(preds.keys(), key=lambda x:preds[x], reverse=True)
+
+    runningx = 0 # current FP counter
+    runningy = 0 # current TP counter
+    for node in sorted_preds:
+        if node[-6:] == '_prime': 
+            entrez = node[:-6] 
+            names = layer_dict[entrez]
+        
+            ## update running y value (increment if a true positive)
+            if bool(names.intersection(hidden_pos)):
+                runningy += 1
+            ## update running x value (increment if a false positive)
+            elif bool(names.intersection(hidden_neg)): # ignore positives
+                runningx += 1
+
+            ## append (runningx,runningy) as a coordinate
+            ## if it's a new coordinate (one of x or y was incremented)
+            if runningx != x[-1] or runningy != y[-1]:
+                x.append(runningx)
+                y.append(runningy)
+
+    return x,y
+
+
+
 
 def Mann_Whitney_U_test(predictions,layer_dict, test_positives,hidden_positives, negatives):
     #predictions is a dictionary of nodes:scores
