@@ -1,1 +1,0 @@
-#trad_AUC	#E1_AUC	Negative_AUC	New_AUC

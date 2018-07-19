@@ -1,3 +1,0 @@
-#DiseaseAUCs	#AutismAUCs	BiologicalProcessAUCs
-0.866994	0.917197	0.890254
-0.862361	0.930158	0.909901

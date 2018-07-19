@@ -123,6 +123,9 @@ def parse_arguments(argv):
     group.add_option('-w', '--with_negatives',\
         action='store_false',default=True,\
         help='Include negative set (default=True).')
+    group.add_option('--examine_vs_negatives',\
+        action='store_true', default=False,\
+        help='Get AUC vs negatives without labeling them as such')
     parser.add_option_group(group)
 
     group = OptionGroup(parser,'Aggregate Analysis (combines runs into one figure)')
@@ -179,7 +182,7 @@ def main(argv):
         disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose)
         biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose)
 
-        if opts.with_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
+        if opts.with_negatives or opts.examine_vs_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
             negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
             ## some nodes appear in both positive and negative sets; identify these and remove
             ## them from the curated set.
@@ -198,7 +201,7 @@ def main(argv):
                 # biological_process_positives = biological_process_positives.difference(overlap_set)
                 blacklist.update(overlap_set)
 
-            print('%d genes have had their labels removed because they were in both positive and negative sets.' % (len(blacklist)))
+            print('%d genes have had their negative labels removed because they were in both positive and negative sets.' % (len(blacklist)))
             # for node in blacklist:
             #     G.remove_node(node)
        
@@ -219,12 +222,10 @@ def main(argv):
 
         disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
         biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
-        if opts.with_negatives:
+        if opts.with_negatives or opts.examine_vs_negatives:
             negatives = fileIO.partitionCurated(orig_negatives,G,opts.verbose,opts.layers)
 
-            
 
-        if opts.with_negatives:
             print('Final Curated Sets: %d Labeled Disease Nodes, %d Labeled Biological Process Nodes, and %d Labeled Negative Nodes.\n' % \
             (len(disease_positives),len(biological_process_positives),len(negatives)))
         else:
@@ -486,7 +487,7 @@ def main(argv):
                     print('Estimated Time of Completion:', time.strftime('%I:%M:%S %p',time.localtime(time.time()+time_remaining)))
                 print('Starting #%d of %d' % (i+1,opts.auc_samples))
                 # subsample 1/k of the positives...
-                if opts.with_negatives:
+                if opts.with_negatives or opts.examine_vs_negatives:
                     hidden_negative_genes = random.sample(orig_negatives,int(len(orig_negatives)/opts.k_fold))
                     hidden_negative_nodes = set(node for gene in hidden_negative_genes for node in multi_node_dict[gene] if node in negatives)
                     test_negatives = negatives.difference(hidden_negative_nodes)
@@ -510,12 +511,15 @@ def main(argv):
                     AUC = Mann_Whitney_U_test2(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
                 else:
                     if not opts.sinksource_method:
-                        ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,negatives,\
+                        ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,set(),\
                             opts.epsilon,opts.timesteps,opts.verbose)
                     else:
-                        ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
+                        ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,set(),\
                             opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                    AUC = Mann_Whitney_U_test(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                    if opts.examine_vs_negatives:
+                        AUC = Mann_Whitney_U_test2(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                    else:
+                        AUC = Mann_Whitney_U_test(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
                 print('Disease AUC = ', AUC)
 
                 d_AUCs.append(AUC)
@@ -533,7 +537,7 @@ def main(argv):
                     print('Estimated Time of Completion:', time.strftime('%I:%M:%S %p',time.localtime(time.time()+time_remaining)))
                 print('#%d of %d' % (i+1,opts.auc_samples))
                 # subsample 1/k of the positives...
-                if opts.with_negatives:
+                if opts.with_negatives or opts.examine_vs_negatives:
                     hidden_negative_genes = random.sample(orig_negatives,int(len(orig_negatives)/opts.k_fold))
                     hidden_negative_nodes = set(node for gene in hidden_negative_genes for node in multi_node_dict[gene] if node in negatives)
                     test_negatives = negatives.difference(hidden_negative_nodes)
@@ -557,12 +561,15 @@ def main(argv):
                     AUC = Mann_Whitney_U_test2(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
                 else:
                     if not opts.sinksource_method:
-                        ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,negatives,\
+                        ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,set(),\
                             opts.epsilon,opts.timesteps,opts.verbose)
                     else:
-                        ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
+                        ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,set(),\
                             opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                    AUC = Mann_Whitney_U_test(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                    if opts.examine_vs_negatives:
+                        AUC = Mann_Whitney_U_test2(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                    else:
+                        AUC = Mann_Whitney_U_test(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
                 print('Biological Process AUC = ', AUC)
                 b_AUCs.append(AUC)
             ## write the output file.
