@@ -24,10 +24,7 @@ def learn(outprefix,outfile,statsfile,genemap,G,pos,negs,\
             setGraphAttrs(G,pos,negs) #intitializes the scores
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
         if write:
-            if layers==1:
-                fileIO.writeResultsSingle(statsfile,outprefix,outfile,times,changes,predictions,genemap, G,pos, negs,sinksource_constant, name, sinksource_method)
-            else:
-                fileIO.writeResultsMulti(statsfile,outprefix,outfile,times,changes,predictions,genemap, G, layers,pos, negs,sinksource_constant, name, sinksource_method)
+            fileIO.writeResults(statsfile,outprefix,outfile,times,changes,predictions,genemap, G, layers,pos, negs,sinksource_constant, name, sinksource_method)
     return times,changes,predictions
 
 # Utilizes sinksource constant 

@@ -2,6 +2,7 @@
 
 ## this needs to be at the top so matplotlib doesn't
 ## throw an error if being called remotely.
+import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 
@@ -114,7 +115,7 @@ def parse_arguments(argv):
         type='int',metavar='INT',default=50,\
         help='number of cross validation iterations to compute AUC (default=50).')
     group.add_option('-l', '--layers',\
-        type='int', default=3,\
+        type='int', default=2,\
         help='Run the experiments for disease and biological process with n nodes per gene. Each of the gene\'s nodes are connected to a node that represents the score for the gene. Positives are distributed among these layers. Reducing the nodes to 1 eliminates the process')
     group.add_option('-c', '--sinksource_constant',\
         type='float',metavar='FLOAT',default=None,\
@@ -122,6 +123,9 @@ def parse_arguments(argv):
     group.add_option('-w', '--with_negatives',\
         action='store_false',default=True,\
         help='Include negative set (default=True).')
+    group.add_option('--examine_vs_negatives',\
+        action='store_true', default=False,\
+        help='Get AUC vs negatives without labeling them as such')
     parser.add_option_group(group)
 
     group = OptionGroup(parser,'Aggregate Analysis (combines runs into one figure)')
@@ -173,73 +177,66 @@ def main(argv):
         print(' The network contains %d edges and %d nodes' % (G.number_of_edges(), G.number_of_nodes()))
 
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
-        disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose)
-        autism_positives= fileIO.curatedFileReader('../infiles/ASD_positives.txt', G, opts.verbose)
-        biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose)
-        if opts.with_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
-            negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
 
+
+        disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose)
+        biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose)
+
+        if opts.with_negatives or opts.examine_vs_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
+            negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
             ## some nodes appear in both positive and negative sets; identify these and remove
             ## them from the curated set.
             blacklist = set()
             if disease_positives.intersection(negatives):
                 overlap_set = disease_positives.intersection(negatives)
-                print('WARNING: %d nodes are disease positives and negatives. Ignoring.' % (len(overlap_set)))
+                print('WARNING: %d genes are disease positives and negatives. Ignoring.' % (len(overlap_set)))
                 negatives = negatives.difference(overlap_set)
-                disease_positives = disease_positives.difference(overlap_set)
-
-                blacklist.update(overlap_set)
-
-            if autism_positives.intersection(negatives):
-                overlap_set = autism_positives.intersection(negatives)
-                print('WARNING: %d nodes are autism positives and negatives. Ignoring.' % (len(overlap_set)))
-                negatives = negatives.difference(overlap_set)
-                autism_positives = autism_positives.difference(overlap_set)
-
+                # disease_positives = disease_positives.difference(overlap_set)
                 blacklist.update(overlap_set)
 
             if biological_process_positives.intersection(negatives):
                 overlap_set = biological_process_positives.intersection(negatives)
-                print('WARNING: %d nodes are biological process positives and negatives. Ignoring.' % (len(overlap_set)))
+                print('WARNING: %d genes are biological process positives and negatives. Ignoring.' % (len(overlap_set)))
                 negatives = negatives.difference(overlap_set)
-                biological_process_positives = biological_process_positives.difference(overlap_set)
+                # biological_process_positives = biological_process_positives.difference(overlap_set)
                 blacklist.update(overlap_set)
 
-            print('%d nodes have been blacklisted because they were in both positive and negative sets.' % (len(blacklist)))
+            print('%d genes have had their negative labels removed because they were in both positive and negative sets.' % (len(blacklist)))
             # for node in blacklist:
             #     G.remove_node(node)
        
         else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
             negatives = set()
 
-        if opts.layers > 1: #If multi-layer, we need to call function to partition the positives and negatives between layers
-            #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
-            #and keep track of original and partitioned positives 
+        #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
+        #and keep track of original and partitioned positives 
 
-            print('Layers > 1')
+        #After checking the graph, we need to modify it to include multiple layers + primes
+        multi_node_dict = fileIO.read_edge_file_multi(G, opts.layers)
 
-            #After checking the graph, we need to modify it to include multiple layers + primes
-            multi_node_dict = fileIO.read_edge_file_multi(G, opts.layers)
+        orig_disease_positives = disease_positives
+        orig_biological_process_positives = biological_process_positives
+        orig_negatives = negatives
 
-            orig_disease_positives = disease_positives
-            disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
 
-            orig_autism_positives = autism_positives
-            autism_positives = fileIO.partitionCurated(orig_autism_positives,G,opts.verbose,opts.layers)
 
-            orig_biological_process_positives = biological_process_positives
-            biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
-
-            orig_negatives = negatives
+        disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
+        biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
+        if opts.with_negatives or opts.examine_vs_negatives:
             negatives = fileIO.partitionCurated(orig_negatives,G,opts.verbose,opts.layers)
 
+<<<<<<< HEAD
         else: ## make multi-node dictionary that maps names to names.
             multi_node_dict = {n:n for n in G.nodes()}
 
+=======
+>>>>>>> 747abb8a9ca1841fe47eb0ee00d1cf97dff8f812
 
-        print('Final Curated Sets: %d Disease Positives, %d Autism Positives,%d Biological Process Positives, and %d Negatives.\n' % \
-        (len(disease_positives),len(autism_positives),len(biological_process_positives),len(negatives)))
-        
+            print('Final Curated Sets: %d Labeled Disease Nodes, %d Labeled Biological Process Nodes, and %d Labeled Negative Nodes.\n' % \
+            (len(disease_positives),len(biological_process_positives),len(negatives)))
+        else:
+            print('Final Curated Sets: %d Labeled Disease Nodes and %d Labeled Biological Process Nodes.\n' % \
+            (len(disease_positives),len(biological_process_positives)))
 
 
     ##########################
@@ -479,96 +476,146 @@ def main(argv):
                     a_AUCs.append(float(row[1]))
                     b_AUCs.append(float(row[12]))
         else:
+            validate_negatives=True
+
             ## disease k-fold validation
+            print('\nDisease Tests')
             d_AUCs = []
+            start=time.time()
+
+            
             for i in range(opts.auc_samples):
-                print('#%d of %d' % (i,opts.auc_samples))
+                done=float(i)/float(opts.auc_samples)
+                if done!=0:
+                    time_remaining=(2.0-done)*(time.time()-start)/done
+                    print('Estimated Time Remaining:', time_remaining, 'seconds')
+                    print('Estimated Time of Completion:', time.strftime('%I:%M:%S %p',time.localtime(time.time()+time_remaining)))
+                print('Starting #%d of %d' % (i+1,opts.auc_samples))
                 # subsample 1/k of the positives...
-                hidden_genes = random.sample(disease_positives,int(len(disease_positives)/opts.k_fold))
-                test_positives = disease_positives.difference(hidden_genes)
-                print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
-                if not opts.sinksource_method:
-                    ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,negatives,\
-                        opts.epsilon,opts.timesteps,opts.verbose)
+                if opts.with_negatives or opts.examine_vs_negatives:
+                    hidden_negative_genes = random.sample(orig_negatives,int(len(orig_negatives)/opts.k_fold))
+                    hidden_negative_nodes = set(node for gene in hidden_negative_genes for node in multi_node_dict[gene] if node in negatives)
+                    test_negatives = negatives.difference(hidden_negative_nodes)
+                    print('%d hidden %d test negative nodes' % (len(hidden_negative_nodes),len(test_negatives)))
+
+                hidden_positive_genes = random.sample(orig_disease_positives,int(len(orig_disease_positives)/opts.k_fold))
+                hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in disease_positives)
+                test_positives = disease_positives.difference(hidden_positive_nodes)
+                print('%d hidden %d test positive nodes' % (len(hidden_positive_nodes),len(test_positives)))
+
+
+
+                # MWU = Mann_Whitney_U_test(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
+                if opts.with_negatives:
+                    if not opts.sinksource_method:
+                        ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,test_negatives,\
+                            opts.epsilon,opts.timesteps,opts.verbose)
+                    else:
+                        ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,test_negatives,\
+                            opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                    AUC = Mann_Whitney_U_test2(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
                 else:
-                    ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
-                        opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                MWU = Mann_Whitney_U_test(d_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
-                print('Disease AUC = ', MWU)
-                d_AUCs.append(MWU)
-    
-            # autism k-fold validation
-            a_AUCs=[]
-            for i in range(opts.auc_samples):
-                print('#%d of %d' % (i,opts.auc_samples))
-                # subsample 1/k of the positives...
-                hidden_genes = random.sample(autism_positives,int(len(autism_positives)/opts.k_fold))
-                test_positives = autism_positives.difference(hidden_genes)
-                print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
-                if not opts.sinksource_method:
-                    ignore,ignore,a_predictions = learners.matrixLearn(G,test_positives,negatives,\
-                        opts.epsilon,opts.timesteps,opts.verbose)
-                else:
-                    ignore,ignore,a_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
-                        opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                MWU = Mann_Whitney_U_test(a_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
-                print('Autism AUC = ', MWU)
-                a_AUCs.append(MWU)
+                    if not opts.sinksource_method:
+                        ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,set(),\
+                            opts.epsilon,opts.timesteps,opts.verbose)
+                    else:
+                        ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,set(),\
+                            opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                    if opts.examine_vs_negatives:
+                        AUC = Mann_Whitney_U_test2(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                    else:
+                        AUC = Mann_Whitney_U_test(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
+                print('Disease AUC = ', AUC)
+
+                d_AUCs.append(AUC)
+   
 
             ## biological process k-fold validation
+            print('\nBiological Process Tests')
             b_AUCs = []
+            start=time.time()
             for i in range(opts.auc_samples):
-                print('#%d of %d' % (i,opts.auc_samples))
+                done=float(i)/float(opts.auc_samples)
+                if done!=0:
+                    time_remaining=(1.0-done)*(time.time()-start)/done
+                    print('Estimated Time Remaining:', time_remaining, 'seconds')
+                    print('Estimated Time of Completion:', time.strftime('%I:%M:%S %p',time.localtime(time.time()+time_remaining)))
+                print('#%d of %d' % (i+1,opts.auc_samples))
                 # subsample 1/k of the positives...
-                hidden_genes = random.sample(biological_process_positives,int(len(biological_process_positives)/opts.k_fold))
-                test_positives = biological_process_positives.difference(hidden_genes)
-                print('%d hidden %d test genes' % (len(hidden_genes),len(test_positives)))
-                if not opts.sinksource_method:
-                    ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,negatives,\
-                        opts.epsilon,opts.timesteps,opts.verbose)
+                if opts.with_negatives or opts.examine_vs_negatives:
+                    hidden_negative_genes = random.sample(orig_negatives,int(len(orig_negatives)/opts.k_fold))
+                    hidden_negative_nodes = set(node for gene in hidden_negative_genes for node in multi_node_dict[gene] if node in negatives)
+                    test_negatives = negatives.difference(hidden_negative_nodes)
+                    print('%d hidden %d test negative nodes' % (len(hidden_negative_nodes),len(test_negatives)))
+
+                hidden_positive_genes = random.sample(orig_biological_process_positives,int(len(orig_biological_process_positives)/opts.k_fold))
+                hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in biological_process_positives)
+                test_positives = biological_process_positives.difference(hidden_positive_nodes)
+                print('%d hidden %d test nodes' % (len(hidden_positive_nodes),len(test_positives)))
+
+
+                
+
+                if opts.with_negatives:
+                    if not opts.sinksource_method:
+                        ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,test_negatives,\
+                            opts.epsilon,opts.timesteps,opts.verbose)
+                    else:
+                        ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,test_negatives,\
+                            opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                    AUC = Mann_Whitney_U_test2(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
                 else:
-                    ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,negatives,\
-                        opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
-                MWU = Mann_Whitney_U_test(b_predictions, hidden_genes, negatives, test_positives, multi_node_dict)
-                print('Biological Process AUC = ', MWU)
-                b_AUCs.append(MWU)
-            
+                    if not opts.sinksource_method:
+                        ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,set(),\
+                            opts.epsilon,opts.timesteps,opts.verbose)
+                    else:
+                        ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,set(),\
+                            opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
+                    if opts.examine_vs_negatives:
+                        AUC = Mann_Whitney_U_test2(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                    else:
+                        AUC = Mann_Whitney_U_test(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
+                print('Biological Process AUC = ', AUC)
+                b_AUCs.append(AUC)
             ## write the output file.
             out = open(outfile,'w')
-            out.write('#DiseaseAUCs\t#AutismAUCs\tBiologicalProcessAUCs\n')
+            out.write('#DiseaseAUCs\tBiologicalProcessAUCs\n')
             for i in range(len(d_AUCs)):
-                out.write('%f\t%f\t%f\n' % (d_AUCs[i],a_AUCs[i],b_AUCs[i]))
+                out.write('%f\t%f\n' % (d_AUCs[i],b_AUCs[i]))
     
             out.close()
 
         ## plot the AUC distribution.
         plt.clf()
-        plt.boxplot([d_AUCs,a_AUCs,b_AUCs])
-        plt.xticks([1,2],['SZ','ASD','Cell Motility'])
+        plt.boxplot([d_AUCs,b_AUCs])
+        plt.xticks([1,2],['SZ','Cell Motility'])
         plt.ylabel('AUC')
         plt.ylim([0,1])
         plt.title('5-Fold Cross Validation (AUC of 50 Iterations)')
         plt.savefig(opts.outprefix+'_auc.png')
         print('wrote to '+opts.outprefix+'_auc.png')
 
+        
+
+
     ##########################
     ## New version (Miriam 07/10): Does the same thing as opts.auc (k-fold cross validation)
     ## but it plots the ROC curve for each run to see how it changes
 
     if opts.roc:
-        print('\nHolding out overlap set and running method.')
+        #print('\nHolding out overlap set and running method.')
 
-        disease_predictions_list = [] #collect the disease predictions
-        disease_hidden_list = [] #collect all the hidden disease sets
-        disease_test_list = [] #collect all the test disease positive sets
+        #disease_predictions_list = [] #collect the disease predictions
+        #disease_hidden_list = [] #collect all the hidden disease sets
+        #disease_test_list = [] #collect all the test disease positive sets
         
-        process_predictions_list = [] #collect the process predictions
-        process_hidden_list = [] #collect all the hiddden process sets
-        process_test_list = [] #collect all the rest process positive sets
+        #process_predictions_list = [] #collect the process predictions
+        #process_hidden_list = [] #collect all the hiddden process sets
+        #process_test_list = [] #collect all the rest process positive sets
 
-        for j in range(opts.auc_samples): 
-            print()
-            print('Run #', j+1)
+        #for j in range(opts.auc_samples): 
+        #    print()
+        #    print('Run #', j+1)
             #if opts.layers == 1:
             #    hidden_genes = disease_positives.intersection(biological_process_positives)
             #    test_biological_process_positives = biological_process_positives.difference(hidden_genes)
@@ -582,39 +629,39 @@ def main(argv):
             #    test_disease_positives = set([x for x in disease_positives if x.split('_')[0] not in h_genes])
 
 
-            hidden_disease_genes = random.sample(disease_positives,int(len(disease_positives)/opts.k_fold))
-            disease_hidden_list.append(hidden_disease_genes)
-            test_disease_positives = disease_positives.difference(hidden_disease_genes)
-            disease_test_list.append(test_disease_positives)
+            #hidden_disease_genes = random.sample(disease_positives,int(len(disease_positives)/opts.k_fold))
+            #disease_hidden_list.append(hidden_disease_genes)
+            #test_disease_positives = disease_positives.difference(hidden_disease_genes)
+            #disease_test_list.append(test_disease_positives)
 
-            hidden_process_genes = random.sample(biological_process_positives,int(len(biological_process_positives)/opts.k_fold))
-            process_hidden_list.append(hidden_process_genes)
-            test_biological_process_positives = biological_process_positives.difference(hidden_process_genes)
-            process_test_list.append(test_biological_process_positives)
+            #hidden_process_genes = random.sample(biological_process_positives,int(len(biological_process_positives)/opts.k_fold))
+            #process_hidden_list.append(hidden_process_genes)
+            #test_biological_process_positives = biological_process_positives.difference(hidden_process_genes)
+            #process_test_list.append(test_biological_process_positives)
 
-            print('ROC CURVE: %d hidden disease genes, %d test disease genes, %d hidden biological process genes, and %d test biological process genes' % \
-                (len(hidden_disease_genes),len(test_disease_positives),len(hidden_process_genes),len(test_biological_process_positives)))
+            #print('ROC CURVE: %d hidden disease genes, %d test disease genes, %d hidden biological process genes, and %d test biological process genes' % \
+            #   (len(hidden_disease_genes),len(test_disease_positives),len(hidden_process_genes),len(test_biological_process_positives)))
             #print('Hidden Genes:',sorted([x for x in hidden_genes]))
-            print(' disease predictions...')
-            statsfile = opts.outprefix + '_holdout_disease_stats.txt'
-            outfile = opts.outprefix+'_holdout_disease_output.txt'
-            name = 'holdout_disease'
-            ignore,ignore,holdout_d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_disease_positives,negatives,\
-                opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,\
-                name,opts.sinksource_method,write=False)
-            disease_predictions_list.append(holdout_d_predictions)
+            #print(' disease predictions...')
+            #statsfile = opts.outprefix + '_holdout_disease_stats.txt'
+            #outfile = opts.outprefix+'_holdout_disease_output.txt'
+            #name = 'holdout_disease'
+            #ignore,ignore,holdout_d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_disease_positives,negatives,\
+            #    opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,\
+            #    name,opts.sinksource_method,write=False)
+            #disease_predictions_list.append(holdout_d_predictions)
 
-            print(' biological process predictions...')
-            statsfile = opts.outprefix + '_holdout_biological_process_stats.txt'
-            outfile = opts.outprefix+'_holdout_biological_process_output.txt'
-            name = 'holdout_biological_process'
-            ignore,ignore,holdout_b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
-                opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,\
-                name,opts.sinksource_method,write=False)
-            process_predictions_list.append(holdout_b_predictions)
+            #print(' biological process predictions...')
+            #statsfile = opts.outprefix + '_holdout_biological_process_stats.txt'
+            #outfile = opts.outprefix+'_holdout_biological_process_output.txt'
+            #name = 'holdout_biological_process'
+            #ignore,ignore,holdout_b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_biological_process_positives,negatives,\
+            #    opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,\
+            #    name,opts.sinksource_method,write=False)
+            #process_predictions_list.append(holdout_b_predictions)
 
             ## NEW 7/2 by Anna: normed=True means that both predictions are normalized so the maximum is 1.0.
-            normed=True
+            #normed=True
             ## write combined results for disease and biological process predictions, including the final score 
             ## which is the product of the two sets of predictions.
             
@@ -630,7 +677,77 @@ def main(argv):
             #    test_disease_positives = set([x[:-2] for x in test_disease_positives])
             #    test_biological_process_positives = set([x[:-2] for x in test_biological_process_positives])
             #   hidden_genes = set([x[:-2] for x in hidden_genes])
-            
+
+        print('\nHolding out overlap set and running procedure.')
+        hidden_positive_genes = orig_disease_positives.intersection(orig_biological_process_positives)
+        hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in disease_positives and node in biological_process_positives)
+
+        test_disease_positives = disease_positives.difference(hidden_positive_nodes)
+        test_biological_process_positives = biological_process_positives.difference(hidden_positive_nodes)
+
+        if opts.with_negatives:
+            hidden_negative_genes = random.sample(orig_negatives,int(len(orig_negatives)/opts.k_fold))
+            hidden_negative_nodes = set(node for gene in hidden_negative_genes for node in multi_node_dict[gene] if node in negatives)
+            test_negatives = negatives.difference(hidden_negative_nodes)
+        else:
+            test_negatives=negatives
+        
+
+        print('ROC CURVE: %d hidden genes, %d test disease genes, and %d test biological process genes' % \
+            (len(hidden_positive_nodes),len(test_disease_positives),len(test_biological_process_positives)))
+        print('Hidden Genes:',sorted([genemap[x] for x in hidden_positive_genes]))
+        print(' disease predictions...')
+        statsfile = opts.outprefix + '_holdout_disease_stats.txt'
+        outfile = opts.outprefix+'_holdout_disease_output.txt'
+        name='holdout_disease'
+        ignore,ignore,holdout_d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_disease_positives,test_negatives,\
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,\
+            name,opts.sinksource_method,write=True)
+
+        print(' biological process predictions...')
+        statsfile = opts.outprefix + '_holdout_biological_process_stats.txt'
+        outfile = opts.outprefix+'_holdout_biological_process_output.txt'
+        name = 'holdout_biological_process'
+        ignore,ignore,holdout_b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,test_biological_process_positives,test_negatives,\
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,\
+            name,opts.sinksource_method,write=True)
+
+
+        ## NEW 7/2 by Anna: normed=True means that both predictions are normalized so the maximum is 1.0.
+        normed=True
+        ## write combined results for disease and biological process predictions, including the final score 
+        ## which is the product of the two sets of predictions.
+        fileIO.writeCombinedResults(G,outfile,holdout_d_predictions,holdout_b_predictions,\
+            disease_positives,biological_process_positives,test_negatives,blacklist,genemap,opts.layers,normed=normed)
+
+
+      ## plot ROC.
+        names = ['SZ $f_{\mathcal{D}}$','CM $f_{\mathcal{P}}$','Combined $g$']
+        colors =['g','b','r']
+        preds = [holdout_d_predictions,holdout_b_predictions,{x:holdout_d_predictions[x]*holdout_b_predictions[x] for x in holdout_d_predictions}]
+        test_union_positives=test_disease_positives.union(test_biological_process_positives)
+        pos = [test_disease_positives,test_biological_process_positives,test_union_positives]
+        plt.clf()
+        for i in range(len(names)):
+            if opts.with_negatives:
+                AUC = Mann_Whitney_U_test2(preds[i], multi_node_dict, pos[i],hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                x,y = getROCvalues2(preds[i],hidden_positive_nodes,pos[i], multi_node_dict, hidden_negative_nodes)
+
+            else:
+                AUC = Mann_Whitney_U_test(preds[i], multi_node_dict, pos[i],hidden_positive_nodes, negatives)
+                x,y = getROCvalues(preds[i],hidden_positive_nodes,pos[i], multi_node_dict)
+            plt.plot(x,y,color=colors[i],label=names[i]+' (AUC=%.2f)' % AUC)
+            # plt.xlim(0,len(preds)/(opts.layers+1))
+            print(names[i],AUC)
+        plt.xlabel('# False Positives')
+        plt.ylabel('# True Positives')
+        plt.title('ROC (%d layers, $\lambda$=%.2f)' % (opts.layers,opts.sinksource_constant))
+        plt.legend(loc='lower right')
+        plt.savefig(opts.outprefix+'_ROC.png')
+        print('wrote to '+opts.outprefix+'_ROC.png')
+        print('Done.')
+        return
+>>>>>>> 747abb8a9ca1841fe47eb0ee00d1cf97dff8f812
 
             ## plot ROC.
             
@@ -640,6 +757,7 @@ def main(argv):
             #test_union_positives=test_disease_positives.union(test_biological_process_positives)
             #pos = [test_disease_positives,test_biological_process_positives,test_union_positives]
 
+<<<<<<< HEAD
         plt.figure()
 
        
@@ -689,6 +807,20 @@ def getROCvalues(preds, hidden, pos):
     x = [0] # this will be a list of false positives
     y = [0] # this will be a list of true positives
 
+=======
+
+def getROCvalues(preds, hidden, pos, layer_dict):
+    '''
+    Return two lists, which contain coordiantes (x,y) representing
+    the number of false positives (x) and the number of true positives (y) 
+    as we walk down the list of predictions.
+    '''
+    
+    # x and y are lists of the same length.
+    x = [0] # this will be a list of false positives
+    y = [0] # this will be a list of truw positives
+
+>>>>>>> 747abb8a9ca1841fe47eb0ee00d1cf97dff8f812
     # sort the predictions by their value, largest to smallest
     # this will be a list of nodes
     sorted_preds = sorted(preds.keys(), key=lambda x:preds[x], reverse=True)
@@ -696,6 +828,7 @@ def getROCvalues(preds, hidden, pos):
     runningx = 0 # current FP counter
     runningy = 0 # current TP counter
     for node in sorted_preds:
+<<<<<<< HEAD
         
         ## update running y value (increment if a true positive)
         if node in hidden:
@@ -709,10 +842,69 @@ def getROCvalues(preds, hidden, pos):
         if runningx != x[-1] or runningy != y[-1]:
             x.append(runningx)
             y.append(runningy)
+=======
+        if node[-6:] == '_prime': 
+            entrez = node[:-6] 
+            names = layer_dict[entrez]
+        
+            ## update running y value (increment if a true positive)
+            if bool(names.intersection(hidden)):
+                runningy += 1
+            ## update running x value (increment if a false positive)
+            elif not bool(names.intersection(pos)): # ignore positives
+                runningx += 1
+
+            ## append (runningx,runningy) as a coordinate
+            ## if it's a new coordinate (one of x or y was incremented)
+            if runningx != x[-1] or runningy != y[-1]:
+                x.append(runningx)
+                y.append(runningy)
 
     return x,y
 
-def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, layer_dict):
+
+def getROCvalues2(preds, hidden_pos, pos, layer_dict, hidden_neg):
+    '''
+    Return two lists, which contain coordiantes (x,y) representing
+    the number of false positives (x) and the number of true positives (y) 
+    as we walk down the list of predictions.
+    '''
+    
+    # x and y are lists of the same length.
+    x = [0] # this will be a list of false positives
+    y = [0] # this will be a list of truw positives
+
+    # sort the predictions by their value, largest to smallest
+    # this will be a list of nodes
+    sorted_preds = sorted(preds.keys(), key=lambda x:preds[x], reverse=True)
+
+    runningx = 0 # current FP counter
+    runningy = 0 # current TP counter
+    for node in sorted_preds:
+        if node[-6:] == '_prime': 
+            entrez = node[:-6] 
+            names = layer_dict[entrez]
+        
+            ## update running y value (increment if a true positive)
+            if bool(names.intersection(hidden_pos)):
+                runningy += 1
+            ## update running x value (increment if a false positive)
+            elif bool(names.intersection(hidden_neg)): # ignore positives
+                runningx += 1
+
+            ## append (runningx,runningy) as a coordinate
+            ## if it's a new coordinate (one of x or y was incremented)
+            if runningx != x[-1] or runningy != y[-1]:
+                x.append(runningx)
+                y.append(runningy)
+>>>>>>> 747abb8a9ca1841fe47eb0ee00d1cf97dff8f812
+
+    return x,y
+
+
+
+
+def Mann_Whitney_U_test(predictions,layer_dict, test_positives,hidden_positives, negatives):
     #predictions is a dictionary of nodes:scores
     #Runs a Mann-Whitney U test on the lists
     kfold_ranks=[] #This will be the results we have computed without the positives
@@ -721,6 +913,7 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
     nodeValues=[] 
     hiddenNodeValues=[]
     notPositiveNodeValues=[] #Newest version: holds value of unlabeled prime nodes (positives and negative excluded)
+<<<<<<< HEAD
     
     hidden_count = 0
     prime_count = 0
@@ -728,22 +921,38 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
 
     #Iterate through layer_dict instead?
 
+=======
+    negative_count = 0
+    positive_count = 0 
+    #Iterate through layer_dict instead?
+>>>>>>> 747abb8a9ca1841fe47eb0ee00d1cf97dff8f812
     for node in predictions:
         if node[-6:] == '_prime': #only want to look at prime nodes
             prime_count =+ 1
             entrez = node[:-6] 
             names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+<<<<<<< HEAD
             if bool(names.intersection(hidden_nodes)): #bool() is True if the prime node is attached to a hidden node, False if not
                 hidden_count += 1
+=======
+            if bool(names.intersection(hidden_positives)): #bool() is True if the prime node is attached to a hidden node, False if not
+>>>>>>> 747abb8a9ca1841fe47eb0ee00d1cf97dff8f812
                 hiddenNodeValues.append(predictions[node])
+
             else: #if it's not a hidden node, check if it's unlabeled
                 if bool(names.intersection(test_positives)):
+<<<<<<< HEAD
                     test_positive_count += 1
                     continue 
                 #if bool(names.intersection(negatives)):
                 #    continue
+=======
+                    positive_count += 1
+                    continue ## I think just check this one.
+                if bool(names.intersection(negatives)):
+                    negative_count += 1
+>>>>>>> 747abb8a9ca1841fe47eb0ee00d1cf97dff8f812
                 notPositiveNodeValues.append(predictions[node])
-            
 
     ## TODO suggestion: sys.exit() with an error if these numbesr aren't what we expect. 
     
@@ -755,6 +964,59 @@ def Mann_Whitney_U_test(predictions, hidden_nodes, negatives, test_positives, la
     AUC=U/(len(hiddenNodeValues)*len(notPositiveNodeValues))
     #print(AUC)
     return AUC
+
+def Mann_Whitney_U_test2(predictions,layer_dict, test_positives, hidden_positives,  test_negatives, hidden_negatives):
+    #predictions is a dictionary of nodes:scores
+    #Runs a Mann-Whitney U test on the lists
+    kfold_ranks=[] #This will be the results we have computed without the positives
+    test_ranks=[] #This will be the results we have computed with all positives
+
+    nodeValues=[] #This is the vehicle by which we extract graph information
+    hiddenPositiveValues=[]
+    hiddenE1Values=[]
+    hiddenNegativeValues=[] #Newest version: holds value of unlabeled prime nodes (positives and negative excluded)
+    unlabeledValues=[]
+    negative_count = 0
+    positive_count = 0 
+    unlabeled_count = 0
+    #Iterate through layer_dict instead?
+    for node in predictions:
+        if node[-6:] == '_prime': #only want to look at prime nodes
+            entrez = node[:-6] 
+            names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+            if bool(names.intersection(hidden_positives)): #bool() is True if the prime node is attached to a hidden node, False if not
+                hiddenPositiveValues.append(predictions[node])
+
+            elif bool(names.intersection(hidden_negatives)):
+                hiddenNegativeValues.append(predictions[node])
+
+            else: #if it's not a hidden node, check if it's unlabeled
+                if bool(names.intersection(test_positives)):
+                    positive_count += 1
+                    continue ## I think just check this one.
+                elif bool(names.intersection(test_negatives)):
+                    negative_count += 1
+                    continue
+                else:
+                    unlabeled_count += 1
+                    unlabeledValues.append(predictions[node])
+
+
+
+    print('Negative gene count: ', negative_count)
+    print('Positive gene count: ', positive_count)
+    print('# hidden positive genes: ', len(hiddenPositiveValues))
+    print('# hidden negative genes: ', len(hiddenNegativeValues))
+    print('# unlabeled genes: ', unlabeled_count)
+
+    ## TODO suggestion: sys.exit() with an error if these numbesr aren't what we expect.  
+
+    U, p=stats.mannwhitneyu(hiddenPositiveValues, hiddenNegativeValues, alternative="two-sided")
+    AUC=U/(len(hiddenPositiveValues)*len(hiddenNegativeValues))
+
+    #print(AUC)
+    return AUC
+
 
 
 
