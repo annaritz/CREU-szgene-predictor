@@ -117,39 +117,149 @@ def curatedFileReader(filename,graph,verbose):
 
 
 
+
+def curatedEvidenceFileReader(filename,graph,verbose):
+    #Issue: The multi graph is made so none of the original positives/negatives are in the graph 
+    #Figure out a way to make the single graph, then make a multi graph and use that one instead
+    #Note: Graph.nodes() is a list of all the nodes
+    nodes = graph.nodes()
+    tot = 0 #keeps track of number of nodes from curated set
+    count = 0 #keeps track of number of nodes actually in the graph 
+    curated = set()
+    evidence_tracker={}
+    with open(filename,'r') as fin:
+        for line in fin:
+            line=line.strip().split('\t')
+            entrezNumber=line[0]
+            evidence_level=int(line[1][1])
+            evidence_tracker[entrezNumber]=evidence_level
+            tot+=1
+            if entrezNumber in nodes:
+                count+=1
+                curated.add(entrezNumber)
+            else:
+                if verbose:
+                    print('WARNING: EntrezID %s is not in graph.' % (entrezNumber))
+
+    print('%d of %d nodes are in graph from file %s' % (count,tot,filename))
+    return curated, evidence_tracker
+
+
+
+
 # The curated file has already been read and is taken as input here as a set 
 # read_edge_file has already created multiple layers, this checks if the nodes are in the graph 
 # partitions the positives/negatives and returns that set
 def partitionCurated(original_curated,graph,verbose,layers):
     #Note: Graph.nodes() is a list of all the nodes
     nodes = graph.nodes()
-    curated = set()
+    #curated = set()
 
-    print('Partitioning curated set...')
+    #print('Partitioning curated set...')
 
-    partitions = [] #List of lists containing original curated nodes - len(partitions) = layers
+    #partitions = [] #List of lists containing original curated nodes - len(partitions) = layers
 
-    i = layers
+    #i = layers
 
     #This while loop partitions the original curated set into (roughly) equal groups
     #The number of groups = number of layers 
-    while i > 1:
-        group = random.sample(original_curated, len(original_curated)//i)
-        partitions.append(group)
-        group = set(group) #converts to a set to easily get the difference 
-        original_curated = original_curated.difference(group) #removes the randomly selected group from the original curated
+    #while i > 1:
+    #    group = random.sample(original_curated, len(original_curated)//i)
+    #    partitions.append(group)
+    #    group = set(group) #converts to a set to easily get the difference 
+    #    original_curated = original_curated.difference(group) #removes the randomly selected group from the original curated
         #to ensure that no node is selected twice
-        i -= 1
-    partitions.append(original_curated)
+    #    i -= 1
+    #partitions.append(original_curated)
 
     #Each group in the partitions list will all be in one layer
-    for layer in range(layers):
-        for node in partitions[layer]:
-            curated.add(node+'_'+str(layer))
+    #for layer in range(layers):
+    #    for node in partitions[layer]:
+    #        curated.add(node+'_'+str(layer))
 
+    curated=set()
+
+    print('Partitioning curated set...')
+
+    #I'm questioning if we need this check - 
+    #There is already a check in predict.py to make sure all original curated positives/negatives are in the graph,
+    # which is used to create the multi-layer network
+    #for entrezNumber in original_curated:
+    #    for layer in range(layers):
+    #        if entrezNumber+'_'+str(layer) in nodes:
+    #            labeled_set.add(entrezNumber)
+    #        else:
+    #            if verbose:
+    #                print('ERROR: EntrezID %s is not in graph.' % (entrezNumber))
+    #            else:
+    #                continue
+                # TODO suggestion: if this id is not in the graph - quit.
+                #sys.exit()
+
+ 
+    #We need the positives to be randomly distributed throughout the layers. If we have multiple
+    labeled_List=list(original_curated) #labeled nodes surrounding a prime node, that effectively blocks all score transmission
+
+    ## "shuffle" the list randomly. random.sample() sample without replacement. TODO: confirm & put the link. 
+    labeled_List=random.sample(labeled_List, k=len(labeled_List))
+
+    ## Go through each curated positive
+    for i in range(len(labeled_List)):
+        ##Pick a layer.  Uses integer division (e.g., layer will be 0,1,2,0,1,2,etc. for 3 layers)
+        layer=(i//(len(labeled_List)//layers))
+
+        ## Once a layer is specified, append this to the curated positive node name.
+        ## This "places" the positive in a particular layer.
+        curated.add(labeled_List[i]+'_'+str(0))
 
     #print('%d of %d nodes are in graph from file %s' % (len(labeled_set),len(curated_set),filename))
     return curated
+
+
+
+
+def partitionEvidenceCurated(original_curated,graph,verbose,layers,evidence_dictionary):
+    #Note: Graph.nodes() is a list of all the nodes
+    nodes = graph.nodes()
+    curated=set()
+    available_layers=layers-1
+
+    print('Partitioning curated set based on evidence levels...')
+
+
+    labeled_List=list(original_curated)
+    ## Go through each curated positive
+    for i in range(len(original_curated)):
+        layer_assignments=[]
+        if evidence_dictionary[labeled_List[i]]<=available_layers:
+            for j in range(layers-evidence_dictionary[labeled_List[i]]):
+                layer_assignments.append(available_layers-j)
+        else:
+            layer_assignments.append(available_layers)
+
+        for layer in layer_assignments:
+            curated.add(labeled_List[i]+'_'+str(layer))
+
+
+
+
+
+
+    # for i in range(len(original_curated)):
+    #     if evidence_dictionary[labeled_List[i]] == 1 :
+    #         layer_assignments=[1,2,3]
+    #     elif evidence_dictionary[labeled_List[i]] == 2:
+    #         layer_assignments=[2,3]
+    #     else:
+    #         layer_assignments=[3]
+    #     for layer in layer_assignments:
+    #         curated.add(labeled_List[i]+'_'+str(layer))
+
+    #print('%d of %d nodes are in graph from file %s' % (len(labeled_set),len(curated_set),filename))
+    return curated
+
+
+
 
 #Formats results as a LaTeX table
 #outfile variable is the name of the outfile, partially specified by --outprefix 
@@ -294,32 +404,31 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
     else:
         out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\tDegree\n')
     degreeList=[]
-    if layers>1:
-        nodeset = set([n for n in G.nodes() if n[-6:]=='_prime'])
-    else:
-        nodeset = G.nodes()
+
+    nodeset = set([n for n in G.nodes() if n[-6:]=='_prime'])
+
     for n in sorted(nodeset, key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
-        #print('writing out ',n)
+
+        # print('writing out ',n)
         disLabel='Unlabeled'
         procLabel='Unlabeled'
-        if layers > 1:
-            for layer in range(layers):
-                layer_n = n[:-6]+'_'+str(layer)
-                if layer_n in negatives:
-                    disLabel = 'Negative'
-                    procLabel = 'Negative'
-                if layer_n in disease_positives:
-                    disLabel='Positive'
-                if layer_n in biological_process_positives:
-                    procLabel='Positive'
-        else:
-            if n in negatives:
+        for layer in range(layers):
+            layer_n = n[:-6]+'_'+str(layer)
+            if layer_n in negatives:
                 disLabel = 'Negative'
                 procLabel = 'Negative'
-            if n in disease_positives:
+            if layer_n in disease_positives:
                 disLabel='Positive'
-            if n in biological_process_positives:
+            if layer_n in biological_process_positives:
                 procLabel='Positive'
+        # else:
+        #     if n in negatives:
+        #         disLabel = 'Negative'
+        #         procLabel = 'Negative'
+        #     if n in disease_positives:
+        #         disLabel='Positive'
+        #     if n in biological_process_positives:
+        #         procLabel='Positive'
         final_score = d_predictions[n]*b_predictions[n]
         if n in blacklist: ## "blacklist" means it was both a pos and a neg...it's now unlabeled. Mark it if it had this
             bl = 'YES'
@@ -331,12 +440,12 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
         #        degreeList.append(G.degree(n[:-6]+'0'))
         #else:
         #    out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n,genemap.get(n,n),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n)))
-        if layers > 1:
-            name = n[:-6]
-            deg = G.degree(name+'_0')-1
-        else:
-            name = n
-            deg = G.degree(n)
+        # if layers > 1:
+        name = n[:-6]
+        deg = G.degree(name+'_0')-1
+        # else:
+        #     name = n
+        #     deg = G.degree(n)
         if union_predictions:
             out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%f\t%s\t%s\n' % (name,genemap.get(name,name),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,union_predictions[n],bl, deg))
         else:
@@ -348,7 +457,7 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
 
 # Output results for multi-layer method
 # Called once each for CM and SZ
-def writeResultsMulti(statsfile,outprefix,outfile,times,changes,predictions,genemap,G,layers,pos,neg,sinksource_constant,name,sinksource_method):
+def writeResults(statsfile,outprefix,outfile,times,changes,predictions,genemap,G,layers,pos,neg,sinksource_constant,name,sinksource_method):
     #### TODO -- if ever plotting the scores (instead of the ranks), consider the normed=False option above
     ### and normalize predictions so the max is 1.0.
 
@@ -524,6 +633,7 @@ def writeResultsSingle(statsfile,outprefix,outfile,times,changes,predictions,gen
     out.write('#EntrezID\tName\tScore\n')
     #predictions dictionary keys (nodes) are sorted by score from highest to lowest - this list is iterated through
     for n in sorted(predictions, key=lambda x:predictions[x], reverse=True):
+        print(n)
         out.write('%s\t%s\t%f\t%s\n' % (n,genemap.get(n,n),predictions[n], G.degree(n)))
         degreeList.append(G.degree(n))
         if n in pos:
