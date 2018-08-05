@@ -5,9 +5,9 @@ import scipy.stats as stats
 
 #SET USE_SD=False to get Error is IRQ, not standard deviation
 USE_SD=True
-
+OUTFILE_DIR = '../outfiles/'
 def main():
-    
+    print('Generating Results from Directory %s' % (OUTFILE_DIR))
     figure_1()
     figure_2()
     figure_3_full()
@@ -41,44 +41,44 @@ def IQR(dist):
 
 def figure_1():
     
-    zero_file='../outfiles/SZ_1-layer_0-sinksource_auc.txt'
+    zero_file=OUTFILE_DIR+'SZ_1-layer_0-sinksource_auc.txt'
     SZ_zero, CM_SZ_zero = file_parser(zero_file)
 
-    point_zero_one_file='../outfiles/SZ_1-layer_0.01-sinksource_auc.txt'
+    point_zero_one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_auc.txt'
     SZ_pt_zero_one, CM_SZ_pt_zero_one = file_parser(point_zero_one_file)
 
-    point_one_file='../outfiles/SZ_1-layer_0.1-sinksource_auc.txt'
+    point_one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_auc.txt'
     SZ_pt_one, CM_SZ_pt_one = file_parser(point_one_file)
 
-    one_file='../outfiles/SZ_1-layer_1-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'SZ_1-layer_1-sinksource_auc.txt'
     SZ_one, CM_SZ_one = file_parser(one_file)
 
-    ten_file='../outfiles/SZ_1-layer_10-sinksource_auc.txt'
+    ten_file=OUTFILE_DIR+'SZ_1-layer_10-sinksource_auc.txt'
     SZ_ten, CM_SZ_ten = file_parser(ten_file)
 
-    fifty_file='../outfiles/SZ_1-layer_50-sinksource_auc.txt'
+    fifty_file=OUTFILE_DIR+'SZ_1-layer_50-sinksource_auc.txt'
     SZ_fifty, CM_SZ_fifty = file_parser(fifty_file)
 
     SZ_data = [SZ_zero, SZ_pt_zero_one, SZ_pt_one, SZ_one, SZ_ten, SZ_fifty]
     CM_SZ_data = [CM_SZ_zero, CM_SZ_pt_zero_one, CM_SZ_pt_one,CM_SZ_one, CM_SZ_ten, CM_SZ_fifty]
 
 
-    zero_file='../outfiles/ASD_1-layer_0-sinksource_auc.txt'
+    zero_file=OUTFILE_DIR+'ASD_1-layer_0-sinksource_auc.txt'
     ASD_zero, CM_ASD_zero = file_parser(zero_file)
 
-    point_zero_one_file='../outfiles/ASD_1-layer_0.01-sinksource_auc.txt'
+    point_zero_one_file=OUTFILE_DIR+'ASD_1-layer_0.01-sinksource_auc.txt'
     ASD_pt_zero_one, CM_ASD_pt_zero_one = file_parser(point_zero_one_file)
 
-    point_one_file='../outfiles/ASD_1-layer_0.1-sinksource_auc.txt'
+    point_one_file=OUTFILE_DIR+'ASD_1-layer_0.1-sinksource_auc.txt'
     ASD_pt_one, CM_ASD_pt_one = file_parser(point_one_file)
 
-    one_file='../outfiles/ASD_1-layer_1-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'ASD_1-layer_1-sinksource_auc.txt'
     ASD_one, CM_ASD_one = file_parser(one_file)
 
-    ten_file='../outfiles/ASD_1-layer_10-sinksource_auc.txt'
+    ten_file=OUTFILE_DIR+'ASD_1-layer_10-sinksource_auc.txt'
     ASD_ten, CM_ASD_ten = file_parser(ten_file)
 
-    fifty_file='../outfiles/ASD_1-layer_50-sinksource_auc.txt'
+    fifty_file=OUTFILE_DIR+'ASD_1-layer_50-sinksource_auc.txt'
     ASD_fifty, CM_ASD_fifty = file_parser(fifty_file)
 
     ASD_data = [ASD_zero, ASD_pt_zero_one, ASD_pt_one, ASD_one, ASD_ten, ASD_fifty]
@@ -86,7 +86,7 @@ def figure_1():
 
 
     all_Data=[SZ_data, CM_SZ_data, ASD_data, CM_ASD_data]
-    with open('../outfiles/sinksource+_constant_statistical_tests.txt', 'w') as out:
+    with open(OUTFILE_DIR+'sinksource+_constant_statistical_tests.txt', 'w') as out:
 
         f_value, p_value = stats.f_oneway(SZ_zero, SZ_pt_zero_one, SZ_pt_one, SZ_one, SZ_ten, SZ_fifty)
         out.write('Schizophrenia\t'+str(p_value)+'\n')
@@ -100,39 +100,75 @@ def figure_1():
         f_value, p_value = stats.f_oneway(CM_ASD_zero, CM_ASD_pt_zero_one, CM_ASD_pt_one,CM_ASD_one, CM_ASD_ten, CM_ASD_fifty)
         out.write('Cell Motility-ASD\t'+str(p_value)+'\n')
 
-    fig1, (ax1, ax2,ax3,ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
+    ## Anna added 2-way ANOVA to see if lambda produces different means.
+    '''
+        out.write('Two-way ANOVA\n')
+        organized_data_1=[SZ_neg_data, CM_SZ_neg_data, ASD_neg_data, CM_ASD_neg_data]
+        organized_data_2=[SZ_no_neg_data, CM_SZ_no_neg_data, ASD_no_neg_data, CM_ASD_no_neg_data]
+        
 
-    bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6,8,10,12], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
+        for i in range(len(organized_data_1)):
+            if i == 0:
+                out.write('Schizophrenia\t')
+            if i == 1:
+                out.write('Cell Motility-SZ\t')
+            if i == 2:
+                out.write('ASD\t')
+            if i == 3:
+                out.write('Cell Motility-ASD\t')
+        
+            out.write('\tssq\tdf\tF\tPR(>F)\n')
+
+            two_way_ANOVA_results=two_way_ANOVA(organized_data_1[i], organized_data_2[i])
+            for j in range(len(two_way_ANOVA_results)):
+                if j == 0:
+                    name = 'Including Negatives\t'
+                elif j == 1:
+                    name = 'sinksource constant\t'
+                else:
+                    name = 'Interaction\t'
+                for k in range(len(two_way_ANOVA_results[j])):
+                    name=name+str(two_way_ANOVA_results[j][k])+'\t'
+                name=name+'\n'
+                out.write(name)
+            out.write('\n')
+    '''
+    ##TODO: change to t-test!!!
+
+    #fig1, (ax1,ax2,ax3,ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
+    fig1, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, sharey=True, figsize=(8,6))
+
+    bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6,8,10,12], widths=1.3, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax1.set_xlim(0,14)
+    ax1.set_ylim(0.5,0.9)
     ax1.set_ylabel('AUC')
-    ax1.set_title('Schizophrenia', fontsize=8)
+    ax1.set_title('SZ')
     
 
-
-    bp3 = ax2.boxplot(CM_SZ_data, notch=True, positions=[2,4,6,8,10,12], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
+    bp3 = ax2.boxplot(CM_SZ_data, notch=True, positions=[2,4,6,8,10,12], widths=1.3, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
     ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax2.set_xlim(0,14)
-    ax2.set_title('Cell Motility-Schizophrenia', fontsize=8)
+    ax2.set_title('Cell Motility-SZ')
 
 
-
-    bp5 = ax3.boxplot(ASD_data, notch=True, positions=[2,4,6,8,10,12], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
+    bp5 = ax3.boxplot(ASD_data, notch=True, positions=[2,4,6,8,10,12], widths=1.3, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
     ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax3.set_xlim(0,14)
     ax3.set_ylabel('AUC')
-    ax3.set_title('ASD', fontsize=8)
+    ax3.set_xlabel('$\lambda$')
+    ax3.set_title('ASD')
     
 
-
-    bp7 = ax4.boxplot(CM_ASD_data, notch=True, positions=[2,4,6,8,10,12], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
+    bp7 = ax4.boxplot(CM_ASD_data, notch=True, positions=[2,4,6,8,10,12], widths=1.3, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
     ax4.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax4.set_xlim(0,14)
-    ax4.set_title('Cell Motility-ASD', fontsize=8)
+    ax4.set_title('Cell Motility-ASD')
+    ax4.set_xlabel('$\lambda$')
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'compare_lambda.png')
 
-    plt.savefig('../outfiles/compare_lambda.png')
-
-    print('Created ../outfiles/compare_lambda.png')
+    print('Created '+OUTFILE_DIR+'compare_lambda.png')
     
     return
 
@@ -140,80 +176,80 @@ def figure_1():
 def figure_2():
     
     #Get negative data
-    zero_file='../outfiles/SZ_1-layer_0-sinksource_auc.txt'
+    zero_file=OUTFILE_DIR+'SZ_1-layer_0-sinksource_auc.txt'
     SZ_zero, CM_SZ_zero = file_parser(zero_file)
 
-    point_zero_one_file='../outfiles/SZ_1-layer_0.01-sinksource_auc.txt'
+    point_zero_one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_auc.txt'
     SZ_pt_zo, CM_SZ_pt_zo = file_parser(point_zero_one_file)
 
-    point_one_file='../outfiles/SZ_1-layer_0.1-sinksource_auc.txt'
+    point_one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_auc.txt'
     SZ_pt_o, CM_SZ_pt_o = file_parser(point_one_file)
 
-    one_file='../outfiles/SZ_1-layer_1-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'SZ_1-layer_1-sinksource_auc.txt'
     SZ_o, CM_SZ_o = file_parser(one_file)
 
-    ten_file='../outfiles/SZ_1-layer_10-sinksource_auc.txt'
+    ten_file=OUTFILE_DIR+'SZ_1-layer_10-sinksource_auc.txt'
     SZ_ten, CM_SZ_ten = file_parser(ten_file)
 
-    fifty_file='../outfiles/SZ_1-layer_50-sinksource_auc.txt'
+    fifty_file=OUTFILE_DIR+'SZ_1-layer_50-sinksource_auc.txt'
     SZ_fifty, CM_SZ_fifty = file_parser(fifty_file)
 
     #Get no negative data
-    no_neg_zero_file='../outfiles/SZ_1-layer_0-sinksource_no_neg_auc.txt'
+    no_neg_zero_file=OUTFILE_DIR+'SZ_1-layer_0-sinksource_no_neg_auc.txt'
     SZ_no_neg_zero, CM_SZ_no_neg_zero = file_parser(no_neg_zero_file)
 
-    no_neg_point_zero_one_file='../outfiles/SZ_1-layer_0.01-sinksource_no_neg_auc.txt'
+    no_neg_point_zero_one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_no_neg_auc.txt'
     SZ_no_neg_pt_zo, CM_SZ_no_neg_pt_zo = file_parser(no_neg_point_zero_one_file)
 
-    no_neg_point_one_file='../outfiles/SZ_1-layer_0.1-sinksource_no_neg_auc.txt'
+    no_neg_point_one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_no_neg_auc.txt'
     SZ_no_neg_pt_o, CM_SZ_no_neg_pt_o = file_parser(no_neg_point_one_file)
 
-    no_neg_one_file='../outfiles/SZ_1-layer_1-sinksource_no_neg_auc.txt'
+    no_neg_one_file=OUTFILE_DIR+'SZ_1-layer_1-sinksource_no_neg_auc.txt'
     SZ_no_neg_o, CM_SZ_no_neg_o = file_parser(no_neg_one_file)
 
-    no_neg_ten_file='../outfiles/SZ_1-layer_10-sinksource_no_neg_auc.txt'
+    no_neg_ten_file=OUTFILE_DIR+'SZ_1-layer_10-sinksource_no_neg_auc.txt'
     SZ_no_neg_ten, CM_SZ_no_neg_ten = file_parser(no_neg_ten_file)
 
-    no_neg_fifty_file='../outfiles/SZ_1-layer_50-sinksource_no_neg_auc.txt'
+    no_neg_fifty_file=OUTFILE_DIR+'SZ_1-layer_50-sinksource_no_neg_auc.txt'
     SZ_no_neg_fifty, CM_SZ_no_neg_fifty = file_parser(no_neg_fifty_file)
 
 
     #Get negative data
-    zero_file='../outfiles/ASD_1-layer_0-sinksource_auc.txt'
+    zero_file=OUTFILE_DIR+'ASD_1-layer_0-sinksource_auc.txt'
     ASD_zero, CM_ASD_zero = file_parser(zero_file)
 
-    point_zero_one_file='../outfiles/ASD_1-layer_0.01-sinksource_auc.txt'
+    point_zero_one_file=OUTFILE_DIR+'ASD_1-layer_0.01-sinksource_auc.txt'
     ASD_pt_zo, CM_ASD_pt_zo = file_parser(point_zero_one_file)
 
-    point_one_file='../outfiles/ASD_1-layer_0.1-sinksource_auc.txt'
+    point_one_file=OUTFILE_DIR+'ASD_1-layer_0.1-sinksource_auc.txt'
     ASD_pt_o, CM_ASD_pt_o = file_parser(point_one_file)
 
-    one_file='../outfiles/ASD_1-layer_1-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'ASD_1-layer_1-sinksource_auc.txt'
     ASD_o, CM_ASD_o = file_parser(one_file)
 
-    ten_file='../outfiles/ASD_1-layer_10-sinksource_auc.txt'
+    ten_file=OUTFILE_DIR+'ASD_1-layer_10-sinksource_auc.txt'
     ASD_ten, CM_ASD_ten = file_parser(ten_file)
 
-    fifty_file='../outfiles/ASD_1-layer_50-sinksource_auc.txt'
+    fifty_file=OUTFILE_DIR+'ASD_1-layer_50-sinksource_auc.txt'
     ASD_fifty, CM_ASD_fifty = file_parser(fifty_file)
 
     #Get no negative data
-    no_neg_zero_file='../outfiles/ASD_1-layer_0-sinksource_no_neg_auc.txt'
+    no_neg_zero_file=OUTFILE_DIR+'ASD_1-layer_0-sinksource_no_neg_auc.txt'
     ASD_no_neg_zero, CM_ASD_no_neg_zero = file_parser(no_neg_zero_file)
 
-    no_neg_point_zero_one_file='../outfiles/ASD_1-layer_0.01-sinksource_no_neg_auc.txt'
+    no_neg_point_zero_one_file=OUTFILE_DIR+'ASD_1-layer_0.01-sinksource_no_neg_auc.txt'
     ASD_no_neg_pt_zo, CM_ASD_no_neg_pt_zo = file_parser(no_neg_point_zero_one_file)
 
-    no_neg_point_one_file='../outfiles/ASD_1-layer_0.1-sinksource_no_neg_auc.txt'
+    no_neg_point_one_file=OUTFILE_DIR+'ASD_1-layer_0.1-sinksource_no_neg_auc.txt'
     ASD_no_neg_pt_o, CM_ASD_no_neg_pt_o = file_parser(no_neg_point_one_file)
 
-    no_neg_one_file='../outfiles/ASD_1-layer_1-sinksource_no_neg_auc.txt'
+    no_neg_one_file=OUTFILE_DIR+'ASD_1-layer_1-sinksource_no_neg_auc.txt'
     ASD_no_neg_o, CM_ASD_no_neg_o = file_parser(no_neg_one_file)
 
-    no_neg_ten_file='../outfiles/ASD_1-layer_10-sinksource_no_neg_auc.txt'
+    no_neg_ten_file=OUTFILE_DIR+'ASD_1-layer_10-sinksource_no_neg_auc.txt'
     ASD_no_neg_ten, CM_ASD_no_neg_ten = file_parser(no_neg_ten_file)
 
-    no_neg_fifty_file='../outfiles/ASD_1-layer_50-sinksource_no_neg_auc.txt'
+    no_neg_fifty_file=OUTFILE_DIR+'ASD_1-layer_50-sinksource_no_neg_auc.txt'
     ASD_no_neg_fifty, CM_ASD_no_neg_fifty = file_parser(no_neg_fifty_file)
 
     #For each lambda value, generate three p-values: SZ neg vs no neg, ASD neg vs no neg, CM_SZ neg vs no neg
@@ -259,7 +295,7 @@ def figure_2():
     CM_ASD_neg_data = [CM_ASD_zero, CM_ASD_pt_zo, CM_ASD_pt_o, CM_ASD_o, CM_ASD_ten, CM_ASD_fifty]
     CM_ASD_no_neg_data = [CM_ASD_no_neg_zero, CM_ASD_no_neg_pt_zo, CM_ASD_no_neg_pt_o, CM_ASD_no_neg_o, CM_ASD_no_neg_ten, CM_ASD_no_neg_fifty]
 
-    with open('../outfiles/Neg_vs_NoNeg_statistical_tests.txt', 'w') as out:
+    with open(OUTFILE_DIR+'Neg_vs_NoNeg_statistical_tests.txt', 'w') as out:
         #first iterate through each constant, then iterate through each positive set for that constant to get the list of AUCs
         out.write('T-Tests\n')
         for i in range(len(neg_lists)): #the two data set lists are always the same length 
@@ -326,41 +362,47 @@ def figure_2():
     
 
 
-    fig2, (ax1, ax2, ax3, ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
+    #fig2, (ax1, ax2, ax3, ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
+    fig2, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, sharey=True, figsize=(8,6))
     
-    bp1 = ax1.boxplot(SZ_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp2 = ax1.boxplot(SZ_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','1','10','50'])
+    bp1 = ax1.boxplot(SZ_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', \
+        patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp2 = ax1.boxplot(SZ_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', \
+        patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax1.set_xlim(0,32)
+    ax1.set_ylim(0.5,0.9)
     ax1.set_ylabel('AUC')
-    ax1.set_title('Schizophrenia', fontsize=8)
-    ax1.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='upper left', fontsize='x-small')
+    ax1.set_title('SZ')
+    ax1.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize='x-small')
     
 
-    bp3 = ax2.boxplot(CM_SZ_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp4 = ax2.boxplot(CM_SZ_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','1','10','50'])
+    bp3 = ax2.boxplot(CM_SZ_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp4 = ax2.boxplot(CM_SZ_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
     ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax2.set_xlim(0,32)
     ax2.set_xlabel('$\lambda$')
-    ax2.set_title('Cell Motility-Schizophrenia', fontsize=8)
+    ax2.set_title('Cell Motility-SZ')
 
-
-    bp5 = ax3.boxplot(ASD_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp6 = ax3.boxplot(ASD_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','1','10','50'])
+    bp5 = ax3.boxplot(ASD_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp6 = ax3.boxplot(ASD_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
     ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax3.set_xlim(0,32)
-    ax3.set_title('ASD', fontsize=8)
+    ax3.set_ylabel('AUC')
+    ax3.set_xlabel('$\lambda$')
+    ax3.set_title('ASD')
 
-    bp7 = ax4.boxplot(CM_ASD_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp7 = ax4.boxplot(CM_ASD_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','1','10','50'])
+    bp7 = ax4.boxplot(CM_ASD_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp7 = ax4.boxplot(CM_ASD_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
     ax4.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax4.set_xlim(0,32)
-    ax4.set_title('CM-ASD', fontsize=8)
+    ax4.set_xlabel('$\lambda$')
+    ax4.set_title('Cell Motility-ASD')
 
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'compare_neg_noneg.png')
 
-    plt.savefig('../outfiles/compare_neg_noneg.png')
-
-    print('Created ../outfiles/compare_neg_noneg.png')
+    print('Created '+OUTFILE_DIR+'compare_neg_noneg.png')
 
     return
     
@@ -368,16 +410,16 @@ def figure_2():
 
 def figure_3():
 
-    one_file='../outfiles/SZ_1-layer_0.01-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_auc.txt'
     SZ_first_one, ASD_first_one, CM_first_one = file_parser(one_file)
 
-    one_file='../outfiles/SZ_1-layer_0.1-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_auc.txt'
     SZ_other_one, ASD_other_one, CM_other_one = file_parser(one_file)
 
-    two_file='../outfiles/SZ_2-layer_10-sinksource_auc.txt'
+    two_file=OUTFILE_DIR+'SZ_2-layer_10-sinksource_auc.txt'
     SZ_two, ASD_two, CM_two = file_parser(two_file)
 
-    three_file='../outfiles/SZ_3-layer_10-sinksource_auc.txt'
+    three_file=OUTFILE_DIR+'SZ_3-layer_10-sinksource_auc.txt'
     SZ_three, ASD_three, CM_three = file_parser(three_file)
 
     #Compare 2 layer to 1 layer and 3 layer for each positive set
@@ -389,7 +431,7 @@ def figure_3():
 
     Mann_test_lists = [SZ_sets, ASD_sets, CM_sets]
 
-    with open('../outfiles/MWU_PVALUES_123layers.txt', 'w') as out:
+    with open(OUTFILE_DIR+'MWU_PVALUES_123layers.txt', 'w') as out:
         for i in range(len(Mann_test_lists)):
             if i == 0:
                 out.write('Schizophrenia\t')
@@ -412,28 +454,31 @@ def figure_3():
 
     fig3, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True, figsize=(7,4))
 
-    bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
+    bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6], widths=1.5, sym='', \
+        patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax1.set_xlim(0,8)
     ax1.set_ylabel('AUC')
     ax1.set_title('Schizophrenia')
     
 
-    bp3 = ax2.boxplot(ASD_data, notch=True, positions=[2,4,6], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
+    bp3 = ax2.boxplot(ASD_data, notch=True, positions=[2,4,6], widths=1.5, sym='', \
+        patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
     ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax2.set_xlim(0,8)
     ax2.set_xlabel('Layers')
     ax2.set_title('ASD')
 
 
-    bp5 = ax3.boxplot(CM_data, notch=True, positions=[2,4,6], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
+    bp5 = ax3.boxplot(CM_data, notch=True, positions=[2,4,6], widths=1.5, sym='', \
+        patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
     ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax3.set_xlim(0,8)
     ax3.set_title('Cell Motility')
 
-    plt.savefig('../outfiles/comparing_layers.png')
+    plt.savefig(OUTFILE_DIR+'comparing_layers.png')
 
-    print('Created ../outfiles/comparing_layers.png')
+    print('Created '+OUTFILE_DIR+'comparing_layers.png')
 
 
     return
@@ -441,22 +486,22 @@ def figure_3():
 
 def figure_3_full():
 
-    zero_file='../outfiles/SZ_1-layer_0-sinksource_auc.txt'
+    zero_file=OUTFILE_DIR+'SZ_1-layer_0-sinksource_auc.txt'
     SZ_zero, CM_SZ_zero = file_parser(zero_file)
 
-    point_zero_one_file='../outfiles/SZ_1-layer_0.01-sinksource_auc.txt'
+    point_zero_one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_auc.txt'
     SZ_pt_zo, CM_SZ_pt_zo = file_parser(point_zero_one_file)
 
-    point_one_file='../outfiles/SZ_1-layer_0.1-sinksource_auc.txt'
+    point_one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_auc.txt'
     SZ_pt_o, CM_SZ_pt_o = file_parser(point_one_file)
 
-    one_file='../outfiles/SZ_1-layer_1-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'SZ_1-layer_1-sinksource_auc.txt'
     SZ_o, CM_SZ_o = file_parser(one_file)
 
-    ten_file='../outfiles/SZ_1-layer_10-sinksource_auc.txt'
+    ten_file=OUTFILE_DIR+'SZ_1-layer_10-sinksource_auc.txt'
     SZ_ten, CM_SZ_ten = file_parser(ten_file)
 
-    fifty_file='../outfiles/SZ_1-layer_50-sinksource_auc.txt'
+    fifty_file=OUTFILE_DIR+'SZ_1-layer_50-sinksource_auc.txt'
     SZ_fifty, CM_SZ_fifty = file_parser(fifty_file)
 
     SZ_1_data = [SZ_zero, SZ_pt_zo, SZ_pt_o, SZ_o,SZ_ten, SZ_fifty]
@@ -464,44 +509,44 @@ def figure_3_full():
 
 
     #Get negative data
-    zero_file='../outfiles/SZ_2-layer_0-sinksource_auc.txt'
+    zero_file=OUTFILE_DIR+'SZ_2-layer_0-sinksource_auc.txt'
     SZ_zero_2, CM_SZ_zero_2 = file_parser(zero_file)
 
-    point_zero_one_file='../outfiles/SZ_2-layer_0.01-sinksource_auc.txt'
+    point_zero_one_file=OUTFILE_DIR+'SZ_2-layer_0.01-sinksource_auc.txt'
     SZ_pt_zo_2, CM_SZ_pt_zo_2 = file_parser(point_zero_one_file)
 
-    point_one_file='../outfiles/SZ_2-layer_0.1-sinksource_auc.txt'
+    point_one_file=OUTFILE_DIR+'SZ_2-layer_0.1-sinksource_auc.txt'
     SZ_pt_o_2, CM_SZ_pt_o_2 = file_parser(point_one_file)
 
-    one_file='../outfiles/SZ_2-layer_1-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'SZ_2-layer_1-sinksource_auc.txt'
     SZ_o_2, CM_SZ_o_2 = file_parser(one_file)
 
-    ten_file='../outfiles/SZ_2-layer_10-sinksource_auc.txt'
+    ten_file=OUTFILE_DIR+'SZ_2-layer_10-sinksource_auc.txt'
     SZ_ten_2, CM_SZ_ten_2 = file_parser(ten_file)
 
-    fifty_file='../outfiles/SZ_2-layer_50-sinksource_auc.txt'
+    fifty_file=OUTFILE_DIR+'SZ_2-layer_50-sinksource_auc.txt'
     SZ_fifty_2, CM_SZ_fifty_2 = file_parser(fifty_file)
 
     SZ_2_data = [SZ_zero_2, SZ_pt_zo_2, SZ_pt_o_2, SZ_o_2, SZ_ten_2, SZ_fifty_2]
     CM_SZ_2_data = [CM_SZ_zero_2, CM_SZ_pt_zo_2, CM_SZ_pt_o_2,CM_SZ_o_2, CM_SZ_ten_2, CM_SZ_fifty_2]
 
 
-    zero_file='../outfiles/SZ_3-layer_0-sinksource_auc.txt'
+    zero_file=OUTFILE_DIR+'SZ_3-layer_0-sinksource_auc.txt'
     SZ_zero_3, CM_SZ_zero_3 = file_parser(zero_file)
 
-    point_zero_one_file='../outfiles/SZ_3-layer_0.01-sinksource_auc.txt'
+    point_zero_one_file=OUTFILE_DIR+'SZ_3-layer_0.01-sinksource_auc.txt'
     SZ_pt_zo_3, CM_SZ_pt_zo_3 = file_parser(point_zero_one_file)
 
-    point_one_file='../outfiles/SZ_3-layer_0.1-sinksource_auc.txt'
+    point_one_file=OUTFILE_DIR+'SZ_3-layer_0.1-sinksource_auc.txt'
     SZ_pt_o_3, CM_SZ_pt_o_3 = file_parser(point_one_file)
 
-    one_file='../outfiles/SZ_3-layer_1-sinksource_auc.txt'
+    one_file=OUTFILE_DIR+'SZ_3-layer_1-sinksource_auc.txt'
     SZ_o_3, CM_SZ_o_3 = file_parser(one_file)
 
-    ten_file='../outfiles/SZ_3-layer_10-sinksource_auc.txt'
+    ten_file=OUTFILE_DIR+'SZ_3-layer_10-sinksource_auc.txt'
     SZ_ten_3, CM_SZ_ten_3 = file_parser(ten_file)
 
-    fifty_file='../outfiles/SZ_3-layer_50-sinksource_auc.txt'
+    fifty_file=OUTFILE_DIR+'SZ_3-layer_50-sinksource_auc.txt'
     SZ_fifty_3, CM_SZ_fifty_3 = file_parser(fifty_file)
 
     SZ_3_data = [SZ_zero_3, SZ_pt_zo_3, SZ_pt_o_3, SZ_o_3, SZ_ten_3, SZ_fifty_3]
@@ -577,13 +622,6 @@ def figure_3_full():
     ASD_3_data = [ASD_zero_3, ASD_pt_zo_3, ASD_pt_o_3, ASD_o_3, ASD_ten_3, ASD_fifty_3]
     CM_ASD_3_data = [CM_ASD_zero_3, CM_ASD_pt_zo_3, CM_ASD_pt_o_3,CM_ASD_o_3, CM_ASD_ten_3, CM_ASD_fifty_3]
 
-
-
-
-
-
-
-
     #Compare 2 layer to 1 layer and 3 layer for each positive set
     #Create lists for each positive set of what data to compare [2 layer AUCs, 1 layer, 3 layer]
 
@@ -592,15 +630,9 @@ def figure_3_full():
     two_list = [SZ_2_data, CM_SZ_2_data, ASD_2_data, CM_ASD_2_data]
     three_list = [SZ_3_data, CM_SZ_3_data, ASD_3_data, CM_ASD_3_data]
 
-
-
-
-
-
-
     # Mann_test_lists = [SZ_sets, ASD_sets, CM_sets]
 
-    # with open('../outfiles/MWU_PVALUES_123layers.txt', 'w') as out:
+    # with open(OUTFILE_DIR+'MWU_PVALUES_123layers.txt', 'w') as out:
     #     for i in range(len(Mann_test_lists)):
     #         if i == 0:
     #             out.write('Schizophrenia\t')
@@ -617,7 +649,7 @@ def figure_3_full():
     #         out.write(str(p3) + '\n') 
     #         out.write('\n')
 
-    with open('../outfiles/Layers_statistical_tests.txt', 'w') as out:
+    with open(OUTFILE_DIR+'Layers_statistical_tests.txt', 'w') as out:
         #first iterate through each constant, then iterate through each positive set for that constant to get the list of AUCs
         out.write('T-Tests\n')
 
@@ -693,42 +725,57 @@ def figure_3_full():
     # ASD_data = [ASD_other_one, ASD_two, ASD_three]
     
 
-    fig3, (ax1, ax2, ax3, ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
+    #fig3, (ax1, ax2, ax3, ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
+    fig3, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, sharey=True, figsize=(8,6))
 
-    bp1 = ax1.boxplot(SZ_1_data, notch=True, positions=[2,9,16,23,30,37], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp3 = ax1.boxplot(SZ_3_data, notch=True, positions=[6,13,20,27,34,41], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#eeb5ff'))
-    bp2 = ax1.boxplot(SZ_2_data, notch=True, positions=[4,11,18,25,32,39], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','1','10','50'])
+    bp1 = ax1.boxplot(SZ_1_data, notch=True, positions=[2,9,16,23,30,37], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp3 = ax1.boxplot(SZ_3_data, notch=True, positions=[6,13,20,27,34,41], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
+    bp2 = ax1.boxplot(SZ_2_data, notch=True, positions=[4,11,18,25,32,39], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax1.set_xlim(0,43)
     ax1.set_ylabel('AUC')
-    ax1.set_title('Schizophrenia', fontsize=8)
-    ax1.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0]], ['1 layer', '2 layer', '3 layer'], loc='upper left', fontsize='x-small')
+    ax1.set_title('SZ')
+    ax1.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0]], ['1 layer', '2 layer', '3 layer'], loc='best', fontsize='x-small')
     
 
-    bp4 = ax2.boxplot(CM_SZ_1_data, notch=True, positions=[2,9,16,23,30,37], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp6 = ax2.boxplot(CM_SZ_3_data, notch=True, positions=[6,13,20,27,34,41], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#eeb5ff'))
-    bp5 = ax2.boxplot(CM_SZ_2_data, notch=True, positions=[4,11,18,25,32,39], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','1','10','50'])
+    bp4 = ax2.boxplot(CM_SZ_1_data, notch=True, positions=[2,9,16,23,30,37], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp6 = ax2.boxplot(CM_SZ_3_data, notch=True, positions=[6,13,20,27,34,41], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
+    bp5 = ax2.boxplot(CM_SZ_2_data, notch=True, positions=[4,11,18,25,32,39], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
     ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax2.set_xlim(0,43)
-    ax2.set_xlabel('$\lambda$')
-    ax2.set_title('Cell Motility-Schizophrenia', fontsize=8)
+    ax1.set_ylabel('AUC')
+    ax2.set_title('Cell Motility-SZ')
 
-    bp7 = ax3.boxplot(ASD_1_data, notch=True, positions=[2,9,16,23,30,37], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp9 = ax3.boxplot(ASD_3_data, notch=True, positions=[6,13,20,27,34,41], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#eeb5ff'))
-    bp8 = ax3.boxplot(ASD_2_data, notch=True, positions=[4,11,18,25,32,39], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','1','10','50'])
+    bp7 = ax3.boxplot(ASD_1_data, notch=True, positions=[2,9,16,23,30,37], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp9 = ax3.boxplot(ASD_3_data, notch=True, positions=[6,13,20,27,34,41], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
+    bp8 = ax3.boxplot(ASD_2_data, notch=True, positions=[4,11,18,25,32,39], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), \
+        labels=['0','0.01','0.1','1','10','50'])
     ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax3.set_xlim(0,43)
-    ax3.set_title('ASD', fontsize=8)
+    ax2.set_xlabel('$\lambda$')
+    ax3.set_title('ASD')
     
 
-    bp10 = ax4.boxplot(CM_ASD_1_data, notch=True, positions=[2,9,16,23,30,37], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp12 = ax4.boxplot(CM_ASD_3_data, notch=True, positions=[6,13,20,27,34,41], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#eeb5ff'))
-    bp11 = ax4.boxplot(CM_ASD_2_data, notch=True, positions=[4,11,18,25,32,39], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#b0f2c2'), labels=['0','0.01','0.1','1','10','50'])
+    bp10 = ax4.boxplot(CM_ASD_1_data, notch=True, positions=[2,9,16,23,30,37], \
+            widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+    bp12 = ax4.boxplot(CM_ASD_3_data, notch=True, positions=[6,13,20,27,34,41], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
+    bp11 = ax4.boxplot(CM_ASD_2_data, notch=True, positions=[4,11,18,25,32,39], \
+        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
 
     ax4.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
     ax4.set_xlim(0,43)
     ax4.set_xlabel('$\lambda$')
-    ax4.set_title('Cell Motility-ASD', fontsize=8)
+    ax4.set_title('Cell Motility-ASD')
 
 
 
@@ -737,7 +784,8 @@ def figure_3_full():
     # ax3.set_xlim(0,8)
     # ax3.set_title('Cell Motility')
 
-    plt.savefig('../outfiles/comparing_layers.png')
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'comparing_layers.png')
 
     print('Created ../outfiles/comparing_layers.png')
 
