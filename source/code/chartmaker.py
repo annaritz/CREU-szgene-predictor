@@ -1,16 +1,66 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats 
-
+import sys
 
 #SET USE_SD=False to get Error is IRQ, not standard deviation
 USE_SD=True
 OUTFILE_DIR = '../outfiles/'
+LAMBDAS = ['0','0.01','0.1','1','10','50']
+LAYERS = [1,2,3]
+EXPERIMENTS = ['SZ','CM_SZ','ASD','CM_ASD'] 
+NAMES = {'SZ':'Schizophrenia (SZ)',
+        'CM_SZ': 'Cell Motility-SZ',
+        'ASD':'Autism (ASD)',
+        'CM_ASD':'Cell Motility-ASD'}
+
 def main():
     print('Generating Results from Directory %s' % (OUTFILE_DIR))
-    figure_1()
-    figure_2()
-    figure_3_full()
+
+    ## READ DATA
+    data = {}
+    for disease in EXPERIMENTS:
+        data[disease] = {l:[] for l in LAYERS}
+        data[disease+'_no_neg'] = {l:[] for l in LAYERS}
+
+    for layer in LAYERS:
+        for l in LAMBDAS:
+            infile=OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_auc.txt' % (layer,l)
+            disease,process = file_parser(infile)
+            data['SZ'][layer].append(disease)
+            data['CM_SZ'][layer].append(process)
+
+            infile=OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_auc.txt' % (layer,l)
+            disease,process = file_parser(infile)
+            data['ASD'][layer].append(disease)
+            data['CM_ASD'][layer].append(process)
+
+            if layer == 1:
+                infile=OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l)
+                disease,process = file_parser(infile)
+                data['SZ_no_neg'][layer].append(disease)
+                data['CM_SZ_no_neg'][layer].append(process)
+
+                infile=OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l)
+                disease,process = file_parser(infile)
+                data['ASD_no_neg'][layer].append(disease)
+                data['CM_ASD_no_neg'][layer].append(process)
+    probplot(data)
+    figure_1(data)
+    figure_2(data)
+    figure_3_full(data)
+
+    ## get best inds
+    best_lambda_inds = {} #indices of highest-average lambda values for each experiment.
+    for name in EXPERIMENTS:
+        best_lambda_inds[name] = {}
+        for layer in LAYERS:
+            to_check = [mean(data[name][layer][i]) for i in range(len(LAMBDAS))]
+            for i in range(len(LAMBDAS)):
+                if i == 0 or mean(data[name][layer][best_lambda_inds[name][layer]]) < to_check[i]:
+                    best_lambda_inds[name][layer] = i
+
+    figure_3(data,best_lambda_inds)
     
     return
 
@@ -25,7 +75,6 @@ def file_parser(auc_file):
         if x>0:
             line=line.strip('\n').split('\t')
             SZ.append(float(line[0].strip('\''))) #SZ AUCs are always in first column
-
             CM.append(float(line[1].strip('\''))) #CM AUCs always in third column
         x+=1
 
@@ -38,133 +87,71 @@ def file_parser(auc_file):
 def IQR(dist):
     return [np.percentile(dist, 75) - np.mean(dist), np.mean(dist)-np.percentile(dist, 25)]
 
+def probplot(data):
+    fig1, grid = plt.subplots(ncols=len(EXPERIMENTS), nrows=len(LAMBDAS), figsize=(12,14))
+    for i in range(len(LAMBDAS)):
+        for j in range(len(EXPERIMENTS)):
+            name = EXPERIMENTS[j]
+            stats.probplot(data[name][1][i],plot=grid[i][j])
+            grid[i][j].set_title('QQ Plot: %s $\lambda=%s$' % (name,LAMBDAS[i]))
 
-def figure_1():
-    
-    zero_file=OUTFILE_DIR+'SZ_1-layer_0-sinksource_auc.txt'
-    SZ_zero, CM_SZ_zero = file_parser(zero_file)
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'probplot.png')
+    print('Created '+OUTFILE_DIR+'probplot.png')
+    return
 
-    point_zero_one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_auc.txt'
-    SZ_pt_zero_one, CM_SZ_pt_zero_one = file_parser(point_zero_one_file)
+def figure_1(data):
 
-    point_one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_auc.txt'
-    SZ_pt_one, CM_SZ_pt_one = file_parser(point_one_file)
-
-    one_file=OUTFILE_DIR+'SZ_1-layer_1-sinksource_auc.txt'
-    SZ_one, CM_SZ_one = file_parser(one_file)
-
-    ten_file=OUTFILE_DIR+'SZ_1-layer_10-sinksource_auc.txt'
-    SZ_ten, CM_SZ_ten = file_parser(ten_file)
-
-    fifty_file=OUTFILE_DIR+'SZ_1-layer_50-sinksource_auc.txt'
-    SZ_fifty, CM_SZ_fifty = file_parser(fifty_file)
-
-    SZ_data = [SZ_zero, SZ_pt_zero_one, SZ_pt_one, SZ_one, SZ_ten, SZ_fifty]
-    CM_SZ_data = [CM_SZ_zero, CM_SZ_pt_zero_one, CM_SZ_pt_one,CM_SZ_one, CM_SZ_ten, CM_SZ_fifty]
-
-
-    zero_file=OUTFILE_DIR+'ASD_1-layer_0-sinksource_auc.txt'
-    ASD_zero, CM_ASD_zero = file_parser(zero_file)
-
-    point_zero_one_file=OUTFILE_DIR+'ASD_1-layer_0.01-sinksource_auc.txt'
-    ASD_pt_zero_one, CM_ASD_pt_zero_one = file_parser(point_zero_one_file)
-
-    point_one_file=OUTFILE_DIR+'ASD_1-layer_0.1-sinksource_auc.txt'
-    ASD_pt_one, CM_ASD_pt_one = file_parser(point_one_file)
-
-    one_file=OUTFILE_DIR+'ASD_1-layer_1-sinksource_auc.txt'
-    ASD_one, CM_ASD_one = file_parser(one_file)
-
-    ten_file=OUTFILE_DIR+'ASD_1-layer_10-sinksource_auc.txt'
-    ASD_ten, CM_ASD_ten = file_parser(ten_file)
-
-    fifty_file=OUTFILE_DIR+'ASD_1-layer_50-sinksource_auc.txt'
-    ASD_fifty, CM_ASD_fifty = file_parser(fifty_file)
-
-    ASD_data = [ASD_zero, ASD_pt_zero_one, ASD_pt_one, ASD_one, ASD_ten, ASD_fifty]
-    CM_ASD_data = [CM_ASD_zero, CM_ASD_pt_zero_one, CM_ASD_pt_one,CM_ASD_one, CM_ASD_ten, CM_ASD_fifty]
-
-
-    all_Data=[SZ_data, CM_SZ_data, ASD_data, CM_ASD_data]
     with open(OUTFILE_DIR+'sinksource+_constant_statistical_tests.txt', 'w') as out:
+        sig = {} # asterisks
+        for name in ['SZ','CM_SZ','ASD','CM_ASD']:
+            sig[name] = []
 
-        f_value, p_value = stats.f_oneway(SZ_zero, SZ_pt_zero_one, SZ_pt_one, SZ_one, SZ_ten, SZ_fifty)
-        out.write('Schizophrenia\t'+str(p_value)+'\n')
+            out.write('--- %s ---\n' % (name))
 
-        f_value, p_value = stats.f_oneway(CM_SZ_zero, CM_SZ_pt_zero_one, CM_SZ_pt_one,CM_SZ_one, CM_SZ_ten, CM_SZ_fifty)
-        out.write('Cell Motility-Schizophrenia\t'+str(p_value)+'\n')
+            ## Write Means of AUC Distribution
+            out.write('AUC Means:\n')
+            for i in range(len(LAMBDAS)):
+                avg = mean(data[name][1][i])
+                out.write('\tLambda %s: %.4f\n' % (LAMBDAS[i],avg))
 
-        f_value, p_value = stats.f_oneway(ASD_zero, ASD_pt_zero_one, ASD_pt_one, ASD_one, ASD_ten, ASD_fifty)
-        out.write('ASD\t'+str(p_value)+'\n')
-
-        f_value, p_value = stats.f_oneway(CM_ASD_zero, CM_ASD_pt_zero_one, CM_ASD_pt_one,CM_ASD_one, CM_ASD_ten, CM_ASD_fifty)
-        out.write('Cell Motility-ASD\t'+str(p_value)+'\n')
-
-    ## Anna added 2-way ANOVA to see if lambda produces different means.
-    '''
-        out.write('Two-way ANOVA\n')
-        organized_data_1=[SZ_neg_data, CM_SZ_neg_data, ASD_neg_data, CM_ASD_neg_data]
-        organized_data_2=[SZ_no_neg_data, CM_SZ_no_neg_data, ASD_no_neg_data, CM_ASD_no_neg_data]
-        
-
-        for i in range(len(organized_data_1)):
-            if i == 0:
-                out.write('Schizophrenia\t')
-            if i == 1:
-                out.write('Cell Motility-SZ\t')
-            if i == 2:
-                out.write('ASD\t')
-            if i == 3:
-                out.write('Cell Motility-ASD\t')
-        
-            out.write('\tssq\tdf\tF\tPR(>F)\n')
-
-            two_way_ANOVA_results=two_way_ANOVA(organized_data_1[i], organized_data_2[i])
-            for j in range(len(two_way_ANOVA_results)):
-                if j == 0:
-                    name = 'Including Negatives\t'
-                elif j == 1:
-                    name = 'sinksource constant\t'
-                else:
-                    name = 'Interaction\t'
-                for k in range(len(two_way_ANOVA_results[j])):
-                    name=name+str(two_way_ANOVA_results[j][k])+'\t'
-                name=name+'\n'
-                out.write(name)
+            ## 1-way ANOVA to assess means
+            f_value, p_value = stats.f_oneway(data[name][1][0], data[name][1][1], data[name][1][2], data[name][1][3], data[name][1][4], data[name][1][5])
+            out.write('1-way ANOVA\n\tf-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (f_value,p_value,p_value))
+            
+            ## Welch's t-test to assess 0 vs. a weighted lambda.
+            for i in range(1,len(LAMBDAS)):
+                t_value,p_value = stats.ttest_ind(data[name][1][0], data[name][1][i], equal_var=False)
+                if t_value < 0 and p_value/2 < 0.01:
+                    res = 'SIGNIFICANT (one-tailed, 0.01)'
+                    sig[name].append(i+1)
+                else: 
+                    res = ''
+                out.write('Welch\'s t-test 0 vs. %s: %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[i],res,t_value,p_value,p_value))
             out.write('\n')
-    '''
-    ##TODO: change to t-test!!!
+
 
     #fig1, (ax1,ax2,ax3,ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
-    fig1, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, sharey=True, figsize=(8,6))
-
-    bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6,8,10,12], widths=1.3, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
-    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax1.set_xlim(0,14)
-    ax1.set_ylim(0.5,0.9)
-    ax1.set_ylabel('AUC')
-    ax1.set_title('SZ')
+    fig1, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(8,6))
+    axes = [ax1,ax2,ax3,ax4]
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        bp = ax.boxplot(data[name][1], notch=True, widths=.7, sym='', \
+                patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+        ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+        if len(sig[name]) > 0:
+            ax.plot(sig[name],[0.88]*len(sig[name]),'*k')
+        # set title, axis limits, and labels
+        ax.set_title(NAMES[name])
+        ax.set_xticks([j+1 for j in range(len(data[name][1]))])
+        ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
+        
+        ax.set_ylim(0.5,0.9)
+        
+        ax.set_ylabel('AUC')
+        ax.set_xlabel('$\lambda$')
     
-
-    bp3 = ax2.boxplot(CM_SZ_data, notch=True, positions=[2,4,6,8,10,12], widths=1.3, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
-    ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax2.set_xlim(0,14)
-    ax2.set_title('Cell Motility-SZ')
-
-
-    bp5 = ax3.boxplot(ASD_data, notch=True, positions=[2,4,6,8,10,12], widths=1.3, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
-    ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax3.set_xlim(0,14)
-    ax3.set_ylabel('AUC')
-    ax3.set_xlabel('$\lambda$')
-    ax3.set_title('ASD')
-    
-
-    bp7 = ax4.boxplot(CM_ASD_data, notch=True, positions=[2,4,6,8,10,12], widths=1.3, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['0','0.01','0.1','1','10','50'])
-    ax4.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax4.set_xlim(0,14)
-    ax4.set_title('Cell Motility-ASD')
-    ax4.set_xlabel('$\lambda$')
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'compare_lambda.png')
 
@@ -173,163 +160,25 @@ def figure_1():
     return
 
 
-def figure_2():
+def figure_2(data):
     
-    #Get negative data
-    zero_file=OUTFILE_DIR+'SZ_1-layer_0-sinksource_auc.txt'
-    SZ_zero, CM_SZ_zero = file_parser(zero_file)
-
-    point_zero_one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_auc.txt'
-    SZ_pt_zo, CM_SZ_pt_zo = file_parser(point_zero_one_file)
-
-    point_one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_auc.txt'
-    SZ_pt_o, CM_SZ_pt_o = file_parser(point_one_file)
-
-    one_file=OUTFILE_DIR+'SZ_1-layer_1-sinksource_auc.txt'
-    SZ_o, CM_SZ_o = file_parser(one_file)
-
-    ten_file=OUTFILE_DIR+'SZ_1-layer_10-sinksource_auc.txt'
-    SZ_ten, CM_SZ_ten = file_parser(ten_file)
-
-    fifty_file=OUTFILE_DIR+'SZ_1-layer_50-sinksource_auc.txt'
-    SZ_fifty, CM_SZ_fifty = file_parser(fifty_file)
-
-    #Get no negative data
-    no_neg_zero_file=OUTFILE_DIR+'SZ_1-layer_0-sinksource_no_neg_auc.txt'
-    SZ_no_neg_zero, CM_SZ_no_neg_zero = file_parser(no_neg_zero_file)
-
-    no_neg_point_zero_one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_no_neg_auc.txt'
-    SZ_no_neg_pt_zo, CM_SZ_no_neg_pt_zo = file_parser(no_neg_point_zero_one_file)
-
-    no_neg_point_one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_no_neg_auc.txt'
-    SZ_no_neg_pt_o, CM_SZ_no_neg_pt_o = file_parser(no_neg_point_one_file)
-
-    no_neg_one_file=OUTFILE_DIR+'SZ_1-layer_1-sinksource_no_neg_auc.txt'
-    SZ_no_neg_o, CM_SZ_no_neg_o = file_parser(no_neg_one_file)
-
-    no_neg_ten_file=OUTFILE_DIR+'SZ_1-layer_10-sinksource_no_neg_auc.txt'
-    SZ_no_neg_ten, CM_SZ_no_neg_ten = file_parser(no_neg_ten_file)
-
-    no_neg_fifty_file=OUTFILE_DIR+'SZ_1-layer_50-sinksource_no_neg_auc.txt'
-    SZ_no_neg_fifty, CM_SZ_no_neg_fifty = file_parser(no_neg_fifty_file)
-
-
-    #Get negative data
-    zero_file=OUTFILE_DIR+'ASD_1-layer_0-sinksource_auc.txt'
-    ASD_zero, CM_ASD_zero = file_parser(zero_file)
-
-    point_zero_one_file=OUTFILE_DIR+'ASD_1-layer_0.01-sinksource_auc.txt'
-    ASD_pt_zo, CM_ASD_pt_zo = file_parser(point_zero_one_file)
-
-    point_one_file=OUTFILE_DIR+'ASD_1-layer_0.1-sinksource_auc.txt'
-    ASD_pt_o, CM_ASD_pt_o = file_parser(point_one_file)
-
-    one_file=OUTFILE_DIR+'ASD_1-layer_1-sinksource_auc.txt'
-    ASD_o, CM_ASD_o = file_parser(one_file)
-
-    ten_file=OUTFILE_DIR+'ASD_1-layer_10-sinksource_auc.txt'
-    ASD_ten, CM_ASD_ten = file_parser(ten_file)
-
-    fifty_file=OUTFILE_DIR+'ASD_1-layer_50-sinksource_auc.txt'
-    ASD_fifty, CM_ASD_fifty = file_parser(fifty_file)
-
-    #Get no negative data
-    no_neg_zero_file=OUTFILE_DIR+'ASD_1-layer_0-sinksource_no_neg_auc.txt'
-    ASD_no_neg_zero, CM_ASD_no_neg_zero = file_parser(no_neg_zero_file)
-
-    no_neg_point_zero_one_file=OUTFILE_DIR+'ASD_1-layer_0.01-sinksource_no_neg_auc.txt'
-    ASD_no_neg_pt_zo, CM_ASD_no_neg_pt_zo = file_parser(no_neg_point_zero_one_file)
-
-    no_neg_point_one_file=OUTFILE_DIR+'ASD_1-layer_0.1-sinksource_no_neg_auc.txt'
-    ASD_no_neg_pt_o, CM_ASD_no_neg_pt_o = file_parser(no_neg_point_one_file)
-
-    no_neg_one_file=OUTFILE_DIR+'ASD_1-layer_1-sinksource_no_neg_auc.txt'
-    ASD_no_neg_o, CM_ASD_no_neg_o = file_parser(no_neg_one_file)
-
-    no_neg_ten_file=OUTFILE_DIR+'ASD_1-layer_10-sinksource_no_neg_auc.txt'
-    ASD_no_neg_ten, CM_ASD_no_neg_ten = file_parser(no_neg_ten_file)
-
-    no_neg_fifty_file=OUTFILE_DIR+'ASD_1-layer_50-sinksource_no_neg_auc.txt'
-    ASD_no_neg_fifty, CM_ASD_no_neg_fifty = file_parser(no_neg_fifty_file)
-
-    #For each lambda value, generate three p-values: SZ neg vs no neg, ASD neg vs no neg, CM_SZ neg vs no neg
-    #Create lists to iterate through for each set 
-
-    zero_neg = [SZ_zero, CM_SZ_zero, ASD_zero, CM_ASD_zero]
-    zero_no_neg = [SZ_no_neg_zero, CM_SZ_no_neg_zero, ASD_no_neg_zero, CM_ASD_no_neg_zero]
-
-    pt_zo_neg = [SZ_pt_zo, CM_SZ_pt_zo, ASD_pt_zo, CM_ASD_pt_zo]
-    pt_zo_no_neg = [SZ_no_neg_pt_zo, CM_SZ_no_neg_pt_zo, ASD_no_neg_pt_zo, CM_ASD_no_neg_pt_zo]
-
-    pt_one_neg = [SZ_pt_o, CM_SZ_pt_o, ASD_pt_o, CM_ASD_pt_o]
-    pt_one_no_neg = [SZ_no_neg_pt_o, CM_SZ_no_neg_pt_o, ASD_no_neg_pt_o, CM_ASD_no_neg_pt_o]
-
-    one_neg = [SZ_o, CM_SZ_o, ASD_o, CM_ASD_o]
-    one_no_neg = [SZ_no_neg_o, CM_SZ_no_neg_o, ASD_no_neg_o, CM_ASD_no_neg_o]
-
-    pt_ten_neg = [SZ_ten, CM_SZ_ten, ASD_ten, CM_ASD_ten]
-    pt_ten_no_neg = [SZ_no_neg_ten, CM_SZ_no_neg_ten, ASD_no_neg_ten, CM_ASD_no_neg_ten]
-
-    pt_fifty_neg = [SZ_fifty,  CM_SZ_fifty, ASD_fifty,  CM_ASD_fifty] 
-    pt_fifty_no_neg = [SZ_no_neg_fifty, CM_SZ_no_neg_fifty, ASD_no_neg_fifty, CM_ASD_no_neg_fifty]
-
-    neg_lists = [zero_neg, pt_zo_neg, pt_one_neg, one_neg, pt_ten_neg, pt_fifty_neg]
-    no_neg_lists = [zero_no_neg, pt_zo_no_neg, pt_one_no_neg, one_no_neg, pt_ten_no_neg, pt_fifty_no_neg]
-
-    #Compare no negatives to negatives and print p-values to an outfile
-
-
-
-    #SZ_data = [SZ_zero, SZ_no_neg_zero, SZ_pt_zo, SZ_no_neg_pt_zo, SZ_pt_o, SZ_no_neg_pt_o, SZ_ten, SZ_no_neg_ten, SZ_fifty, SZ_no_neg_fifty]
-    SZ_neg_data = [SZ_zero, SZ_pt_zo, SZ_pt_o, SZ_o,SZ_ten, SZ_fifty]
-    SZ_no_neg_data = [SZ_no_neg_zero, SZ_no_neg_pt_zo, SZ_no_neg_pt_o, SZ_no_neg_o, SZ_no_neg_ten, SZ_no_neg_fifty]
-
-    #CM_SZ_data = [CM_SZ_zero, CM_SZ_no_neg_zero, CM_SZ_pt_zo, CM_SZ_no_neg_pt_zo, CM_SZ_pt_o, CM_SZ_no_neg_pt_o, CM_SZ_ten, CM_SZ_no_neg_ten, CM_SZ_fifty, CM_SZ_no_neg_fifty]
-    CM_SZ_neg_data = [CM_SZ_zero, CM_SZ_pt_zo, CM_SZ_pt_o, CM_SZ_o, CM_SZ_ten, CM_SZ_fifty]
-    CM_SZ_no_neg_data = [CM_SZ_no_neg_zero, CM_SZ_no_neg_pt_zo, CM_SZ_no_neg_pt_o, CM_SZ_no_neg_o, CM_SZ_no_neg_ten, CM_SZ_no_neg_fifty]
-
-    # #ASD_data = [ASD_zero, ASD_no_neg_zero, ASD_pt_zo, ASD_no_neg_pt_zo, ASD_pt_o, ASD_no_neg_pt_o, ASD_ten, ASD_no_neg_ten, ASD_fifty, ASD_no_neg_fifty]
-    ASD_neg_data = [ASD_zero, ASD_pt_zo, ASD_pt_o, ASD_o,ASD_ten, ASD_fifty]
-    ASD_no_neg_data = [ASD_no_neg_zero, ASD_no_neg_pt_zo, ASD_no_neg_pt_o, ASD_no_neg_o,ASD_no_neg_ten, ASD_no_neg_fifty]
-
-    CM_ASD_neg_data = [CM_ASD_zero, CM_ASD_pt_zo, CM_ASD_pt_o, CM_ASD_o, CM_ASD_ten, CM_ASD_fifty]
-    CM_ASD_no_neg_data = [CM_ASD_no_neg_zero, CM_ASD_no_neg_pt_zo, CM_ASD_no_neg_pt_o, CM_ASD_no_neg_o, CM_ASD_no_neg_ten, CM_ASD_no_neg_fifty]
-
     with open(OUTFILE_DIR+'Neg_vs_NoNeg_statistical_tests.txt', 'w') as out:
-        #first iterate through each constant, then iterate through each positive set for that constant to get the list of AUCs
-        out.write('T-Tests\n')
-        for i in range(len(neg_lists)): #the two data set lists are always the same length 
-            if i == 0:
-                out.write('Lambda=0\n\n')
-            elif i == 1:
-                out.write('Lambda=0.01\n\n')
-            elif i == 2:
-                out.write('Lambda=0.1\n\n')
-            elif i == 3:
-                out.write('Lambda=1\n\n')
-            elif i == 4:
-                out.write('Lambda=10\n\n')
-            else:
-                out.write('Lambda=50\n\n')
-            for j in range(len(zero_neg)):
-                if j == 0:
-                    out.write('Schizophrenia\t')
-                if j == 1:
-                    out.write('Cell Motility-SZ\t')
-                if j == 2:
-                    out.write('ASD\t')
-                if j == 3:
-                    out.write('Cell Motility-ASD\t')
+        
+        for disease in ['SZ','CM_SZ','ASD','CM_ASD']:
+            out.write('--- %s ---\n' % (disease))
+            for j in range(len(LAMBDAS)): 
                 # U, p_value = stats.mannwhitneyu(neg_lists[i][j], no_neg_lists[i][j], alternative='two-sided')
-                t_value,p_value = stats.ttest_ind(neg_lists[i][j], no_neg_lists[i][j], equal_var=False)
-                out.write(str(p_value)+'\n')
+                t_value,p_value = stats.ttest_ind(data[disease][1][j], data[disease+'_no_neg'][1][j], equal_var=False)
+                if t_value > 0 and p_value/2 < 0.01:
+                    res = 'SIGNIFICANT (one-tailed, 0.01)'
+                else: 
+                    res = ''
+                out.write('Welch\'s t-test Lambda=%s (negs vs. no-negs): %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[j],res,t_value,p_value,p_value))
             out.write('\n')
 
         out.write('Two-way ANOVA\n')
-        organized_data_1=[SZ_neg_data, CM_SZ_neg_data, ASD_neg_data, CM_ASD_neg_data]
-        organized_data_2=[SZ_no_neg_data, CM_SZ_no_neg_data, ASD_no_neg_data, CM_ASD_no_neg_data]
-        
-
+        organized_data_1=[data[exp][1] for exp in EXPERIMENTS]
+        organized_data_2=[data[exp+'_no_neg'][1] for exp in EXPERIMENTS]
         for i in range(len(organized_data_1)):
             if i == 0:
                 out.write('Schizophrenia\t')
@@ -356,49 +205,28 @@ def figure_2():
                 out.write(name)
             out.write('\n')
 
+    fig2, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(8,6))
+    axes = [ax1,ax2,ax3,ax4]
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        bp1 = ax.boxplot(data[name][1], notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+        bp2 = ax.boxplot(data[name+'_no_neg'][1], notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
+        ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
         
-
-
+        ax.set_title(NAMES[name])
+        ax.set_xticks([3,8,13,18,23,28])
+        ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
+        ax.set_xlim(0,31)
+        ax.set_ylim(0.5,0.9)
+        ax.set_ylabel('AUC')
+        ax.set_xlabel('$\lambda$')
+        
+        if i == 0:
+            ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize='x-small')
     
-
-
-    #fig2, (ax1, ax2, ax3, ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
-    fig2, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, sharey=True, figsize=(8,6))
-    
-    bp1 = ax1.boxplot(SZ_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', \
-        patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp2 = ax1.boxplot(SZ_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', \
-        patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
-    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax1.set_xlim(0,32)
-    ax1.set_ylim(0.5,0.9)
-    ax1.set_ylabel('AUC')
-    ax1.set_title('SZ')
-    ax1.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize='x-small')
-    
-
-    bp3 = ax2.boxplot(CM_SZ_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp4 = ax2.boxplot(CM_SZ_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
-    ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax2.set_xlim(0,32)
-    ax2.set_xlabel('$\lambda$')
-    ax2.set_title('Cell Motility-SZ')
-
-    bp5 = ax3.boxplot(ASD_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp6 = ax3.boxplot(ASD_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
-    ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax3.set_xlim(0,32)
-    ax3.set_ylabel('AUC')
-    ax3.set_xlabel('$\lambda$')
-    ax3.set_title('ASD')
-
-    bp7 = ax4.boxplot(CM_ASD_neg_data, notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp7 = ax4.boxplot(CM_ASD_no_neg_data, notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
-    ax4.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax4.set_xlim(0,32)
-    ax4.set_xlabel('$\lambda$')
-    ax4.set_title('Cell Motility-ASD')
-
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'compare_neg_noneg.png')
 
@@ -408,29 +236,48 @@ def figure_2():
     
 
 
-def figure_3():
+def figure_3(data,best_lambda_inds):
+    best_lambda_data = {}
+    best_lambdas = {}
+    for name in EXPERIMENTS:
+        best_lambdas[name] = {}
+        best_lambda_data[name] = {}
+        for layer in LAYERS:
+            i = best_lambda_inds[name][layer]
+            best_lambdas[name][layer] = LAMBDAS[i]
+            best_lambda_data[name][layer] = data[name][layer][i]
 
-    one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_auc.txt'
-    SZ_first_one, ASD_first_one, CM_first_one = file_parser(one_file)
+    with open(OUTFILE_DIR+'Best_Lambdas_statistical_tests.txt', 'w') as out:
 
-    one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_auc.txt'
-    SZ_other_one, ASD_other_one, CM_other_one = file_parser(one_file)
+        for name in ['SZ','CM_SZ','ASD','CM_ASD']:
+            out.write('--- %s ---\n' % (name))
 
-    two_file=OUTFILE_DIR+'SZ_2-layer_10-sinksource_auc.txt'
-    SZ_two, ASD_two, CM_two = file_parser(two_file)
+            ## Write Means of AUC Distribution
+            out.write('  AUC Mean (best lambda):\n')
+            for layer in LAYERS:
+                out.write('\tLayer %d Lambda %s: %.4f\n' % (layer,best_lambdas[name][layer],mean(best_lambda_data[name][layer])))
+            out.write('\n')
 
-    three_file=OUTFILE_DIR+'SZ_3-layer_10-sinksource_auc.txt'
-    SZ_three, ASD_three, CM_three = file_parser(three_file)
+            ## Welch's t-test to assess pairs of layers.
+            # Layer1 vs. Layer2
+            t_value,p_value = stats.ttest_ind(best_lambda_data[name][1], best_lambda_data[name][2], equal_var=False)
+            res = 'SIGNIFICANT (two-tailed, 0.01)' if p_value < 0.01 else ''
+            out.write('  Welch\'s t-test Layer1 vs. Layer2: %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (res,t_value,p_value,p_value))
 
-    #Compare 2 layer to 1 layer and 3 layer for each positive set
-    #Create lists for each positive set of what data to compare [2 layer AUCs, 1 layer, 3 layer]
+            # Layer1 vs. Layer3
+            t_value,p_value = stats.ttest_ind(best_lambda_data[name][1], best_lambda_data[name][3], equal_var=False)
+            res = 'SIGNIFICANT (two-tailed, 0.01)' if p_value < 0.01 else ''
+            out.write('  Welch\'s t-test Layer1 vs. Layer3: %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (res,t_value,p_value,p_value))
 
-    SZ_sets = [SZ_two, SZ_first_one, SZ_three]
-    ASD_sets = [ASD_two, ASD_other_one, ASD_three]
-    CM_sets = [CM_two, CM_other_one, CM_three]
+            # Layer2 vs. Layer3
+            t_value,p_value = stats.ttest_ind(best_lambda_data[name][2], best_lambda_data[name][3], equal_var=False)
+            res = 'SIGNIFICANT (two-tailed, 0.01)' if p_value < 0.01 else ''
+            out.write('  Welch\'s t-test Layer2 vs. Layer3: %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (res,t_value,p_value,p_value))
+            out.write('\n')
 
+    '''
+    ## TODO check QQ plot for t-test vs. MWU test.
     Mann_test_lists = [SZ_sets, ASD_sets, CM_sets]
-
     with open(OUTFILE_DIR+'MWU_PVALUES_123layers.txt', 'w') as out:
         for i in range(len(Mann_test_lists)):
             if i == 0:
@@ -447,250 +294,72 @@ def figure_3():
             out.write('2 layer vs. 3 layer\t')
             out.write(str(p3) + '\n') 
             out.write('\n')
+    '''
 
-    SZ_data = [SZ_first_one, SZ_two, SZ_three]
-    ASD_data = [ASD_other_one, ASD_two, ASD_three]
-    CM_data = [CM_other_one, CM_two, CM_three]
-
-    fig3, (ax1, ax2, ax3) = plt.subplots(ncols=3, nrows=1, sharey=True, figsize=(7,4))
-
-    bp1 = ax1.boxplot(SZ_data, notch=True, positions=[2,4,6], widths=1.5, sym='', \
-        patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
-    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax1.set_xlim(0,8)
-    ax1.set_ylabel('AUC')
-    ax1.set_title('Schizophrenia')
+    fig3, axes = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,3))
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        bp1 = ax.boxplot(best_lambda_data[name][1], notch=True, positions=[2], \
+            widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+        bp2 = ax.boxplot(best_lambda_data[name][2], notch=True, positions=[4], \
+            widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
+        bp3 = ax.boxplot(best_lambda_data[name][3], notch=True, positions=[6], \
+            widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
+        ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+        ax.set_ylim(0.5,0.9)
+        ax.set_xlim(0,8)
+        ax.set_xticks([2,4,6])
+        ax.set_xticklabels(['1','2','3'])
+        if i==0:
+            ax.set_ylabel('AUC')
+        ax.set_xlabel('Layers')
+        ax.set_title(NAMES[name])
     
-
-    bp3 = ax2.boxplot(ASD_data, notch=True, positions=[2,4,6], widths=1.5, sym='', \
-        patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
-    ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax2.set_xlim(0,8)
-    ax2.set_xlabel('Layers')
-    ax2.set_title('ASD')
-
-
-    bp5 = ax3.boxplot(CM_data, notch=True, positions=[2,4,6], widths=1.5, sym='', \
-        patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
-    ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax3.set_xlim(0,8)
-    ax3.set_title('Cell Motility')
-
-    plt.savefig(OUTFILE_DIR+'comparing_layers.png')
-
-    print('Created '+OUTFILE_DIR+'comparing_layers.png')
-
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'comparing_layers_best_lambdas.png')
+    print('Created '+OUTFILE_DIR+'comparing_best_lambdas.png')
 
     return
 
 
-def figure_3_full():
-
-    zero_file=OUTFILE_DIR+'SZ_1-layer_0-sinksource_auc.txt'
-    SZ_zero, CM_SZ_zero = file_parser(zero_file)
-
-    point_zero_one_file=OUTFILE_DIR+'SZ_1-layer_0.01-sinksource_auc.txt'
-    SZ_pt_zo, CM_SZ_pt_zo = file_parser(point_zero_one_file)
-
-    point_one_file=OUTFILE_DIR+'SZ_1-layer_0.1-sinksource_auc.txt'
-    SZ_pt_o, CM_SZ_pt_o = file_parser(point_one_file)
-
-    one_file=OUTFILE_DIR+'SZ_1-layer_1-sinksource_auc.txt'
-    SZ_o, CM_SZ_o = file_parser(one_file)
-
-    ten_file=OUTFILE_DIR+'SZ_1-layer_10-sinksource_auc.txt'
-    SZ_ten, CM_SZ_ten = file_parser(ten_file)
-
-    fifty_file=OUTFILE_DIR+'SZ_1-layer_50-sinksource_auc.txt'
-    SZ_fifty, CM_SZ_fifty = file_parser(fifty_file)
-
-    SZ_1_data = [SZ_zero, SZ_pt_zo, SZ_pt_o, SZ_o,SZ_ten, SZ_fifty]
-    CM_SZ_1_data = [CM_SZ_zero, CM_SZ_pt_zo, CM_SZ_pt_o, CM_SZ_o,CM_SZ_ten, CM_SZ_fifty]
-
-
-    #Get negative data
-    zero_file=OUTFILE_DIR+'SZ_2-layer_0-sinksource_auc.txt'
-    SZ_zero_2, CM_SZ_zero_2 = file_parser(zero_file)
-
-    point_zero_one_file=OUTFILE_DIR+'SZ_2-layer_0.01-sinksource_auc.txt'
-    SZ_pt_zo_2, CM_SZ_pt_zo_2 = file_parser(point_zero_one_file)
-
-    point_one_file=OUTFILE_DIR+'SZ_2-layer_0.1-sinksource_auc.txt'
-    SZ_pt_o_2, CM_SZ_pt_o_2 = file_parser(point_one_file)
-
-    one_file=OUTFILE_DIR+'SZ_2-layer_1-sinksource_auc.txt'
-    SZ_o_2, CM_SZ_o_2 = file_parser(one_file)
-
-    ten_file=OUTFILE_DIR+'SZ_2-layer_10-sinksource_auc.txt'
-    SZ_ten_2, CM_SZ_ten_2 = file_parser(ten_file)
-
-    fifty_file=OUTFILE_DIR+'SZ_2-layer_50-sinksource_auc.txt'
-    SZ_fifty_2, CM_SZ_fifty_2 = file_parser(fifty_file)
-
-    SZ_2_data = [SZ_zero_2, SZ_pt_zo_2, SZ_pt_o_2, SZ_o_2, SZ_ten_2, SZ_fifty_2]
-    CM_SZ_2_data = [CM_SZ_zero_2, CM_SZ_pt_zo_2, CM_SZ_pt_o_2,CM_SZ_o_2, CM_SZ_ten_2, CM_SZ_fifty_2]
-
-
-    zero_file=OUTFILE_DIR+'SZ_3-layer_0-sinksource_auc.txt'
-    SZ_zero_3, CM_SZ_zero_3 = file_parser(zero_file)
-
-    point_zero_one_file=OUTFILE_DIR+'SZ_3-layer_0.01-sinksource_auc.txt'
-    SZ_pt_zo_3, CM_SZ_pt_zo_3 = file_parser(point_zero_one_file)
-
-    point_one_file=OUTFILE_DIR+'SZ_3-layer_0.1-sinksource_auc.txt'
-    SZ_pt_o_3, CM_SZ_pt_o_3 = file_parser(point_one_file)
-
-    one_file=OUTFILE_DIR+'SZ_3-layer_1-sinksource_auc.txt'
-    SZ_o_3, CM_SZ_o_3 = file_parser(one_file)
-
-    ten_file=OUTFILE_DIR+'SZ_3-layer_10-sinksource_auc.txt'
-    SZ_ten_3, CM_SZ_ten_3 = file_parser(ten_file)
-
-    fifty_file=OUTFILE_DIR+'SZ_3-layer_50-sinksource_auc.txt'
-    SZ_fifty_3, CM_SZ_fifty_3 = file_parser(fifty_file)
-
-    SZ_3_data = [SZ_zero_3, SZ_pt_zo_3, SZ_pt_o_3, SZ_o_3, SZ_ten_3, SZ_fifty_3]
-    CM_SZ_3_data = [CM_SZ_zero_3, CM_SZ_pt_zo_3, CM_SZ_pt_o_3,CM_SZ_o_3, CM_SZ_ten_3, CM_SZ_fifty_3]
-
-
-
-
-
-    zero_file='../outfiles/ASD_1-layer_0-sinksource_auc.txt'
-    ASD_zero, CM_ASD_zero = file_parser(zero_file)
-
-    point_zero_one_file='../outfiles/ASD_1-layer_0.01-sinksource_auc.txt'
-    ASD_pt_zo, CM_ASD_pt_zo = file_parser(point_zero_one_file)
-
-    point_one_file='../outfiles/ASD_1-layer_0.1-sinksource_auc.txt'
-    ASD_pt_o, CM_ASD_pt_o = file_parser(point_one_file)
-
-    one_file='../outfiles/ASD_1-layer_1-sinksource_auc.txt'
-    ASD_o, CM_ASD_o = file_parser(one_file)
-
-    ten_file='../outfiles/ASD_1-layer_10-sinksource_auc.txt'
-    ASD_ten, CM_ASD_ten = file_parser(ten_file)
-
-    fifty_file='../outfiles/ASD_1-layer_50-sinksource_auc.txt'
-    ASD_fifty, CM_ASD_fifty = file_parser(fifty_file)
-
-    ASD_1_data = [ASD_zero, ASD_pt_zo, ASD_pt_o, ASD_o,ASD_ten, ASD_fifty]
-    CM_ASD_1_data = [CM_ASD_zero, CM_ASD_pt_zo, CM_ASD_pt_o, CM_ASD_o,CM_ASD_ten, CM_ASD_fifty]
-
-
-    #Get negative data
-    zero_file='../outfiles/ASD_2-layer_0-sinksource_auc.txt'
-    ASD_zero_2, CM_ASD_zero_2 = file_parser(zero_file)
-
-    point_zero_one_file='../outfiles/ASD_2-layer_0.01-sinksource_auc.txt'
-    ASD_pt_zo_2, CM_ASD_pt_zo_2 = file_parser(point_zero_one_file)
-
-    point_one_file='../outfiles/ASD_2-layer_0.1-sinksource_auc.txt'
-    ASD_pt_o_2, CM_ASD_pt_o_2 = file_parser(point_one_file)
-
-    one_file='../outfiles/ASD_2-layer_1-sinksource_auc.txt'
-    ASD_o_2, CM_ASD_o_2 = file_parser(one_file)
-
-    ten_file='../outfiles/ASD_2-layer_10-sinksource_auc.txt'
-    ASD_ten_2, CM_ASD_ten_2 = file_parser(ten_file)
-
-    fifty_file='../outfiles/ASD_2-layer_50-sinksource_auc.txt'
-    ASD_fifty_2, CM_ASD_fifty_2 = file_parser(fifty_file)
-
-    ASD_2_data = [ASD_zero_2, ASD_pt_zo_2, ASD_pt_o_2, ASD_o_2, ASD_ten_2, ASD_fifty_2]
-    CM_ASD_2_data = [CM_ASD_zero_2, CM_ASD_pt_zo_2, CM_ASD_pt_o_2,CM_ASD_o_2, CM_ASD_ten_2, CM_ASD_fifty_2]
-
-
-    zero_file='../outfiles/ASD_3-layer_0-sinksource_auc.txt'
-    ASD_zero_3, CM_ASD_zero_3 = file_parser(zero_file)
-
-    point_zero_one_file='../outfiles/ASD_3-layer_0.01-sinksource_auc.txt'
-    ASD_pt_zo_3, CM_ASD_pt_zo_3 = file_parser(point_zero_one_file)
-
-    point_one_file='../outfiles/ASD_3-layer_0.1-sinksource_auc.txt'
-    ASD_pt_o_3, CM_ASD_pt_o_3 = file_parser(point_one_file)
-
-    one_file='../outfiles/ASD_3-layer_1-sinksource_auc.txt'
-    ASD_o_3, CM_ASD_o_3 = file_parser(one_file)
-
-    ten_file='../outfiles/ASD_3-layer_10-sinksource_auc.txt'
-    ASD_ten_3, CM_ASD_ten_3 = file_parser(ten_file)
-
-    fifty_file='../outfiles/ASD_3-layer_50-sinksource_auc.txt'
-    ASD_fifty_3, CM_ASD_fifty_3 = file_parser(fifty_file)
-
-    ASD_3_data = [ASD_zero_3, ASD_pt_zo_3, ASD_pt_o_3, ASD_o_3, ASD_ten_3, ASD_fifty_3]
-    CM_ASD_3_data = [CM_ASD_zero_3, CM_ASD_pt_zo_3, CM_ASD_pt_o_3,CM_ASD_o_3, CM_ASD_ten_3, CM_ASD_fifty_3]
-
-    #Compare 2 layer to 1 layer and 3 layer for each positive set
-    #Create lists for each positive set of what data to compare [2 layer AUCs, 1 layer, 3 layer]
-
-
-    one_list = [SZ_1_data, CM_SZ_1_data, ASD_1_data, CM_ASD_1_data]
-    two_list = [SZ_2_data, CM_SZ_2_data, ASD_2_data, CM_ASD_2_data]
-    three_list = [SZ_3_data, CM_SZ_3_data, ASD_3_data, CM_ASD_3_data]
-
-    # Mann_test_lists = [SZ_sets, ASD_sets, CM_sets]
-
-    # with open(OUTFILE_DIR+'MWU_PVALUES_123layers.txt', 'w') as out:
-    #     for i in range(len(Mann_test_lists)):
-    #         if i == 0:
-    #             out.write('Schizophrenia\t')
-    #         elif i == 1:
-    #             out.write('Autism\t')
-    #         else:
-    #             out.write('Cell Motility\t')
-    #         out.write('\n')
-    #         U1, p1 = stats.mannwhitneyu(Mann_test_lists[i][0], Mann_test_lists[i][1], alternative='two-sided') 
-    #         out.write('2 layer vs. 1 layer\t')
-    #         out.write(str(p1) + '\n')
-    #         U3, p3 = stats.mannwhitneyu(Mann_test_lists[i][0], Mann_test_lists[i][2], alternative='two-sided')
-    #         out.write('2 layer vs. 3 layer\t')
-    #         out.write(str(p3) + '\n') 
-    #         out.write('\n')
+def figure_3_full(data):
 
     with open(OUTFILE_DIR+'Layers_statistical_tests.txt', 'w') as out:
-        #first iterate through each constant, then iterate through each positive set for that constant to get the list of AUCs
-        out.write('T-Tests\n')
 
-        for i in range(len(one_list)): #the two data set lists are always the same length 
-            if i == 0:
-                out.write('Schizophrenia\n\n')
-            if i == 1:
-                out.write('Cell Motility-SZ\n\n')
-            if i == 2:
-                out.write('ASD\t')
-            if i == 3:
-                out.write('Cell Motility-ASD\t')
-            for j in range(len(one_list[i])):
-                if j == 0:
-                    out.write('Lambda=0\n')
-                elif j == 1:
-                    out.write('Lambda=0.01\n')
-                elif j == 2:
-                    out.write('Lambda=0.1\n')
-                elif j == 3:
-                    out.write('Lambda=1\n')
-                elif j == 4:
-                    out.write('Lambda=10\n')
-                else:
-                    out.write('Lambda=50\n')
-                    # U, p_value = stats.mannwhitneyu(neg_lists[i][j], no_neg_lists[i][j], alternative='two-sided')
+        for name in ['SZ','CM_SZ','ASD','CM_ASD']:
+            out.write('--- %s ---\n' % (name))
 
-                t_value,p_value = stats.ttest_ind(one_list[i][j], two_list[i][j])
-                out.write('1 vs 2: '+str(p_value)+'\n')
+            for i in range(len(LAMBDAS)):
+                out.write(' +++ LAMBDA %s +++\n' % (LAMBDAS[i]))
 
-                t_value,p_value = stats.ttest_ind(one_list[i][j], three_list[i][j])
-                out.write('1 vs 3: '+str(p_value)+'\n')
+                ## Write Means of AUC Distribution
+                out.write('  AUC Means:\n')
+                for layer in LAYERS:
+                    out.write('\tLayer %d: %.4f\n' % (layer,mean(data[name][layer][i])))
+                out.write('\n')
 
-                t_value,p_value = stats.ttest_ind(two_list[i][j], three_list[i][j])
-                out.write('2 vs 3: '+str(p_value)+'\n\n')
+                ## Welch's t-test to assess pairs of layers.
+                # Layer1 vs. Layer2
+                t_value,p_value = stats.ttest_ind(data[name][1][i], data[name][2][i], equal_var=False)
+                res = 'SIGNIFICANT (two-tailed, 0.01)' if p_value < 0.01 else ''
+                out.write('  Welch\'s t-test Layer1 vs. Layer2: %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (res,t_value,p_value,p_value))
 
+                # Layer1 vs. Layer3
+                t_value,p_value = stats.ttest_ind(data[name][1][i], data[name][3][i], equal_var=False)
+                res = 'SIGNIFICANT (two-tailed, 0.01)' if p_value < 0.01 else ''
+                out.write('  Welch\'s t-test Layer1 vs. Layer3: %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (res,t_value,p_value,p_value))
+
+                # Layer2 vs. Layer3
+                t_value,p_value = stats.ttest_ind(data[name][2][i], data[name][3][i], equal_var=False)
+                res = 'SIGNIFICANT (two-tailed, 0.01)' if p_value < 0.01 else ''
+                out.write('  Welch\'s t-test Layer2 vs. Layer3: %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (res,t_value,p_value,p_value))
             out.write('\n')
 
-        out.write('Two-way ANOVA\n')
-        
 
+        # Unclear to me why to do a 2-way ANOVA here...
+        '''
+        out.write('Two-way ANOVA\n')
         for i in range(len(one_list)):
             if i == 0:
                 out.write('Schizophrenia\t')
@@ -716,79 +385,35 @@ def figure_3_full():
                 name=name+'\n'
                 out.write(name)
             out.write('\n')
+        '''
 
-
-
-
-    SZ_data = [SZ_1_data, SZ_2_data]
-    CM_SZ_data = [CM_SZ_1_data,CM_SZ_2_data]
-    # ASD_data = [ASD_other_one, ASD_two, ASD_three]
-    
-
-    #fig3, (ax1, ax2, ax3, ax4) = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(7,4))
-    fig3, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, sharey=True, figsize=(8,6))
-
-    bp1 = ax1.boxplot(SZ_1_data, notch=True, positions=[2,9,16,23,30,37], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp3 = ax1.boxplot(SZ_3_data, notch=True, positions=[6,13,20,27,34,41], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
-    bp2 = ax1.boxplot(SZ_2_data, notch=True, positions=[4,11,18,25,32,39], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
-    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax1.set_xlim(0,43)
-    ax1.set_ylabel('AUC')
-    ax1.set_title('SZ')
-    ax1.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0]], ['1 layer', '2 layer', '3 layer'], loc='best', fontsize='x-small')
-    
-
-    bp4 = ax2.boxplot(CM_SZ_1_data, notch=True, positions=[2,9,16,23,30,37], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp6 = ax2.boxplot(CM_SZ_3_data, notch=True, positions=[6,13,20,27,34,41], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
-    bp5 = ax2.boxplot(CM_SZ_2_data, notch=True, positions=[4,11,18,25,32,39], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
-    ax2.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax2.set_xlim(0,43)
-    ax1.set_ylabel('AUC')
-    ax2.set_title('Cell Motility-SZ')
-
-    bp7 = ax3.boxplot(ASD_1_data, notch=True, positions=[2,9,16,23,30,37], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp9 = ax3.boxplot(ASD_3_data, notch=True, positions=[6,13,20,27,34,41], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
-    bp8 = ax3.boxplot(ASD_2_data, notch=True, positions=[4,11,18,25,32,39], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), \
-        labels=['0','0.01','0.1','1','10','50'])
-    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax3.set_xlim(0,43)
-    ax2.set_xlabel('$\lambda$')
-    ax3.set_title('ASD')
-    
-
-    bp10 = ax4.boxplot(CM_ASD_1_data, notch=True, positions=[2,9,16,23,30,37], \
+    fig3, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(8,6))
+    axes = [ax1,ax2,ax3,ax4]
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        bp1 = ax.boxplot(data[name][1], notch=True, positions=[2,9,16,23,30,37], \
             widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-    bp12 = ax4.boxplot(CM_ASD_3_data, notch=True, positions=[6,13,20,27,34,41], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
-    bp11 = ax4.boxplot(CM_ASD_2_data, notch=True, positions=[4,11,18,25,32,39], \
-        widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'), labels=['0','0.01','0.1','1','10','50'])
+        bp2 = ax.boxplot(data[name][2], notch=True, positions=[4,11,18,25,32,39], \
+            widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
+        bp3 = ax.boxplot(data[name][3], notch=True, positions=[6,13,20,27,34,41], \
+            widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
+        ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
 
-    ax4.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    ax4.set_xlim(0,43)
-    ax4.set_xlabel('$\lambda$')
-    ax4.set_title('Cell Motility-ASD')
-
-
-
-    # bp5 = ax3.boxplot(CM_data, notch=True, positions=[2,4,6], widths=1.5, sym='k+', patch_artist=True, boxprops=dict(facecolor='#8193ef'), labels=['1','2','3'])
-    # ax3.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-    # ax3.set_xlim(0,8)
-    # ax3.set_title('Cell Motility')
-
+        ax.set_xticks([4,11,18,25,32,39])
+        ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
+        ax.set_ylim(0.5,0.9)
+        ax.set_xlim(0,43)
+        ax.set_ylabel('AUC')
+        ax.set_xlabel('$\lambda$')
+        ax.set_title(NAMES[name])
+        if i==0:
+            ax.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0]], ['1 Layer', '2 Layers', '3 Layers'], loc='best', fontsize='x-small')
+    
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'comparing_layers.png')
 
     print('Created ../outfiles/comparing_layers.png')
-
 
     return
     
@@ -877,7 +502,6 @@ def two_way_ANOVA(List_of_lists_A, List_of_lists_B):
     results = [[ssq_settings, df_settings, f_settings, p_a],[ssq_constants, df_constants, f_constants, p_b],[ssq_settingsxconstants, df_settingsxconstants, f_settingsxconstants, p_axb]]
 
     return results
-
 
 def two_way_ANOVA(List_of_lists_A, List_of_lists_B):
     number_of_settings=2
