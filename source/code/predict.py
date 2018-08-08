@@ -129,6 +129,9 @@ def parse_arguments(argv):
     group.add_option('--random_negatives',\
         action='store_true', default=False,\
         help='Make negatives random genes')
+    group.add_option('--random_negatives_degree',\
+        action='store_true', default=False,\
+        help='Make negatives random genes, preserving the degree distribution of the original negatives.')
     parser.add_option_group(group)
 
     group = OptionGroup(parser,'Aggregate Analysis (combines runs into one figure)')
@@ -156,8 +159,10 @@ def parse_arguments(argv):
         sys.exit('ERROR: sinksource method must be specified to use constant.')
     if opts.sinksource_method==True and opts.sinksource_constant==None:
         sys.exit('ERROR: must specify constant for sinksource method.')
-    if opts.with_negatives==False and opts.random_negatives==True:
+    if opts.with_negatives==False and (opts.random_negatives==True or opts.random_negatives_degree==True):
         sys.exit('ERROR: cannot have both no negatives and random negatives')
+    if opts.random_negatives==True and opts.random_negatives_degree==True:
+        sys.exit('ERROR: cannot sample negatives and degree-preserving negatives at same time.')
     return opts
 
 def main(argv):
@@ -188,10 +193,39 @@ def main(argv):
         biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose)
 
         if opts.with_negatives or opts.examine_vs_negatives: #if True (default) pass in negative set and remove overlapping positives and negatives
+            
+            # first read in negatives
+            negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
+            
             if opts.random_negatives:
-                negatives=set(random.sample(G.nodes,1500))
-            else:
-                negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
+                ## if random negatives, re-sample the SAME number of negatives as originally read in.
+                ## Modified by AR 8/7/18
+                print('RESAMPLING RANDOM NEGATIVES')
+                num_negs = len(negatives)
+                negatives=set(random.sample(G.nodes,num_negs))
+            elif opts.random_negatives_degree:
+                print('RESAMPLING RANDOM NEGATIVES, PRESERVING DEGREE DISTRIBUTION')
+                ## if random negatives that preserve degree, re-sample the negatives from the histogram of degree distributions.
+                degdict = dict(G.degree()) # dictionary of degree dict
+                revdegdict = {}
+                for key,value in degdict.items():
+                    if value not in revdegdict:
+                        revdegdict[value] = set()
+                    revdegdict[value].add(key)
+                numtosample = {}
+                for n in negatives:
+                    deg = degdict[n]
+                    if deg not in numtosample:
+                        numtosample[deg]=0
+                    numtosample[deg]+=1
+                degpreservednegs = set()
+                for deg in numtosample:
+                    #print('sampling %d of %d possible with deg %d' % (numtosample[deg],len(revdegdict[deg]),deg))
+                    degpreservednegs.update(set(random.sample(revdegdict[deg],numtosample[deg])))
+                #print(len(degpreservednegs),len(negatives))
+                #sys.exit()
+
+           
             ## some nodes appear in both positive and negative sets; identify these and remove
             ## them from the curated set.
             blacklist = set()
