@@ -1,3 +1,4 @@
+'''
     ##########################
     ## New version (Miriam 07/10): Does the same thing as opts.auc (k-fold cross validation)
     ## but it plots the ROC curve for each run to see how it changes
@@ -194,6 +195,7 @@
 
     return
 
+'''
 def getROCvalues(preds, hidden, pos):
     '''
     Return two lists, which contain coordiantes (x,y) representing
