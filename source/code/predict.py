@@ -31,6 +31,7 @@ import scipy.stats as stats
 ## Functions from other local python files
 import fileIO
 import learners
+from miriam_stuff import getROCvalues,getROCvalues2
 
 
 def parse_arguments(argv):
@@ -196,36 +197,7 @@ def main(argv):
             
             # first read in negatives
             negatives= fileIO.curatedFileReader(opts.negatives,G,opts.verbose)
-            
-            if opts.random_negatives:
-                ## if random negatives, re-sample the SAME number of negatives as originally read in.
-                ## Modified by AR 8/7/18
-                print('RESAMPLING RANDOM NEGATIVES')
-                num_negs = len(negatives)
-                negatives=set(random.sample(G.nodes,num_negs))
-            elif opts.random_negatives_degree:
-                print('RESAMPLING RANDOM NEGATIVES, PRESERVING DEGREE DISTRIBUTION')
-                ## if random negatives that preserve degree, re-sample the negatives from the histogram of degree distributions.
-                degdict = dict(G.degree()) # dictionary of degree dict
-                revdegdict = {}
-                for key,value in degdict.items():
-                    if value not in revdegdict:
-                        revdegdict[value] = set()
-                    revdegdict[value].add(key)
-                numtosample = {}
-                for n in negatives:
-                    deg = degdict[n]
-                    if deg not in numtosample:
-                        numtosample[deg]=0
-                    numtosample[deg]+=1
-                degpreservednegs = set()
-                for deg in numtosample:
-                    #print('sampling %d of %d possible with deg %d' % (numtosample[deg],len(revdegdict[deg]),deg))
-                    degpreservednegs.update(set(random.sample(revdegdict[deg],numtosample[deg])))
-                #print(len(degpreservednegs),len(negatives))
-                #sys.exit()
-
-           
+                       
             ## some nodes appear in both positive and negative sets; identify these and remove
             ## them from the curated set.
             blacklist = set()
@@ -242,10 +214,61 @@ def main(argv):
                 negatives = negatives.difference(overlap_set)
                 # biological_process_positives = biological_process_positives.difference(overlap_set)
                 blacklist.update(overlap_set)
-
             print('%d genes have had their negative labels removed because they were in both positive and negative sets.' % (len(blacklist)))
-            # for node in blacklist:
-            #     G.remove_node(node)
+
+            ##### RANDOMLY SAMPLE NEGATIVES IF SPECIFIED ########
+            if opts.random_negatives or opts.random_negatives_degree:
+                orig_negs = negatives
+                num_negs = len(orig_negs)
+                print('RESAMPLING %d RANDOM NEGATIVES' % (num_negs))
+                to_sample_from = set(G.nodes).difference(disease_positives.union(biological_process_positives))
+                print(' resampling %d negatives from %d nodes that aren\'t positives' % (num_negs,len(to_sample_from)))
+
+                if opts.random_negatives:
+                    ## if random negatives, re-sample the SAME number of negatives as originally read in.
+                    negatives=set(random.sample(to_sample_from,num_negs))
+                    with open(opts.outprefix + 'sampled_negs.txt','w') as out:
+                        for n in negatives:
+                            out.write(n+'\n')
+
+                elif opts.random_negatives_degree:
+                    print(' Preserving Degree Distribution...')
+
+                    ## if random negatives that preserve degree, re-sample the negatives from the histogram of degree distributions.
+                    degdict = dict(G.degree()) # dictionary of degree dict
+                    revdegdict = {} # make dictionary of (degree,set-of-nodes) 
+                    for key,value in degdict.items():
+                        if key not in to_sample_from: # skip nodes that are positives
+                            continue
+                        if value not in revdegdict:
+                            revdegdict[value] = set()
+                        revdegdict[value].add(key)
+
+                    ## compute the number of nodes of each degree to sample.
+                    # for every node in negative, add one to the degree count for sampling
+                    numtosample = {}
+                    for n in negatives:
+                        deg = degdict[n]
+                        if deg not in numtosample:
+                            numtosample[deg]=0
+                        numtosample[deg]+=1
+
+                    ## finally, re-generate negatives by sampling from the nodes with that degree.
+                    negatives = set()
+                    for deg in numtosample:
+                        #print('sampling %d of %d possible with deg %d' % (numtosample[deg],len(revdegdict[deg]),deg))
+                        negatives.update(set(random.sample(revdegdict[deg],numtosample[deg])))
+                    #print(len(degpreservednegs),len(negatives))
+                    with open(opts.outprefix + 'sampled_negs_degree.txt','w') as out:
+                        for n in negatives:
+                            out.write(n+'\n')
+
+                # compare new negs 
+                if len(negatives) != len(orig_negs):
+                    sys.exit(' ERROR! resampled negatives are not the same size as original negatives')
+
+                num_overlap = len(negatives.intersection(orig_negs))
+                print(' %d random negatives are the same as the original negatives (%.4f)\n' % (num_overlap,num_overlap/len(orig_negs)))
        
         else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
             negatives = set()
@@ -260,14 +283,10 @@ def main(argv):
         orig_biological_process_positives = biological_process_positives
         orig_negatives = negatives
 
-
-
         disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
         biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
         if opts.with_negatives or opts.examine_vs_negatives:
             negatives = fileIO.partitionCurated(orig_negatives,G,opts.verbose,opts.layers)
-
-
             print('Final Curated Sets: %d Labeled Disease Nodes, %d Labeled Biological Process Nodes, and %d Labeled Negative Nodes.\n' % \
             (len(disease_positives),len(biological_process_positives),len(negatives)))
         else:
@@ -496,6 +515,7 @@ def main(argv):
     if opts.auc:
         print('\nCalculating AUC w/ matrix method...')
         outfile = opts.outprefix+'_auc.txt'
+        roc_outfile = opts.outprefix+'_roccurves.txt'
         if not opts.force and os.path.isfile(outfile):
             print('  File %s exists. Not running (use --force to override)' % (outfile))
 
@@ -512,14 +532,17 @@ def main(argv):
                     d_AUCs.append(float(row[0]))
                     a_AUCs.append(float(row[1]))
                     b_AUCs.append(float(row[12]))
+
+            ## TODO: read in ROC file if necessary.
         else:
             validate_negatives=True
 
             ## disease k-fold validation
             print('\nDisease Tests')
             d_AUCs = []
+            d_precs = []
+            d_recs = []
             start=time.time()
-
             
             for i in range(opts.auc_samples):
                 done=float(i)/float(opts.auc_samples)
@@ -540,8 +563,6 @@ def main(argv):
                 test_positives = disease_positives.difference(hidden_positive_nodes)
                 print('%d hidden %d test positive nodes' % (len(hidden_positive_nodes),len(test_positives)))
 
-
-
                 # MWU = Mann_Whitney_U_test(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
                 if opts.with_negatives:
                     if not opts.sinksource_method:
@@ -551,6 +572,7 @@ def main(argv):
                         ignore,ignore,d_predictions = learners.matrixLearnSinkSource(G,test_positives,test_negatives,\
                             opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                     AUC = Mann_Whitney_U_test2(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                    d_rec,d_prec = getROCvalues2(d_predictions,hidden_positive_nodes,test_positives, multi_node_dict, hidden_negative_nodes)
                 else:
                     if not opts.sinksource_method:
                         ignore,ignore,d_predictions = learners.matrixLearn(G,test_positives,set(),\
@@ -560,16 +582,22 @@ def main(argv):
                             opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                     if opts.examine_vs_negatives:
                         AUC = Mann_Whitney_U_test2(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                        d_rec,d_prec = getROCvalues2(d_predictions,hidden_positive_nodes,test_positives, multi_node_dict, hidden_negative_nodes)
                     else:
                         AUC = Mann_Whitney_U_test(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
+                        d_rec,d_prec = getROCvalues(d_predictions,hidden_positive_nodes,test_positives, multi_node_dict)
                 print('Disease AUC = ', AUC)
 
                 d_AUCs.append(AUC)
+                d_recs.append(d_rec)
+                d_precs.append(d_prec)
    
 
             ## biological process k-fold validation
             print('\nBiological Process Tests')
             b_AUCs = []
+            b_precs = []
+            b_recs = []
             start=time.time()
             for i in range(opts.auc_samples):
                 done=float(i)/float(opts.auc_samples)
@@ -589,9 +617,7 @@ def main(argv):
                 hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in biological_process_positives)
                 test_positives = biological_process_positives.difference(hidden_positive_nodes)
                 print('%d hidden %d test nodes' % (len(hidden_positive_nodes),len(test_positives)))
-
-
-                
+              
 
                 if opts.with_negatives:
                     if not opts.sinksource_method:
@@ -601,6 +627,7 @@ def main(argv):
                         ignore,ignore,b_predictions = learners.matrixLearnSinkSource(G,test_positives,test_negatives,\
                             opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                     AUC = Mann_Whitney_U_test2(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                    b_rec,b_prec = getROCvalues2(b_predictions,hidden_positive_nodes,test_positives, multi_node_dict, hidden_negative_nodes)
                 else:
                     if not opts.sinksource_method:
                         ignore,ignore,b_predictions = learners.matrixLearn(G,test_positives,set(),\
@@ -610,17 +637,33 @@ def main(argv):
                             opts.epsilon,opts.timesteps,opts.verbose, opts.sinksource_constant)
                     if opts.examine_vs_negatives:
                         AUC = Mann_Whitney_U_test2(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, test_negatives, hidden_negative_nodes)
+                        b_rec,b_prec = getROCvalues2(b_predictions,hidden_positive_nodes,test_positives, multi_node_dict, hidden_negative_nodes)
                     else:
                         AUC = Mann_Whitney_U_test(b_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
+                        b_rec,b_prec = getROCvalues(b_predictions,hidden_positive_nodes,test_positives, multi_node_dict)
                 print('Biological Process AUC = ', AUC)
                 b_AUCs.append(AUC)
-            ## write the output file.
+                b_recs.append(b_rec)
+                b_precs.append(b_prec)
+
+            
+
+            ## write the output files.
             out = open(outfile,'w')
             out.write('#DiseaseAUCs\tBiologicalProcessAUCs\n')
+            roc_out = open(roc_outfile,'w')
+            roc_out.write('#Run\tDiseaseRecall\tDiseasePrecision\tProcessRecall\tProcessPrecision\n')
             for i in range(len(d_AUCs)):
                 out.write('%f\t%f\n' % (d_AUCs[i],b_AUCs[i]))
+
+                roc_out.write('%d\t%s\t%s\t%s\t%s\n' % (i+1,
+                    ','.join([str(a) for a in d_recs[i]]),
+                    ','.join([str(a) for a in d_precs[i]]),
+                    ','.join([str(a) for a in b_recs[i]]),
+                    ','.join([str(a) for a in b_precs[i]])))
     
             out.close()
+            roc_out.close()
 
         ## plot the AUC distribution.
         plt.clf()
@@ -880,8 +923,6 @@ def Mann_Whitney_U_test2(predictions,layer_dict, test_positives, hidden_positive
 
     #print(AUC)
     return AUC
-
-
 
 
 

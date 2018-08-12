@@ -17,38 +17,17 @@ NAMES = {'SZ':'Schizophrenia (SZ)',
 def main():
     print('Generating Results from Directory %s' % (OUTFILE_DIR))
 
-    ## READ DATA
-    data = {}
-    for disease in EXPERIMENTS:
-        data[disease] = {l:[] for l in LAYERS}
-        data[disease+'_no_neg'] = {l:[] for l in LAYERS}
+    ## read all the files at the beginning.
+    data = read_data()
 
-    for layer in LAYERS:
-        for l in LAMBDAS:
-            infile=OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_auc.txt' % (layer,l)
-            disease,process = file_parser(infile)
-            data['SZ'][layer].append(disease)
-            data['CM_SZ'][layer].append(process)
-
-            infile=OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_auc.txt' % (layer,l)
-            disease,process = file_parser(infile)
-            data['ASD'][layer].append(disease)
-            data['CM_ASD'][layer].append(process)
-
-            if layer == 1:
-                infile=OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l)
-                disease,process = file_parser(infile)
-                data['SZ_no_neg'][layer].append(disease)
-                data['CM_SZ_no_neg'][layer].append(process)
-
-                infile=OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l)
-                disease,process = file_parser(infile)
-                data['ASD_no_neg'][layer].append(disease)
-                data['CM_ASD_no_neg'][layer].append(process)
-    probplot(data)
-    figure_1(data)
-    figure_2(data)
-    figure_3_full(data)
+    probplot(data)  ## to make sure that t-test is OK
+    
+    figure_1(data) ## Layer=1, varying lambda
+    
+    figure_2(data) ## Negs. vs. NoNegs, Layer=1, varying lambda
+    figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree, Layer=1, varying lambda
+    
+    figure_3_full(data) ## All layers, all lambdas
 
     ## get best inds
     best_lambda_inds = {} #indices of highest-average lambda values for each experiment.
@@ -59,10 +38,50 @@ def main():
             for i in range(len(LAMBDAS)):
                 if i == 0 or mean(data[name][layer][best_lambda_inds[name][layer]]) < to_check[i]:
                     best_lambda_inds[name][layer] = i
-
-    figure_3(data,best_lambda_inds)
     
+    figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
+    
+
     return
+
+def read_data():
+    ## READ DATA
+    print('Processing files...')
+    data = {}
+
+    ## initialize names
+    for disease in EXPERIMENTS:
+        data[disease] = {l:[] for l in LAYERS}
+        data[disease+'_no_neg'] = {l:[] for l in LAYERS}
+        data[disease+'_rand_neg'] = {l:[] for l in LAYERS}
+        data[disease+'_rand_neg_deg'] = {l:[] for l in LAYERS}
+
+    for layer in LAYERS:
+        for l in LAMBDAS:
+            # build list of (file,name1,name2) tuples
+            to_process = []
+            ## general experiments
+            to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_auc.txt' % (layer,l),'SZ','CM_SZ'))
+            to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_auc.txt' % (layer,l),'ASD','CM_ASD'))
+            
+            if layer == 1:
+                ## no negatives (layer=1 only)
+                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l),'SZ_no_neg','CM_SZ_no_neg'))
+                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l),'ASD_no_neg','CM_ASD_no_neg'))
+                ## random negatives (layer 1 only)
+                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource-random_negatives_auc.txt' % (layer,l),'SZ_rand_neg','CM_SZ_rand_neg'))
+                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource-random_negatives_auc.txt' % (layer,l),'ASD_rand_neg','CM_ASD_rand_neg'))
+                ## degree-preserving random negatives (layer 1 only)
+                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource-random_negatives_degree_auc.txt' % (layer,l),'SZ_rand_neg_deg','CM_SZ_rand_neg_deg'))
+                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource-random_negatives_degree_auc.txt' % (layer,l),'ASD_rand_neg_deg','CM_ASD_rand_neg_deg'))
+
+            ## process each file in to_proces
+            for infile,diseasename,cellmotilityname in to_process:
+                #print(diseasename,cellmotilityname,'reading from file',infile)
+                disease,process = file_parser(infile)
+                data[diseasename][layer].append(disease)
+                data[cellmotilityname][layer].append(process)
+    return data
 
 #Appends AUC values of each positive set to a list and returns the 3 lists 
 def file_parser(auc_file):
@@ -231,6 +250,127 @@ def figure_2(data):
     plt.savefig(OUTFILE_DIR+'compare_neg_noneg.png')
 
     print('Created '+OUTFILE_DIR+'compare_neg_noneg.png')
+
+    return
+
+def figure_2_full(data):
+
+    #compare negatives vs. no negatives vs. random negatives.
+    
+    with open(OUTFILE_DIR+'RandNeg_statistical_tests.txt', 'w') as out:
+        
+        for disease in ['SZ','CM_SZ','ASD','CM_ASD']:
+            out.write('--- %s RANDOM NEGATIVES ---\n' % (disease))
+            for j in range(len(LAMBDAS)): 
+                # U, p_value = stats.mannwhitneyu(neg_lists[i][j], no_neg_lists[i][j], alternative='two-sided')
+                t_value,p_value = stats.ttest_ind(data[disease][1][j], data[disease+'_rand_neg'][1][j], equal_var=False)
+                if t_value > 0 and p_value/2 < 0.01:
+                    res = 'SIGNIFICANT (one-tailed, 0.01)'
+                else: 
+                    res = ''
+                out.write('Welch\'s t-test Lambda=%s (negs vs. rand-negs): %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[j],res,t_value,p_value,p_value))
+            out.write('\n')
+
+        out.write('Two-way ANOVA RANDOM NEGATIVES\n')
+        organized_data_1=[data[exp][1] for exp in EXPERIMENTS]
+        organized_data_2=[data[exp+'_no_neg'][1] for exp in EXPERIMENTS]
+        for i in range(len(organized_data_1)):
+            if i == 0:
+                out.write('Schizophrenia\t')
+            if i == 1:
+                out.write('Cell Motility-SZ\t')
+            if i == 2:
+                out.write('ASD\t')
+            if i == 3:
+                out.write('Cell Motility-ASD\t')
+        
+            out.write('\tssq\tdf\tF\tPR(>F)\n')
+
+            two_way_ANOVA_results=two_way_ANOVA(organized_data_1[i], organized_data_2[i])
+            for j in range(len(two_way_ANOVA_results)):
+                if j == 0:
+                    name = 'Including Random Negatives\t'
+                elif j == 1:
+                    name = 'sinksource constant\t'
+                else:
+                    name = 'Interaction\t'
+                for k in range(len(two_way_ANOVA_results[j])):
+                    name=name+str(two_way_ANOVA_results[j][k])+'\t'
+                name=name+'\n'
+                out.write(name)
+            out.write('\n')
+
+        for disease in ['SZ','CM_SZ','ASD','CM_ASD']:
+            out.write('--- %s RANDOM NEGATIVES (PRESERVING DEGREE) ---\n' % (disease))
+            for j in range(len(LAMBDAS)): 
+                # U, p_value = stats.mannwhitneyu(neg_lists[i][j], no_neg_lists[i][j], alternative='two-sided')
+                t_value,p_value = stats.ttest_ind(data[disease][1][j], data[disease+'_rand_neg_deg'][1][j], equal_var=False)
+                if t_value > 0 and p_value/2 < 0.01:
+                    res = 'SIGNIFICANT (one-tailed, 0.01)'
+                else: 
+                    res = ''
+                out.write('Welch\'s t-test Lambda=%s (negs vs. degree-preserving rand_negs): %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[j],res,t_value,p_value,p_value))
+            out.write('\n')
+
+        out.write('Two-way ANOVA RANDOM NEGATIVES (PRESERVING DEGREE)\n')
+        organized_data_1=[data[exp][1] for exp in EXPERIMENTS]
+        organized_data_2=[data[exp+'_no_neg'][1] for exp in EXPERIMENTS]
+        for i in range(len(organized_data_1)):
+            if i == 0:
+                out.write('Schizophrenia\t')
+            if i == 1:
+                out.write('Cell Motility-SZ\t')
+            if i == 2:
+                out.write('ASD\t')
+            if i == 3:
+                out.write('Cell Motility-ASD\t')
+        
+            out.write('\tssq\tdf\tF\tPR(>F)\n')
+
+            two_way_ANOVA_results=two_way_ANOVA(organized_data_1[i], organized_data_2[i])
+            for j in range(len(two_way_ANOVA_results)):
+                if j == 0:
+                    name = 'Including Degree-Preserving Random Negatives\t'
+                elif j == 1:
+                    name = 'sinksource constant\t'
+                else:
+                    name = 'Interaction\t'
+                for k in range(len(two_way_ANOVA_results[j])):
+                    name=name+str(two_way_ANOVA_results[j][k])+'\t'
+                name=name+'\n'
+                out.write(name)
+            out.write('\n')
+
+    fig2, ((ax1),(ax2),(ax3),(ax4)) = plt.subplots(ncols=1, nrows=4, figsize=(8,12))
+    axes = [ax1,ax2,ax3,ax4]
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        bp1 = ax.boxplot(data[name][1], notch=True, positions=[1,6,11,16,21,26], widths=1, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+        bp2 = ax.boxplot(data[name+'_no_neg'][1], notch=True, positions=[2,7,12,17,22,27], widths=1, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
+        bp3 = ax.boxplot(data[name+'_rand_neg'][1], notch=True, positions=[3,8,13,18,23,28], widths=1, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
+        bp4 = ax.boxplot(data[name+'_rand_neg_deg'][1], notch=True, positions=[4,9,14,19,24,29], widths=1, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#FFE888',color='#E1C23E'))
+        ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+        for x in [5,10,15,20,25]:
+            ax.plot([x,x],[0.5,0.9],color='lightgrey',alpha=0.5)
+        ax.set_title(NAMES[name])
+        ax.set_xticks([2.5,7.5,12.5,17.5,22.5,27.5])
+        ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
+        ax.set_xlim(0,30)
+        ax.set_ylim(0.5,0.9)
+        ax.set_ylabel('AUC')
+        ax.set_xlabel('$\lambda$')
+        
+        ax.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0], bp4['boxes'][0]], ['With Negatives', 'Without Negatives', 'Rand Negatives','Deg. Preserving Rand Negatives'], loc='best', fontsize='x-small')
+    
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'compare_rand_negs.png')
+
+    print('Created '+OUTFILE_DIR+'compare_rand_negs.png')
 
     return
     
