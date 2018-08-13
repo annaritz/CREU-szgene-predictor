@@ -307,16 +307,16 @@ def main(argv):
         print('Disease predictions...')
         statsfile = opts.outprefix + str(opts.layers) + 'layers_disease_stats.txt'
         outfile = opts.outprefix + str(opts.layers) + 'layers_disease_output.txt'
-        name = 'disease'
+        dataset_name = 'disease'
         d_times,d_changes,d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,disease_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,dataset_name,opts.sinksource_method,write=True)
 
         print('Biological process predictions...')
         statsfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_stats.txt'
         outfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_output.txt'
-        name = 'process'
+        dataset_name = 'process'
         b_times,b_changes,b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,biological_process_positives,negatives,\
-            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,dataset_name,opts.sinksource_method,write=True)
 
         ## NEW 6/14 by Anna: normed=True means that both predictions are normalized so the maximum is 1.0.
         normed=True
@@ -361,10 +361,11 @@ def main(argv):
             print(' union of positives...')
             statsfile = opts.outprefix + '_union_stats.txt'
             outfile = opts.outprefix+'_union_output.txt'
+            dataset_name = 'union'
             union_positives = disease_positives.union(biological_process_positives)
             u_times,u_changes,u_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,union_positives,negatives,\
                 opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,\
-                opts.layers,name,opts.sinksource_method,write=True)
+                opts.layers,dataset_name,opts.sinksource_method,write=True)
 
             ## plot node rankings.
             names = ['Disease Predictor $f_{\mathcal{D}}$','Biological Process Predictor $f_{\mathcal{P}}$','Union Predictor $f_{\mathcal{D} \cup \mathcal{P}}$','Combined Score $g$']
