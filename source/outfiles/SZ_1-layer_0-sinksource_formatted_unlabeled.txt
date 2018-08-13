@@ -2,8 +2,8 @@
 \centering
 \begin{tabular}{|llcc|ccc|}\hline
 Gene Name & EntrezID & Rank & Deg & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\hline
-ZFAT & 57623 & 9 & 1 & \textbf{1.00} & \textbf{1.00} & 1.00\\
-57623_0 & 57623_0 & 34 & 2 & \textbf{1.00} & \textbf{1.00} & 1.00\\
+57623_0 & 57623_0 & 5 & 2 & \textbf{1.00} & \textbf{1.00} & 1.00\\
+ZFAT & 57623 & 17 & 1 & \textbf{1.00} & \textbf{1.00} & 1.00\\
 CES1 & 1066 & 95 & 1 & \textbf{1.00} & \textbf{1.00} & 1.00\\
 1066_0 & 1066_0 & 96 & 2 & \textbf{1.00} & \textbf{1.00} & 1.00\\
 10178_0 & 10178_0 & 97 & 2 & \textbf{1.00} & \textbf{1.00} & 1.00\\
