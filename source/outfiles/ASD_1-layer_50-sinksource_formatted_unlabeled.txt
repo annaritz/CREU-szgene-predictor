@@ -1,0 +1,6 @@
+\begin{table}[h]
+\centering
+\begin{tabular}{|llcc|ccc|}\hline
+Gene Name & EntrezID & Rank & Deg & $f_{\mathcal{D}}$ & $f_{\mathcal{P}}$ & Score $g(v)$\\\hline
+\end{tabular}
+\end{table}
