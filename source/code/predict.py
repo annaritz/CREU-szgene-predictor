@@ -192,7 +192,6 @@ def main(argv):
 
         if opts.layers and opts.layers > 1:
             multi_node_dict = fileIO.read_edge_file_multi(G,opts.layers)
-            print('After partitioning: graph has %d nodes and %d edges' % (G.number_of_nodes(),G.number_of_edges()))
             orig_pos = pos
             orig_neg = neg
             pos = fileIO.partitionCurated(orig_pos,G,opts.verbose,opts.layers)
