@@ -74,6 +74,9 @@ def parse_arguments(argv):
     group.add_option('','--roc',\
         action='store_true',default=False,\
         help='Compute ROC cuves after holding out the overlap set and makes a figure. Default=False.')
+    group.add_option('','--toy',\
+        action='store_true',default=False,\
+        help='Run toy datset. Default=False.')
     parser.add_option_group(group)
 
     ## Input Files
@@ -154,12 +157,14 @@ def parse_arguments(argv):
         sys.exit('ERROR: if --union is specified, --single must also be specified. Exiting.')
     if (opts.aggregate_names and not opts.aggregate) or (opts.aggregate and not opts.aggregate_names):
         sys.exit('ERROR: --aggregate requires --aggregate_names to be specified (and vice versa). Exiting.')
-    if not (opts.stats or opts.single or opts.auc or opts.roc or opts.aggregate):
-        sys.exit('ERROR: method does not specify one or more experiments to run.  At least one of the following methods/experiments must be specified:\n\t--stats: compute statistics\n\t--single: run single experiment\n\t--auc: run k-fold cross validation\n\t--roc: compute ROC of positives that appear in both curated sets.\nExiting.')
+    if not (opts.stats or opts.single or opts.auc or opts.roc or opts.aggregate or opts.toy):
+        sys.exit('ERROR: method does not specify one or more experiments to run.  At least one of the following methods/experiments must be specified:\n\t--stats: compute statistics\n\t--single: run single experiment\n\t--auc: run k-fold cross validation\n\t--roc: compute ROC of positives that appear in both curated sets.\n\t--toy: run and viz toy dataset\nExiting.')
     if opts.sinksource_constant != None and opts.sinksource_method == False:
         sys.exit('ERROR: sinksource method must be specified to use constant.')
     if opts.sinksource_method==True and opts.sinksource_constant==None:
         sys.exit('ERROR: must specify constant for sinksource method.')
+    if opts.toy==True and (opts.single or opts.union or opts.stats or opts.auc or opts.roc):
+        sys.exit('ERROR: toy dataset must be run on its own.')
     if opts.with_negatives==False and (opts.random_negatives==True or opts.random_negatives_degree==True):
         sys.exit('ERROR: cannot have both no negatives and random negatives')
     if opts.random_negatives==True and opts.random_negatives_degree==True:
@@ -172,6 +177,44 @@ def main(argv):
 
     if opts.stats:
         sys.exit('ERROR: --stats option not available yet.')
+
+    if opts.toy:
+        print('\nRunning toy dataset...')
+        import visualize_toy
+
+
+        ## hard-coded in for now.
+        G = nx.Graph()
+        fileIO.read_edge_file_single('../infiles/toy_dataset/toy_network.txt',G)
+        print('Graph has %d nodes and %d edges' % (G.number_of_nodes(),G.number_of_edges()))
+        pos = fileIO.curatedFileReader('../infiles/toy_dataset/pos.txt',G,opts.verbose)
+        neg = fileIO.curatedFileReader('../infiles/toy_dataset/neg.txt',G,opts.verbose)
+
+        if opts.layers and opts.layers > 1:
+            multi_node_dict = fileIO.read_edge_file_multi(G,opts.layers)
+            print('After partitioning: graph has %d nodes and %d edges' % (G.number_of_nodes(),G.number_of_edges()))
+            orig_pos = pos
+            orig_neg = neg
+            pos = fileIO.partitionCurated(orig_pos,G,opts.verbose,opts.layers)
+            neg = fileIO.partitionCurated(orig_neg,G,opts.verbose,opts.layers)
+            print('After partitioning: %d Labeled Positives and %d Labeled Negatives.\n' % \
+                (len(pos),len(neg)))
+
+        dataset_name = 'toy'
+        if opts.sinksource_method:
+            statsfile = '../outfiles/toy_dataset/out_%s_%dlayers_SS+%s_stats.txt' % (dataset_name,opts.layers,str(opts.sinksource_constant))
+            outfile = '../outfiles/toy_dataset/out_%s_%dlayers_SS+%s_output.txt' % (dataset_name,opts.layers,str(opts.sinksource_constant))
+            graph_name = 'Toy L%d Pseudo-SS+ Lambda %s' % (opts.layers,str(opts.sinksource_constant))
+        else:
+            statsfile = '../outfiles/toy_dataset/out_%s_%dlayers_stats.txt' % (dataset_name,opts.layers)
+            outfile = '../outfiles/toy_dataset/out_%s_%dlayers_output.txt' % (dataset_name,opts.layers)
+            graph_name = 'Toy L%d SS' % (opts.layers)
+        times,changes,predictions = learners.learn('../outfiles/toy_dataset/out',outfile,statsfile,{},G,pos,neg,\
+            opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,dataset_name,opts.sinksource_method,write=True)
+        visualize_toy.visualize_graph(G,pos,neg,predictions,graph_name)
+        print('Done')
+
+        return
 
     ## if opts.aggregate, don't need to load input datasets. 
     ## for all other experiments, we need them.

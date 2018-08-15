@@ -5,7 +5,8 @@ from datetime import datetime
 from graphspace_python.api.client import GraphSpace 
 from graphspace_python.graphs.classes.gsgraph import GSGraph 
 import matplotlib.pyplot as plt
-graphspace = GraphSpace('mirbern@reed.edu', 'pumpkin')
+#graphspace = GraphSpace('mirbern@reed.edu', 'pumpkin')
+graphspace = GraphSpace('aritz@reed.edu','platypus')
 
 
 def parse_arguments(argv):

@@ -80,7 +80,8 @@ def read_edge_file_single(filename, graph):
     with open(filename,'r') as fin:
         for line in fin:
             line=line.split('\t')
-            line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
+            #line[2]=float(line[2][:len(line[2])-2]) #Wrestling with the formatting
+            line[2] = float(line[2])
             for i in range(0,2):
                 node=line[i]
                 if node not in all_nodes:
@@ -204,6 +205,7 @@ def partitionCurated(original_curated,graph,verbose,layers):
     labeled_List=random.sample(labeled_List, k=len(labeled_List))
 
     ## Go through each curated positive
+    
     for i in range(len(labeled_List)):
         ##Pick a layer.  Uses integer division (e.g., layer will be 0,1,2,0,1,2,etc. for 3 layers)
         layer=(i//(len(labeled_List)//layers))
@@ -485,10 +487,15 @@ def writeResults(statsfile,outprefix,outfile,times,changes,predictions,genemap,G
     sorted_predict = sorted(predictions, key=lambda x:predictions[x], reverse=True) #list of nodes sorted by high to low rank
     rank = 1 #relative rank of prime nodes - second prime node found has rank 1, third 2, etc. (updated when a prime node seen)
     unlabeled_rank = 1
+    any_prime = any(['_prime' in n for n in sorted_predict])
     for n in sorted_predict:
-        if n[-6:] == '_prime':
-            entrez = n[:-6]
-            node = entrez+'_0' #look at the nodes in the first layer to check the degree because corresponding nodes in 
+        if not any_prime or n[-6:] == '_prime':
+            if any_prime:
+                entrez = n[:-6]
+                node = entrez+'_0' #look at the nodes in the first layer to check the degree because corresponding nodes in 
+            else:
+                entrez = n
+                node = entrez
             #layers all have the same degree
             degreeList.append(G.degree(node))
             out.write('%s\t%s\t%f\t%s\n' % (entrez,genemap.get(entrez,entrez),predictions[n],G.degree(node)))

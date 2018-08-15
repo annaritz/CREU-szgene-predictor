@@ -2,17 +2,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats as stats 
 import sys
+import os 
 
 #SET USE_SD=False to get Error is IRQ, not standard deviation
 USE_SD=True
 OUTFILE_DIR = '../outfiles/'
 LAMBDAS = ['0','0.01','0.1','1','10','50']
-LAYERS = [1,2,3]
+#LAYERS = [1,2,3]
+LAYERS=[1]
 EXPERIMENTS = ['SZ','CM_SZ','ASD','CM_ASD'] 
 NAMES = {'SZ':'Schizophrenia (SZ)',
         'CM_SZ': 'Cell Motility-SZ',
         'ASD':'Autism (ASD)',
         'CM_ASD':'Cell Motility-ASD'}
+
+EXP_COLORS = {'SZ':'#68C8C3',
+        'CM_SZ': '#FFC300',
+        'ASD':'#A4B97D',
+        'CM_ASD':'#C70039'}
+TITLE_SIZE=14
+LABEL_SIZE=12
+TICK_SIZE=10
 
 def main():
     print('Generating Results from Directory %s' % (OUTFILE_DIR))
@@ -20,12 +30,14 @@ def main():
     ## read all the files at the beginning.
     data = read_data()
 
-    probplot(data)  ## to make sure that t-test is OK
-    
+    #probplot(data)  ## to make sure that t-test is OK
+
+    '''
+    OLD FIGURES (before removing the multilayer stuff...)
     figure_1(data) ## Layer=1, varying lambda
-    
     figure_2(data) ## Negs. vs. NoNegs, Layer=1, varying lambda
     figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree, Layer=1, varying lambda
+    
     
     figure_3_full(data) ## All layers, all lambdas
 
@@ -40,9 +52,190 @@ def main():
                     best_lambda_inds[name][layer] = i
     
     figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
-    
+    '''
+
+    ## NEW FIGURES
+
+    ss_scatter_fig(500,'0',2000)
+    ss_scatter_fig(500,'0.01',2000)
+    ss_scatter_fig(500,'0.1',2000)
+    ss_scatter_fig(500,'1',2000)
+    ss_scatter_fig(500,'10')
+    sys.exit()
+    sinksource_fig(data)
+    roc_fig()
+    figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
+
+
+    #roc_data = read_roc_data()
+    #figure_4(data)
 
     return
+
+def ss_scatter_fig(num,l,ymax=None):
+    data = {ex:[] for ex in EXPERIMENTS}
+    avg = {ex:[] for ex in EXPERIMENTS}
+    alpha=15
+
+    infile = OUTFILE_DIR+'SZ_1-layer_%s-sinksource_combined_output.txt' % (l)
+    with open(infile) as fin:
+        disease = []
+        process = []
+        for line in fin:
+            if line[0] == '#':
+                continue
+            row = line.strip().split()
+            if row[2] == 'Unlabeled':
+                disease.append([float(row[3]),int(row[8])])
+            if row[4] == 'Unlabeled':
+                process.append([float(row[5]),int(row[8])])
+        disease.sort(reverse=True,key=lambda x: x[0])
+        process.sort(reverse=True,key=lambda x: x[0])
+        print(disease[1:10])
+        data['SZ'] = [disease[i][1] for i in range(num)]
+        data['CM_SZ'] = [process[i][1] for i in range(num)]
+        avg['SZ'] = [0]*(len(data['SZ'])-alpha)
+        avg['CM_SZ'] = [0]*(len(data['CM_SZ'])-alpha)
+        for i in range(len(data['SZ'])-alpha):
+            avg['SZ'][i] = sum(data['SZ'][i:i+alpha])/alpha
+        for i in range(len(data['SZ'])-alpha):
+            avg['CM_SZ'][i] = sum(data['CM_SZ'][i:i+alpha])/alpha
+
+    infile = OUTFILE_DIR+'ASD_1-layer_%s-sinksource_combined_output.txt' % (l)
+    with open(infile) as fin:
+        disease = []
+        process = []
+        for line in fin:
+            if line[0] == '#':
+                continue
+            row = line.strip().split()
+            if row[2] == 'Unlabeled':
+                disease.append([float(row[3]),int(row[8])])
+            if row[4] == 'Unlabeled':
+                process.append([float(row[5]),int(row[8])])
+        disease.sort(reverse=True,key=lambda x: x[0])
+        process.sort(reverse=True,key=lambda x: x[0])
+        
+        data['ASD'] = [disease[i][1] for i in range(num)]
+        data['CM_ASD'] = [process[i][1] for i in range(num)]
+        avg['ASD'] = [0]*(len(data['ASD'])-alpha)
+        avg['CM_ASD'] = [0]*(len(data['CM_ASD'])-alpha)
+        for i in range(len(data['ASD'])-alpha):
+            avg['ASD'][i] = sum(data['ASD'][i:i+alpha])/alpha
+        for i in range(len(data['ASD'])-alpha):
+            avg['CM_ASD'][i] = sum(data['CM_ASD'][i:i+alpha])/alpha
+
+    fig2, ((ax1,ax2,ax3,ax4)) = plt.subplots(ncols=4, nrows=1, figsize=(12,3))
+    axes = [ax1,ax2,ax3,ax4]
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        ax.scatter(range(len(data[name])),data[name], alpha=0.2, color=[.7, .7, .7], label=None)
+        ax.plot(range(len(avg[name])),avg[name], color='k', label=None)
+        ax.set_title(NAMES[name]+'\n$\lambda=%s$' % (l),fontsize=TITLE_SIZE)
+        #ax.set_xlim(.5,6.5)
+        if ymax:
+            ax.set_ylim(0,ymax)
+        ax.set_ylabel('Degree',fontsize=LABEL_SIZE)
+        ax.set_xlabel('Rank',fontsize=LABEL_SIZE)
+        if num > 200:
+            print(name,'Average over first 100:',sum(data[name][:100])/100)
+        
+        #if i == 0:
+        #    ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
+    
+    plt.tight_layout()
+    prefix = 'ss_scatter_fig_%s' % (l.replace('.','pt'))
+    plt.savefig(OUTFILE_DIR+prefix+'.png')
+    print('Created '+OUTFILE_DIR+prefix+'.png')
+
+    plt.savefig(OUTFILE_DIR+prefix+'.pdf')
+    print('Created '+OUTFILE_DIR+prefix+'.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+prefix+'.pdf '+OUTFILE_DIR+prefix+'.pdf')
+    return
+
+def sinksource_fig(data):
+    sig = {} # asterisks
+    with open(OUTFILE_DIR+'sinksource_fig.txt', 'w') as out:
+        for disease in ['SZ','CM_SZ','ASD','CM_ASD']:
+            sig[disease] = []
+            out.write('--- %s ---\n' % (disease))
+            for j in range(1,len(LAMBDAS)): 
+                # U, p_value = stats.mannwhitneyu(neg_lists[i][j], no_neg_lists[i][j], alternative='two-sided')
+                t_value,p_value = stats.ttest_ind(data[disease][1][0], data[disease+'_no_neg'][1][j], equal_var=False)
+                if t_value > 0 and p_value/2 < 0.01:
+                    res = 'SIGNIFICANT (one-tailed, 0.01)'
+                    sig[disease].append(j+1)
+                else: 
+                    res = ''
+                out.write('Welch\'s t-test Lambda=%s (negs vs. no-negs): %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[j],res,t_value,p_value,p_value))
+            out.write('\n')
+
+    fig2, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(8,6))
+    axes = [ax1,ax2,ax3,ax4]
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        bp1 = ax.boxplot(data[name][1][0], notch=True, positions=[1], widths=.75, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+        bp2 = ax.boxplot(data[name+'_no_neg'][1][1:], notch=True, positions=[2,3,4,5,6], widths=.75, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
+        ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+        if len(sig[name]) > 0:
+            ax.plot(sig[name],[0.85]*len(sig[name]),'*k')
+        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
+        ax.set_xticks([1,2,3,4,5,6])
+        ax.set_xticklabels(['SS','SS+\n$\lambda\!=\!0.01$','SS+\n$\lambda\!=\!0.1$','SS+\n$\lambda\!=\!1$','SS+\n$\lambda\!=\!10$','SS+\n$\lambda\!=\!50$'])
+        ax.set_xlim(.5,6.5)
+        ax.set_ylim(0.5,0.9)
+        ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
+        #ax.set_xlabel('Method',fontsize=LABEL_SIZE)
+        
+        #if i == 0:
+        #    ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
+    
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'sinksource_fig.png')
+    print('Created '+OUTFILE_DIR+'sinksource_fig.png')
+
+    plt.savefig(OUTFILE_DIR+'sinksource_fig.pdf')
+    print('Created '+OUTFILE_DIR+'sinksource_fig.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'sinksource_fig.pdf '+OUTFILE_DIR+'sinksource_fig.pdf')
+
+    return
+
+def roc_fig():
+    roc_data = read_rocs()
+    fig2, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(8,6))
+    axes = [ax1,ax2,ax3,ax4]
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        label=False
+        print('plotting %d',len(roc_data[name][1]))
+        for i in range(len(roc_data[name][1])):
+            rec = roc_data[name][1][i][0]
+            prec = roc_data[name][1][i][1]
+            if not label:
+                ax.plot(rec,prec,color=EXP_COLORS[name],alpha=0.4,label='Mean AUC= %.2f' % (mean(data[name][1][0])))
+                label=True
+            else:    
+                ax.plot(rec,prec,color=EXP_COLORS[name],alpha=0.4,label=None)
+        ax.plot([0,1],[0,1],'--',color='k',label=None)
+        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
+        #ax.set_xlim(.5,6.5)
+        #ax.set_ylim(0.5,0.9)
+        ax.set_ylabel('True Positive Rate',fontsize=LABEL_SIZE)
+        ax.set_xlabel('False Positive Rate',fontsize=LABEL_SIZE)
+        ax.legend(loc='best',fontsize=LABEL_SIZE)
+
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'roc_fig.png')
+    print('Created '+OUTFILE_DIR+'roc_fig.png')
+
+    plt.savefig(OUTFILE_DIR+'roc_fig.pdf')
+    print('Created '+OUTFILE_DIR+'roc_fig.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'roc_fig.pdf '+OUTFILE_DIR+'roc_fig.pdf')
 
 def read_data():
     ## READ DATA
@@ -53,6 +246,7 @@ def read_data():
     for disease in EXPERIMENTS:
         data[disease] = {l:[] for l in LAYERS}
         data[disease+'_no_neg'] = {l:[] for l in LAYERS}
+        data[disease+'_old_neg'] = {l:[] for l in LAYERS}
         data[disease+'_rand_neg'] = {l:[] for l in LAYERS}
         data[disease+'_rand_neg_deg'] = {l:[] for l in LAYERS}
 
@@ -75,6 +269,10 @@ def read_data():
                 to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource-random_negatives_degree_auc.txt' % (layer,l),'SZ_rand_neg_deg','CM_SZ_rand_neg_deg'))
                 to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource-random_negatives_degree_auc.txt' % (layer,l),'ASD_rand_neg_deg','CM_ASD_rand_neg_deg'))
 
+                ## old (krishnan et al.) negatives (layer 1 only)
+                to_process.append((OUTFILE_DIR+'SZ_%d-layer_oldnegs_%s-sinksource_auc.txt' % (layer,l),'SZ_old_neg','CM_SZ_old_neg'))
+                to_process.append((OUTFILE_DIR+'ASD_%d-layer_oldnegs_%s-sinksource_auc.txt' % (layer,l),'ASD_old_neg','CM_ASD_old_neg'))
+
             ## process each file in to_proces
             for infile,diseasename,cellmotilityname in to_process:
                 #print(diseasename,cellmotilityname,'reading from file',infile)
@@ -82,6 +280,49 @@ def read_data():
                 data[diseasename][layer].append(disease)
                 data[cellmotilityname][layer].append(process)
     return data
+
+def read_rocs():
+    ## READ DATA
+    print('Processing ROC files...')
+    data = {}
+
+    ## initialize names
+    for disease in EXPERIMENTS:
+        data[disease] = {l:[] for l in LAYERS}
+
+    for layer in LAYERS:
+        for l in ['0']:
+            # build list of (file,name1,name2) tuples
+            to_process = []
+            ## general experiments
+            to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_roccurves.txt' % (layer,l),'SZ','CM_SZ'))
+            to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_roccurves.txt' % (layer,l),'ASD','CM_ASD'))
+            
+            ## process each file in to_proces
+            for infile,diseasename,cellmotilityname in to_process:
+                with open(infile) as fin:
+                    for line in fin:
+                        if line[0] == '#':  # skip header
+                            continue
+                        row = line.strip().split()
+                        d_rec = [int(a) for a in row[1].split(',')]
+                        d_prec = [int(a) for a in row[2].split(',')]
+                        b_rec = [int(a) for a in row[3].split(',')]
+                        b_prec = [int(a) for a in row[4].split(',')]
+
+                        ## normalize to be between 0 and 1.
+                        d_rec = [a/d_rec[-1] for a in d_rec]
+                        d_prec = [a/d_prec[-1] for a in d_prec]
+                        b_rec = [a/b_rec[-1] for a in b_rec]
+                        b_prec = [a/b_prec[-1] for a in b_prec]
+
+                        data[diseasename][layer].append([d_rec,d_prec])
+                        data[cellmotilityname][layer].append([b_rec,b_prec])
+                    print(infile,':',len(data[diseasename][layer]),len(data[cellmotilityname][layer]))
+    return data
+
+#def read_roc_data():
+    ## read ROC curve data for all Layer 1 
 
 #Appends AUC values of each positive set to a list and returns the 3 lists 
 def file_parser(auc_file):
@@ -117,6 +358,10 @@ def probplot(data):
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'probplot.png')
     print('Created '+OUTFILE_DIR+'probplot.png')
+
+    plt.savefig(OUTFILE_DIR+'probplot.pdf')
+    print('Created '+OUTFILE_DIR+'probplot.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'probplot.pdf '+OUTFILE_DIR+'probplot.pdf')
     return
 
 def figure_1(data):
@@ -162,22 +407,24 @@ def figure_1(data):
         if len(sig[name]) > 0:
             ax.plot(sig[name],[0.88]*len(sig[name]),'*k')
         # set title, axis limits, and labels
-        ax.set_title(NAMES[name])
+        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
         ax.set_xticks([j+1 for j in range(len(data[name][1]))])
         ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
         
         ax.set_ylim(0.5,0.9)
         
-        ax.set_ylabel('AUC')
-        ax.set_xlabel('$\lambda$')
+        ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
+        ax.set_xlabel('$\lambda$',fontsize=LABEL_SIZE)
     
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'compare_lambda.png')
-
     print('Created '+OUTFILE_DIR+'compare_lambda.png')
+
+    plt.savefig(OUTFILE_DIR+'compare_lambda.pdf')
+    print('Created '+OUTFILE_DIR+'compare_lambda.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'compare_lambda.pdf '+OUTFILE_DIR+'compare_lambda.pdf')
     
     return
-
 
 def figure_2(data):
     
@@ -235,21 +482,24 @@ def figure_2(data):
             patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
         ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
         
-        ax.set_title(NAMES[name])
+        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
         ax.set_xticks([3,8,13,18,23,28])
         ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
         ax.set_xlim(0,31)
         ax.set_ylim(0.5,0.9)
-        ax.set_ylabel('AUC')
-        ax.set_xlabel('$\lambda$')
+        ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
+        ax.set_xlabel('$\lambda$',fontsize=LABEL_SIZE)
         
         if i == 0:
-            ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize='x-small')
+            ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
     
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'compare_neg_noneg.png')
-
     print('Created '+OUTFILE_DIR+'compare_neg_noneg.png')
+
+    plt.savefig(OUTFILE_DIR+'compare_neg_noneg.pdf')
+    print('Created '+OUTFILE_DIR+'compare_neg_noneg.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'compare_neg_noneg.pdf '+OUTFILE_DIR+'compare_neg_noneg.pdf')
 
     return
 
@@ -341,6 +591,47 @@ def figure_2_full(data):
                 out.write(name)
             out.write('\n')
 
+        for disease in ['SZ','CM_SZ','ASD','CM_ASD']:
+            out.write('--- %s KRISHNAN ET AL NEGATIVES ---\n' % (disease))
+            for j in range(len(LAMBDAS)): 
+                # U, p_value = stats.mannwhitneyu(neg_lists[i][j], no_neg_lists[i][j], alternative='two-sided')
+                t_value,p_value = stats.ttest_ind(data[disease][1][j], data[disease+'_old_neg'][1][j], equal_var=False)
+                if t_value > 0 and p_value/2 < 0.01:
+                    res = 'SIGNIFICANT (one-tailed, 0.01)'
+                else: 
+                    res = ''
+                out.write('Welch\'s t-test Lambda=%s (negs vs. old negs): %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[j],res,t_value,p_value,p_value))
+            out.write('\n')
+
+        out.write('Two-way ANOVA KRISHNAN ET AL NEGATIVES\n')
+        organized_data_1=[data[exp][1] for exp in EXPERIMENTS]
+        organized_data_2=[data[exp+'_old_neg'][1] for exp in EXPERIMENTS]
+        for i in range(len(organized_data_1)):
+            if i == 0:
+                out.write('Schizophrenia\t')
+            if i == 1:
+                out.write('Cell Motility-SZ\t')
+            if i == 2:
+                out.write('ASD\t')
+            if i == 3:
+                out.write('Cell Motility-ASD\t')
+        
+            out.write('\tssq\tdf\tF\tPR(>F)\n')
+
+            two_way_ANOVA_results=two_way_ANOVA(organized_data_1[i], organized_data_2[i])
+            for j in range(len(two_way_ANOVA_results)):
+                if j == 0:
+                    name = 'Including Old NEgatives\t'
+                elif j == 1:
+                    name = 'sinksource constant\t'
+                else:
+                    name = 'Interaction\t'
+                for k in range(len(two_way_ANOVA_results[j])):
+                    name=name+str(two_way_ANOVA_results[j][k])+'\t'
+                name=name+'\n'
+                out.write(name)
+            out.write('\n')
+
     fig2, ((ax1),(ax2),(ax3),(ax4)) = plt.subplots(ncols=1, nrows=4, figsize=(8,12))
     axes = [ax1,ax2,ax3,ax4]
     for i in range(len(EXPERIMENTS)):
@@ -348,7 +639,7 @@ def figure_2_full(data):
         ax = axes[i]
         bp1 = ax.boxplot(data[name][1], notch=True, positions=[1,6,11,16,21,26], widths=1, sym='', \
             patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-        bp2 = ax.boxplot(data[name+'_no_neg'][1], notch=True, positions=[2,7,12,17,22,27], widths=1, sym='', \
+        bp2 = ax.boxplot(data[name+'_old_neg'][1], notch=True, positions=[2,7,12,17,22,27], widths=1, sym='', \
             patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
         bp3 = ax.boxplot(data[name+'_rand_neg'][1], notch=True, positions=[3,8,13,18,23,28], widths=1, sym='', \
             patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
@@ -357,24 +648,25 @@ def figure_2_full(data):
         ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
         for x in [5,10,15,20,25]:
             ax.plot([x,x],[0.5,0.9],color='lightgrey',alpha=0.5)
-        ax.set_title(NAMES[name])
+        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
         ax.set_xticks([2.5,7.5,12.5,17.5,22.5,27.5])
         ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
         ax.set_xlim(0,30)
         ax.set_ylim(0.5,0.9)
-        ax.set_ylabel('AUC')
-        ax.set_xlabel('$\lambda$')
+        ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
+        ax.set_xlabel('$\lambda$',fontsize=LABEL_SIZE)
         
-        ax.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0], bp4['boxes'][0]], ['With Negatives', 'Without Negatives', 'Rand Negatives','Deg. Preserving Rand Negatives'], loc='best', fontsize='x-small')
+        ax.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0], bp4['boxes'][0]], ['Curated Negatives', 'Krishnan et al. Negatives', 'Random Negatives','Deg. Preserving Random Negatives'], ncol=2, loc='best', fontsize='small')
     
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'compare_rand_negs.png')
-
     print('Created '+OUTFILE_DIR+'compare_rand_negs.png')
 
-    return
-    
+    plt.savefig(OUTFILE_DIR+'compare_rand_negs.pdf')
+    print('Created '+OUTFILE_DIR+'compare_rand_negs.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'compare_rand_negs.pdf '+OUTFILE_DIR+'compare_rand_negs.pdf')
 
+    return
 
 def figure_3(data,best_lambda_inds):
     best_lambda_data = {}
@@ -452,16 +744,19 @@ def figure_3(data,best_lambda_inds):
         ax.set_xticks([2,4,6])
         ax.set_xticklabels(['1','2','3'])
         if i==0:
-            ax.set_ylabel('AUC')
-        ax.set_xlabel('Layers')
-        ax.set_title(NAMES[name])
+            ax.set_ylabel('AUC',fontsize=TICK_SIZE)
+        ax.set_xlabel('Layers',fontsize=TICK_SIZE)
+        ax.set_title(NAMES[name],fontsize=LABEL_SIZE)
     
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'comparing_layers_best_lambdas.png')
-    print('Created '+OUTFILE_DIR+'comparing_best_lambdas.png')
+    print('Created '+OUTFILE_DIR+'comparing_layers_best_lambdas.png')
+
+    plt.savefig(OUTFILE_DIR+'comparing_layers_best_lambdas.pdf')
+    print('Created '+OUTFILE_DIR+'comparing_layers_best_lambdas.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'comparing_layers_best_lambdas.pdf '+OUTFILE_DIR+'comparing_layers_best_lambdas.pdf')
 
     return
-
 
 def figure_3_full(data):
 
@@ -544,21 +839,22 @@ def figure_3_full(data):
         ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
         ax.set_ylim(0.5,0.9)
         ax.set_xlim(0,43)
-        ax.set_ylabel('AUC')
-        ax.set_xlabel('$\lambda$')
-        ax.set_title(NAMES[name])
+        ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
+        ax.set_xlabel('$\lambda$',fontsize=LABEL_SIZE)
+        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
         if i==0:
-            ax.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0]], ['1 Layer', '2 Layers', '3 Layers'], loc='best', fontsize='x-small')
+            ax.legend([bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0]], ['1 Layer', '2 Layers', '3 Layers'], loc='best', fontsize=TICK_SIZE)
     
     plt.tight_layout()
     plt.savefig(OUTFILE_DIR+'comparing_layers.png')
+    print('Created '+OUTFILE_DIR+'comparing_layers.png')
 
-    print('Created ../outfiles/comparing_layers.png')
+    plt.savefig(OUTFILE_DIR+'comparing_layers.pdf')
+    print('Created '+OUTFILE_DIR+'comparing_layers.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'comparing_layers.pdf '+OUTFILE_DIR+'comparing_layers.pdf')
 
     return
     
-    
-
 def two_way_ANOVA(List_of_lists_A, List_of_lists_B):
     number_of_settings=2
     number_of_constants=6
@@ -809,6 +1105,9 @@ def two_way_ANOVA_test(List_of_lists_A, List_of_lists_B):
 
 def mean(bunch_of_numbers):
     return np.mean(bunch_of_numbers)
+
+def median(bunch_of_numbers):
+    return np.median(bunch_of_numbers)
 
 
 main()
