@@ -319,17 +319,16 @@ def main(argv):
         else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
             negatives = set()
 
+        orig_disease_positives = disease_positives
+        orig_biological_process_positives = biological_process_positives
+        orig_negatives = negatives
+
         if opts.layers and opts.layers > 1:
             #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
             #and keep track of original and partitioned positives 
 
             #After checking the graph, we need to modify it to include multiple layers + primes
             multi_node_dict = fileIO.read_edge_file_multi(G, opts.layers)
-
-            orig_disease_positives = disease_positives
-            orig_biological_process_positives = biological_process_positives
-            orig_negatives = negatives
-        
             disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
             biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
             if opts.with_negatives or opts.examine_vs_negatives:
@@ -365,7 +364,7 @@ def main(argv):
         dataset_name = 'disease'
         d_times,d_changes,d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,disease_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,dataset_name,opts.sinksource_method,write=True)
-        
+
         print('Biological process predictions...')
         statsfile = opts.outprefix + '_biological_process_stats.txt'
         outfile = opts.outprefix + '_biological_process_output.txt'
