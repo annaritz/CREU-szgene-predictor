@@ -323,6 +323,7 @@ def main(argv):
         orig_biological_process_positives = biological_process_positives
         orig_negatives = negatives
 
+
         if opts.layers and opts.layers > 1:
             #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
             #and keep track of original and partitioned positives 
@@ -346,6 +347,8 @@ def main(argv):
                 for n in negatives:
                     out.write('NEG\t'+n+'\n')
             print('wrote to '+opts.outprefix + '_partitioned_nodes.txt')
+        else:
+            multi_node_dict = {n:n for n in G.nodes}
 
 
 
@@ -613,13 +616,23 @@ def main(argv):
                 # subsample 1/k of the positives...
                 if opts.with_negatives or opts.examine_vs_negatives:
                     hidden_negative_genes = random.sample(orig_negatives,int(len(orig_negatives)/opts.k_fold))
-                    hidden_negative_nodes = set(node for gene in hidden_negative_genes for node in multi_node_dict[gene] if node in negatives)
-                    test_negatives = negatives.difference(hidden_negative_nodes)
+
+                    if opts.layers> 1:
+                        hidden_negative_nodes = set(node for gene in hidden_negative_genes for node in multi_node_dict[gene] if node in negatives)
+                    else:
+                        hidden_negative_nodes = hidden_negative_genes
+
+                    test_negatives = negatives.difference(hidden_negative_nodes)                   
                     print('%d hidden %d test negative nodes' % (len(hidden_negative_nodes),len(test_negatives)))
 
                 hidden_positive_genes = random.sample(orig_disease_positives,int(len(orig_disease_positives)/opts.k_fold))
-                hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in disease_positives)
+                if opts.layers > 1:
+                    hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in disease_positives)
+                else:
+                    hidden_positive_nodes = hidden_positive_genes
                 test_positives = disease_positives.difference(hidden_positive_nodes)
+                
+
                 print('%d hidden %d test positive nodes' % (len(hidden_positive_nodes),len(test_positives)))
 
                 # MWU = Mann_Whitney_U_test(d_predictions, multi_node_dict, test_positives, hidden_positive_nodes, negatives)
@@ -904,10 +917,16 @@ def Mann_Whitney_U_test(predictions,layer_dict, test_positives,hidden_positives,
     negative_count = 0
     positive_count = 0 
     #Iterate through layer_dict instead?
+    any_prime = any(['_prime' in n for n in predictions])
     for node in predictions:
-        if node[-6:] == '_prime': #only want to look at prime nodes
-            entrez = node[:-6] 
-            names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+        if not any_prime or node[-6:] == '_prime':
+            if any_prime:
+                entrez = node[:-6]
+                names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+            else:
+                entrez = node
+                names = set([node])
+                
             if bool(names.intersection(hidden_positives)): #bool() is True if the prime node is attached to a hidden node, False if not
                 hiddenNodeValues.append(predictions[node])
 
@@ -946,10 +965,16 @@ def Mann_Whitney_U_test2(predictions,layer_dict, test_positives, hidden_positive
     positive_count = 0 
     unlabeled_count = 0
     #Iterate through layer_dict instead?
+    any_prime = any(['_prime' in n for n in predictions])
     for node in predictions:
-        if node[-6:] == '_prime': #only want to look at prime nodes
-            entrez = node[:-6] 
-            names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+        if not any_prime or node[-6:] == '_prime':
+            if any_prime:
+                entrez = node[:-6]
+                names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+            else:
+                entrez = node
+                names = set([node])
+
             if bool(names.intersection(hidden_positives)): #bool() is True if the prime node is attached to a hidden node, False if not
                 hiddenPositiveValues.append(predictions[node])
 
