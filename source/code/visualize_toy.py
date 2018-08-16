@@ -21,22 +21,27 @@ def visualize_graph(nxG,pos,neg,predictions,title):
         print(node,predictions[node])
         if 'prime' in node:
             gsG.add_node(node,label=node.replace('_prime','\''),popup='Prediction: %.4f' % (predictions[node]))
-            size=30
+            h=30
+            w=60
         else:
             gsG.add_node(node,label=node.replace('_',' L'),popup='Prediction: %.4f' % (predictions[node]))
-            size=20
-
+            h=20
+            w=40
         if node in pos:
             color = POS_COLOR
             shape='star'
+            h=40
+            w=40
         elif node in neg:
             color = NEG_COLOR
             shape='star'
+            h=40
+            w=40
         else: # unlabeled
             pred = predictions[node]
             color = rgb2hex(1-pred,0.5,pred,normed=True)
             shape='rectangle'
-        gsG.add_node_style(node, color=color, shape=shape, height=size, width=size*2)
+        gsG.add_node_style(node, color=color, shape=shape, height=h,width=w)
 
     for n1,n2 in nxG.edges:
         gsG.add_edge(n1,n2,popup='Weight: %.4f' % (nxG[n1][n2]['weight']))

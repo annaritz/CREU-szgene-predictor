@@ -8,8 +8,8 @@ import os
 USE_SD=True
 OUTFILE_DIR = '../outfiles/'
 LAMBDAS = ['0','0.01','0.1','1','10','50']
-#LAYERS = [1,2,3]
-LAYERS=[1]
+LAYERS = [1,2,3]
+#LAYERS=[1]
 EXPERIMENTS = ['SZ','CM_SZ','ASD','CM_ASD'] 
 NAMES = {'SZ':'Schizophrenia (SZ)',
         'CM_SZ': 'Cell Motility-SZ',
@@ -30,7 +30,7 @@ def main():
     ## read all the files at the beginning.
     data = read_data()
 
-    #probplot(data)  ## to make sure that t-test is OK
+    probplot(data)  ## to make sure that t-test is OK
 
     '''
     OLD FIGURES (before removing the multilayer stuff...)
@@ -53,7 +53,9 @@ def main():
     
     figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
     '''
+    figure_3_full(data) ## All layers, all lambdas
 
+    sys.exit()
     ## NEW FIGURES
 
     ss_scatter_fig(500,'0',2000)

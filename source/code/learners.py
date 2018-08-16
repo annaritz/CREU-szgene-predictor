@@ -19,8 +19,6 @@ def learn(outprefix,outfile,statsfile,genemap,G,pos,negs,\
                 times,changes,predictions = matrixLearn(G,pos,negs,epsilon,timesteps,verbose)
             else:
                 times,changes,predictions = matrixLearnSinkSource(G,pos,negs,epsilon,timesteps,verbose,sinksource_constant)
-            print(predictions)
-
         else:
             setGraphAttrs(G,pos,negs) #intitializes the scores
             times,changes,predictions = iterativeLearn(G,epsilon,timesteps,verbose)
@@ -116,11 +114,7 @@ def matrixLearnSinkSource(G,pos,neg,epsilon,timesteps,verbose, sinksource_consta
     for n in neg:
         predictions[n] = 0
     for i in range(len(unlabeled_list)):
-
         predictions[unlabeled_list[i]] = f[i]
-
-
-
     return timeLogger,changeLogger, predictions
 
 

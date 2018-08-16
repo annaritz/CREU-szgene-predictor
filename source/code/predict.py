@@ -198,6 +198,12 @@ def main(argv):
             neg = fileIO.partitionCurated(orig_neg,G,opts.verbose,opts.layers)
             print('After partitioning: %d Labeled Positives and %d Labeled Negatives.\n' % \
                 (len(pos),len(neg)))
+            with open(opts.outprefix + '_partitioned_nodes.txt','w') as out:
+                for n in pos:
+                    out.write('POS\t'+n+'\n')
+                for n in neg:
+                    out.write('NEG\t'+n+'\n')
+            print('wrote to '+opts.outprefix + '_partitioned_nodes.txt')
 
         dataset_name = 'toy'
         if opts.sinksource_method:
@@ -228,9 +234,7 @@ def main(argv):
         fileIO.read_edge_file_single(opts.interaction_graph,G)
     
         print(' The network contains %d edges and %d nodes' % (G.number_of_edges(), G.number_of_nodes()))
-
         print(' reading positive and negative files %s %s %s...' % (opts.disease_positives, opts.biological_process_positives, opts.negatives))
-
 
         disease_positives= fileIO.curatedFileReader(opts.disease_positives,G,opts.verbose)
         biological_process_positives= fileIO.curatedFileReader(opts.biological_process_positives,G,opts.verbose)
@@ -315,25 +319,34 @@ def main(argv):
         else: #if opts.with_negatives is False, it'll be an empty set (no negatives)
             negatives = set()
 
-        #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
-        #and keep track of original and partitioned positives 
+        if opts.layers and opts.layers > 1:
+            #Rename the variables of the original positives and partitioned positives in order to use code for single and multi layer
+            #and keep track of original and partitioned positives 
 
-        #After checking the graph, we need to modify it to include multiple layers + primes
-        multi_node_dict = fileIO.read_edge_file_multi(G, opts.layers)
+            #After checking the graph, we need to modify it to include multiple layers + primes
+            multi_node_dict = fileIO.read_edge_file_multi(G, opts.layers)
 
-        orig_disease_positives = disease_positives
-        orig_biological_process_positives = biological_process_positives
-        orig_negatives = negatives
-
-        disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
-        biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
-        if opts.with_negatives or opts.examine_vs_negatives:
-            negatives = fileIO.partitionCurated(orig_negatives,G,opts.verbose,opts.layers)
-            print('Final Curated Sets: %d Labeled Disease Nodes, %d Labeled Biological Process Nodes, and %d Labeled Negative Nodes.\n' % \
-            (len(disease_positives),len(biological_process_positives),len(negatives)))
-        else:
-            print('Final Curated Sets: %d Labeled Disease Nodes and %d Labeled Biological Process Nodes.\n' % \
-            (len(disease_positives),len(biological_process_positives)))
+            orig_disease_positives = disease_positives
+            orig_biological_process_positives = biological_process_positives
+            orig_negatives = negatives
+        
+            disease_positives = fileIO.partitionCurated(orig_disease_positives,G,opts.verbose,opts.layers)
+            biological_process_positives = fileIO.partitionCurated(orig_biological_process_positives,G,opts.verbose,opts.layers)
+            if opts.with_negatives or opts.examine_vs_negatives:
+                negatives = fileIO.partitionCurated(orig_negatives,G,opts.verbose,opts.layers)
+                print('Final Curated Sets: %d Labeled Disease Nodes, %d Labeled Biological Process Nodes, and %d Labeled Negative Nodes.\n' % \
+                (len(disease_positives),len(biological_process_positives),len(negatives)))
+            else:
+                print('Final Curated Sets: %d Labeled Disease Nodes and %d Labeled Biological Process Nodes.\n' % \
+                (len(disease_positives),len(biological_process_positives)))
+            with open(opts.outprefix + '_partitioned_nodes.txt','w') as out:
+                for n in disease_positives:
+                    out.write('DISEASE_POS\t'+n+'\n')
+                for n in biological_process_positives:
+                    out.write('DISEASE_POS\t'+n+'\n')
+                for n in negatives:
+                    out.write('NEG\t'+n+'\n')
+            print('wrote to '+opts.outprefix + '_partitioned_nodes.txt')
 
 
 
@@ -347,15 +360,15 @@ def main(argv):
         print('\nRunning Learning Algorithms...')
        
         print('Disease predictions...')
-        statsfile = opts.outprefix + str(opts.layers) + 'layers_disease_stats.txt'
-        outfile = opts.outprefix + str(opts.layers) + 'layers_disease_output.txt'
+        statsfile = opts.outprefix + '_disease_stats.txt'
+        outfile = opts.outprefix + '_disease_output.txt'
         dataset_name = 'disease'
         d_times,d_changes,d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,disease_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,dataset_name,opts.sinksource_method,write=True)
-
+        
         print('Biological process predictions...')
-        statsfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_stats.txt'
-        outfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_output.txt'
+        statsfile = opts.outprefix + '_biological_process_stats.txt'
+        outfile = opts.outprefix + '_biological_process_output.txt'
         dataset_name = 'process'
         b_times,b_changes,b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,biological_process_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,dataset_name,opts.sinksource_method,write=True)
@@ -377,6 +390,7 @@ def main(argv):
             disease_positives,biological_process_positives,negatives,blacklist,genemap,opts.layers,normed=normed)
 
         ## Plot the time course of the runs per iteration.
+        '''
         plt.clf()
         plt.plot(range(len(d_times)),d_times,'-r',label='Disease Predictions')
         plt.plot(range(len(b_times)),b_times,'-b',label='Biological Process Predictions')
@@ -385,8 +399,10 @@ def main(argv):
         plt.xlabel('Iteration')
         plt.savefig(opts.outprefix+'_timeCourse.png')
         print('wrote to '+opts.outprefix+'_timeCourse.png')
+        '''
 
         ## Plot the change per iteration
+        '''
         plt.clf()
         plt.plot(range(len(d_changes)),[math.log(x) for x in d_changes],'-r',label='Disease Predictions')
         plt.plot(range(len(b_changes)),[math.log(x) for x in b_changes],'-b',label='Biological Process Predictions')
@@ -395,6 +411,7 @@ def main(argv):
         plt.xlabel('Iteration')
         plt.savefig(opts.outprefix+'_scoreChange.png')
         print('wrote to '+opts.outprefix+'_scoreChange.png')
+        '''
 
         ##########################
         ## opts.union: run the experiment for the union of disease and biological process sets. 
