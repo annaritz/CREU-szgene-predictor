@@ -850,10 +850,15 @@ def getROCvalues(preds, hidden, pos, layer_dict):
 
     runningx = 0 # current FP counter
     runningy = 0 # current TP counter
+    any_prime = any(['_prime' in n for n in sorted_preds])
     for node in sorted_preds:
-        if node[-6:] == '_prime': 
-            entrez = node[:-6] 
-            names = layer_dict[entrez]
+        if not any_prime or node[-6:] == '_prime':
+            if any_prime:
+                entrez = node[:-6]
+                names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+            else:
+                entrez = node
+                names = set([node])
         
             ## update running y value (increment if a true positive)
             if bool(names.intersection(hidden)):
@@ -888,10 +893,15 @@ def getROCvalues2(preds, hidden_pos, pos, layer_dict, hidden_neg):
 
     runningx = 0 # current FP counter
     runningy = 0 # current TP counter
+    any_prime = any(['_prime' in n for n in sorted_preds])
     for node in sorted_preds:
-        if node[-6:] == '_prime': 
-            entrez = node[:-6] 
-            names = layer_dict[entrez]
+        if not any_prime or node[-6:] == '_prime':
+            if any_prime:
+                entrez = node[:-6]
+                names = layer_dict[entrez] #gives set of duplicate + prime names for a given entrez ID
+            else:
+                entrez = node
+                names = set([node])
         
             ## update running y value (increment if a true positive)
             if bool(names.intersection(hidden_pos)):
