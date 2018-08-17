@@ -443,11 +443,12 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
         #else:
         #    out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n,genemap.get(n,n),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n)))
         # if layers > 1:
-        name = n[:-6]
-        deg = G.degree(name+'_0')-1
-        # else:
-        #     name = n
-        #     deg = G.degree(n)
+        if layers > 1:
+            name = n[:-6]
+            deg = G.degree(name+'_0')-1
+        else:
+            name = n
+            deg = G.degree(n)
         if union_predictions:
             out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%f\t%s\t%s\n' % (name,genemap.get(name,name),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,union_predictions[n],bl, deg))
         else:
