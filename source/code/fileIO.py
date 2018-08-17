@@ -407,8 +407,8 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
         out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\tDegree\n')
     degreeList=[]
 
-    nodeset = set([n for n in G.nodes() if n[-6:]=='_prime'])
-
+    nodeset = set([n for n in G.nodes() if n[-6:]=='_prime' or layers==1])
+    print('Writing %d nodes' % (len(nodeset)))
     for n in sorted(nodeset, key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
 
         # print('writing out ',n)
