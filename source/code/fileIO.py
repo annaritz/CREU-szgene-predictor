@@ -412,25 +412,26 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
     for n in sorted(nodeset, key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
 
         # print('writing out ',n)
-        disLabel='Unlabeled'
-        procLabel='Unlabeled'
-        for layer in range(layers):
-            layer_n = n[:-6]+'_'+str(layer)
-            if layer_n in negatives:
+        if layers > 1:
+            disLabel='Unlabeled'
+            procLabel='Unlabeled'
+            for layer in range(layers):
+                layer_n = n[:-6]+'_'+str(layer)
+                if layer_n in negatives:
+                    disLabel = 'Negative'
+                    procLabel = 'Negative'
+                if layer_n in disease_positives:
+                    disLabel='Positive'
+                if layer_n in biological_process_positives:
+                    procLabel='Positive'
+        else:
+            if n in negatives:
                 disLabel = 'Negative'
                 procLabel = 'Negative'
-            if layer_n in disease_positives:
+            if n in disease_positives:
                 disLabel='Positive'
-            if layer_n in biological_process_positives:
+            if n in biological_process_positives:
                 procLabel='Positive'
-        # else:
-        #     if n in negatives:
-        #         disLabel = 'Negative'
-        #         procLabel = 'Negative'
-        #     if n in disease_positives:
-        #         disLabel='Positive'
-        #     if n in biological_process_positives:
-        #         procLabel='Positive'
         final_score = d_predictions[n]*b_predictions[n]
         if n in blacklist: ## "blacklist" means it was both a pos and a neg...it's now unlabeled. Mark it if it had this
             bl = 'YES'
