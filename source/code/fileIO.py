@@ -407,30 +407,31 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
         out.write('#EntrezID\tName\tDisLabel\tDisScore\tProcLabel\tProcScore\tCombined\tConflict?\tDegree\n')
     degreeList=[]
 
-    nodeset = set([n for n in G.nodes() if n[-6:]=='_prime'])
-
+    nodeset = set([n for n in G.nodes() if n[-6:]=='_prime' or layers==1])
+    print('Writing %d nodes' % (len(nodeset)))
     for n in sorted(nodeset, key=lambda x:d_predictions[x]*b_predictions[x], reverse=True):
 
         # print('writing out ',n)
         disLabel='Unlabeled'
         procLabel='Unlabeled'
-        for layer in range(layers):
-            layer_n = n[:-6]+'_'+str(layer)
-            if layer_n in negatives:
+        if layers > 1:
+            for layer in range(layers):
+                layer_n = n[:-6]+'_'+str(layer)
+                if layer_n in negatives:
+                    disLabel = 'Negative'
+                    procLabel = 'Negative'
+                if layer_n in disease_positives:
+                    disLabel='Positive'
+                if layer_n in biological_process_positives:
+                    procLabel='Positive'
+        else:
+            if n in negatives:
                 disLabel = 'Negative'
                 procLabel = 'Negative'
-            if layer_n in disease_positives:
+            if n in disease_positives:
                 disLabel='Positive'
-            if layer_n in biological_process_positives:
+            if n in biological_process_positives:
                 procLabel='Positive'
-        # else:
-        #     if n in negatives:
-        #         disLabel = 'Negative'
-        #         procLabel = 'Negative'
-        #     if n in disease_positives:
-        #         disLabel='Positive'
-        #     if n in biological_process_positives:
-        #         procLabel='Positive'
         final_score = d_predictions[n]*b_predictions[n]
         if n in blacklist: ## "blacklist" means it was both a pos and a neg...it's now unlabeled. Mark it if it had this
             bl = 'YES'
@@ -443,11 +444,12 @@ def writeCombinedResults(G,outfile,d_predictions,b_predictions,\
         #else:
         #    out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%s\t%s\n' % (n,genemap.get(n,n),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,bl, G.degree(n)))
         # if layers > 1:
-        name = n[:-6]
-        deg = G.degree(name+'_0')-1
-        # else:
-        #     name = n
-        #     deg = G.degree(n)
+        if layers > 1:
+            name = n[:-6]
+            deg = G.degree(name+'_0')-1
+        else:
+            name = n
+            deg = G.degree(n)
         if union_predictions:
             out.write('%s\t%s\t%s\t%f\t%s\t%f\t%f\t%f\t%s\t%s\n' % (name,genemap.get(name,name),disLabel,d_predictions[n],procLabel,b_predictions[n],final_score,union_predictions[n],bl, deg))
         else:

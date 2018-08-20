@@ -690,11 +690,11 @@ def main(argv):
 
                 hidden_positive_genes = random.sample(orig_biological_process_positives,int(len(orig_biological_process_positives)/opts.k_fold))
                 if opts.layers > 1:
-                    hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in disease_positives)
+                    hidden_positive_nodes = set(node for gene in hidden_positive_genes for node in multi_node_dict[gene] if node in biological_process_positives)
                 else:
                     hidden_positive_nodes = hidden_positive_genes
                 test_positives = biological_process_positives.difference(hidden_positive_nodes)
-                print('%d hidden %d test nodes' % (len(hidden_positive_nodes),len(test_positives)))
+                print('%d hidden %d test positive nodes' % (len(hidden_positive_nodes),len(test_positives)))
               
 
                 if opts.with_negatives:

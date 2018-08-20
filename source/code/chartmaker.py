@@ -9,12 +9,13 @@ USE_SD=True
 OUTFILE_DIR = '../outfiles/'
 LAMBDAS = ['0','0.01','0.1','1','10','50']
 LAYERS = [1,2,3]
-#LAYERS=[1]
+
 EXPERIMENTS = ['SZ','CM_SZ','ASD','CM_ASD'] 
 NAMES = {'SZ':'Schizophrenia (SZ)',
         'CM_SZ': 'Cell Motility-SZ',
         'ASD':'Autism (ASD)',
-        'CM_ASD':'Cell Motility-ASD'}
+        'CM_ASD':'Cell Motility-ASD',
+        'CM': 'Cell Motility'}
 
 EXP_COLORS = {'SZ':'#68C8C3',
         'CM_SZ': '#FFC300',
@@ -30,7 +31,7 @@ def main():
     ## read all the files at the beginning.
     data = read_data()
 
-    probplot(data)  ## to make sure that t-test is OK
+    
 
     '''
     OLD FIGURES (before removing the multilayer stuff...)
@@ -53,26 +54,236 @@ def main():
     
     figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
     '''
+
+    
+    deg_dist_fig('0',ymax=500)
+    deg_dist_fig('0.01',ymax=500)
+    deg_dist_fig('0.1',ymax=500)
+    deg_dist_fig('1',ymax=500)
+    deg_dist_fig('10',ymax=500)
+    deg_dist_fig('50',ymax=500)
+    
+
+
+    probplot(data)  ## to make sure that t-test is OK
     figure_3_full(data) ## All layers, all lambdas
+    sinksource_fig(data)
+    roc_fig(data)
+    figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
 
-    sys.exit()
-    ## NEW FIGURES
-
+    
     ss_scatter_fig(500,'0',2000)
     ss_scatter_fig(500,'0.01',2000)
     ss_scatter_fig(500,'0.1',2000)
     ss_scatter_fig(500,'1',2000)
     ss_scatter_fig(500,'10')
-    sys.exit()
-    sinksource_fig(data)
-    roc_fig()
-    figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
-
-
-    #roc_data = read_roc_data()
-    #figure_4(data)
-
+    ss_scatter_fig(500,'50')
+    
+    
     return
+
+
+def read_data():
+    ## READ DATA
+    print('Processing files...')
+    data = {}
+
+    ## initialize names
+    for disease in EXPERIMENTS:
+        data[disease] = {l:[] for l in LAYERS}
+        data[disease+'_no_neg'] = {l:[] for l in LAYERS}
+        data[disease+'_old_neg'] = {l:[] for l in LAYERS}
+        data[disease+'_rand_neg'] = {l:[] for l in LAYERS}
+        data[disease+'_rand_neg_deg'] = {l:[] for l in LAYERS}
+
+    for layer in LAYERS:
+        for l in LAMBDAS:
+            # build list of (file,name1,name2) tuples
+            to_process = []
+            ## general experiments
+            to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_auc.txt' % (layer,l),'SZ','CM_SZ'))
+            to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_auc.txt' % (layer,l),'ASD','CM_ASD'))
+            
+            if layer == 1:
+                ## no negatives (layer=1 only)
+                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l),'SZ_no_neg','CM_SZ_no_neg'))
+                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l),'ASD_no_neg','CM_ASD_no_neg'))
+                ## random negatives (layer 1 only)
+                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource-random_negatives_auc.txt' % (layer,l),'SZ_rand_neg','CM_SZ_rand_neg'))
+                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource-random_negatives_auc.txt' % (layer,l),'ASD_rand_neg','CM_ASD_rand_neg'))
+                ## degree-preserving random negatives (layer 1 only)
+                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource-random_negatives_degree_auc.txt' % (layer,l),'SZ_rand_neg_deg','CM_SZ_rand_neg_deg'))
+                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource-random_negatives_degree_auc.txt' % (layer,l),'ASD_rand_neg_deg','CM_ASD_rand_neg_deg'))
+
+                ## old (krishnan et al.) negatives (layer 1 only)
+                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource-old_negatives_auc.txt' % (layer,l),'SZ_old_neg','CM_SZ_old_neg'))
+                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource-old_negatives_auc.txt' % (layer,l),'ASD_old_neg','CM_ASD_old_neg'))
+
+            ## process each file in to_proces
+            for infile,diseasename,cellmotilityname in to_process:
+                #print(diseasename,cellmotilityname,'reading from file',infile)
+                disease,process = file_parser(infile)
+                data[diseasename][layer].append(disease)
+                data[cellmotilityname][layer].append(process)
+    return data
+
+def read_rocs():
+    ## READ DATA
+    print('Processing ROC files...')
+    data = {}
+
+    ## initialize names
+    for disease in EXPERIMENTS:
+        data[disease] = {l:[] for l in LAYERS}
+
+    for layer in LAYERS:
+        for l in ['0']:
+            # build list of (file,name1,name2) tuples
+            to_process = []
+            ## general experiments
+            to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_roccurves.txt' % (layer,l),'SZ','CM_SZ'))
+            to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_roccurves.txt' % (layer,l),'ASD','CM_ASD'))
+            
+            ## process each file in to_proces
+            for infile,diseasename,cellmotilityname in to_process:
+                if not os.path.isfile(infile):
+                    print('ERROR: file %s does not exist. Skipping.' % (infile))
+                    continue
+
+                with open(infile) as fin:
+                    for line in fin:
+                        if line[0] == '#':  # skip header
+                            continue
+                        row = line.strip().split()
+                        d_rec = [int(a) for a in row[1].split(',')]
+                        d_prec = [int(a) for a in row[2].split(',')]
+                        b_rec = [int(a) for a in row[3].split(',')]
+                        b_prec = [int(a) for a in row[4].split(',')]
+
+                        ## normalize to be between 0 and 1.
+                        d_rec = [a/d_rec[-1] for a in d_rec]
+                        d_prec = [a/d_prec[-1] for a in d_prec]
+                        b_rec = [a/b_rec[-1] for a in b_rec]
+                        b_prec = [a/b_prec[-1] for a in b_prec]
+
+                        data[diseasename][layer].append([d_rec,d_prec])
+                        data[cellmotilityname][layer].append([b_rec,b_prec])
+                    print(infile,':',len(data[diseasename][layer]),len(data[cellmotilityname][layer]))
+    return data
+
+#Appends AUC values of each positive set to a list and returns the 3 lists 
+def file_parser(auc_file):
+    
+    if not os.path.isfile(auc_file):
+        print('ERROR: File %s does not exist.' % (auc_file))
+        return [],[]
+
+    disease=[]
+    CM=[]
+    with open(auc_file,'r') as fin:
+        for line in fin:
+            if line[0] == '#':
+                continue
+            line=line.strip().split('\t')
+            disease.append(float(line[0])) #SZ AUCs are always in first column
+            CM.append(float(line[1])) #CM AUCs always in third column
+
+    #means_IRQs = [np.mean(SZ),np.mean(ASD),np.mean(CM),IQR(SZ),IQR(CM)]
+
+    #return SZ, ASD, CM, means_IRQs
+    return disease, CM
+
+
+def IQR(dist):
+    return [np.percentile(dist, 75) - np.mean(dist), np.mean(dist)-np.percentile(dist, 25)]
+
+####### NEW FIGURES
+
+def probplot(data):
+    fig1, grid = plt.subplots(ncols=len(EXPERIMENTS), nrows=len(LAMBDAS), figsize=(12,14))
+    for i in range(len(LAMBDAS)):
+        for j in range(len(EXPERIMENTS)):
+            name = EXPERIMENTS[j]
+            stats.probplot(data[name][1][i],plot=grid[i][j])
+            grid[i][j].set_title('QQ Plot: %s $\lambda=%s$' % (name,LAMBDAS[i]))
+
+    plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'probplot.png')
+    print('Created '+OUTFILE_DIR+'probplot.png')
+
+    plt.savefig(OUTFILE_DIR+'probplot.pdf')
+    print('Created '+OUTFILE_DIR+'probplot.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'probplot.pdf '+OUTFILE_DIR+'probplot.pdf')
+    return
+
+
+def deg_dist_fig(l,ymax=None):
+
+    pos = {ex:[] for ex in ['SZ','ASD','CM']}
+    data = {ex:[] for ex in ['SZ','ASD','CM']}
+    infile = OUTFILE_DIR+'SZ_1-layer_%s-sinksource_combined_output.txt' % (l)
+    with open(infile) as fin:
+        disease = []
+        process = []
+        for line in fin:
+            if line[0] == '#':
+                continue
+            row = line.strip().split()
+            if row[2] == 'Unlabeled':
+                disease.append([float(row[3]),int(row[8])])
+            elif row[2] == 'Positive':
+                pos['SZ'].append(int(row[8]))
+            if row[4] == 'Unlabeled':
+                process.append([float(row[5]),int(row[8])])
+            elif row[4] == 'Positive':
+                pos['CM'].append(int(row[8]))
+        disease.sort(reverse=True,key=lambda x: x[0])
+        process.sort(reverse=True,key=lambda x: x[0])
+        data['SZ'] = [disease[i][1] for i in range(len(pos['SZ']))]
+        data['CM'] = [process[i][1] for i in range(len(pos['CM']))]
+
+    infile = OUTFILE_DIR+'ASD_1-layer_%s-sinksource_combined_output.txt' % (l)
+    with open(infile) as fin:
+        disease = []
+        for line in fin:
+            if line[0] == '#':
+                continue
+            row = line.strip().split()
+            if row[2] == 'Unlabeled':
+                disease.append([float(row[3]),int(row[8])])
+            elif row[2] == 'Positive':
+                pos['ASD'].append(int(row[8]))
+        disease.sort(reverse=True,key=lambda x: x[0])
+        data['ASD'] = [disease[i][1] for i in range(len(pos['ASD']))]
+
+    fig2, ((ax1,ax2,ax3)) = plt.subplots(ncols=3, nrows=1, figsize=(12,3))
+    axes = [ax1,ax2,ax3]
+    for i in range(len(['SZ','ASD','CM'])):
+        name = ['SZ','ASD','CM'][i]
+        print(name,len(data[name]),len(pos[name]),sum(data[name]),sum(pos[name]))
+        ax = axes[i]
+        ax.hist(pos[name],bins=range(0,3500,100), color='k',edgecolor='k', linewidth=1.2,label='Positives (avg=%.2f)' % (sum(pos[name])/len(pos[name])))#, alpha=0.2)#, color=[.7, .7, .7], label=None)
+        ax.hist(data[name],bins=range(0,3500,100), color='#A6DBF7', alpha=0.8, rwidth=0.7,edgecolor='k', linewidth=1.2, label='Pseudo SS $\lambda=%s$ (avg=%.2f)' % (l,sum(data[name])/len(data[name])))
+        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
+        #ax.set_xlim(.5,6.5)
+        ax.set_ylabel('Degree',fontsize=LABEL_SIZE)
+        ax.set_xlabel('Count',fontsize=LABEL_SIZE)
+        
+        if ymax:
+            ax.set_ylim(0,ymax)
+        #if i == 0:
+        #    ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
+    
+    plt.tight_layout()
+    prefix = 'deg_fig_%s' % (l.replace('.','pt'))
+    plt.savefig(OUTFILE_DIR+prefix+'.png')
+    print('Created '+OUTFILE_DIR+prefix+'.png')
+
+    plt.savefig(OUTFILE_DIR+prefix+'.pdf')
+    print('Created '+OUTFILE_DIR+prefix+'.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+prefix+'.pdf '+OUTFILE_DIR+prefix+'.pdf')
+    return
+
 
 def ss_scatter_fig(num,l,ymax=None):
     data = {ex:[] for ex in EXPERIMENTS}
@@ -93,7 +304,7 @@ def ss_scatter_fig(num,l,ymax=None):
                 process.append([float(row[5]),int(row[8])])
         disease.sort(reverse=True,key=lambda x: x[0])
         process.sort(reverse=True,key=lambda x: x[0])
-        print(disease[1:10])
+        print(infile,disease[1:10])
         data['SZ'] = [disease[i][1] for i in range(num)]
         data['CM_SZ'] = [process[i][1] for i in range(num)]
         avg['SZ'] = [0]*(len(data['SZ'])-alpha)
@@ -178,10 +389,12 @@ def sinksource_fig(data):
     for i in range(len(EXPERIMENTS)):
         name = EXPERIMENTS[i]
         ax = axes[i]
-        bp1 = ax.boxplot(data[name][1][0], notch=True, positions=[1], widths=.75, sym='', \
-            patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-        bp2 = ax.boxplot(data[name+'_no_neg'][1][1:], notch=True, positions=[2,3,4,5,6], widths=.75, sym='', \
-            patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
+        if len(data[name][1][0]) > 0:
+            bp1 = ax.boxplot(data[name][1][0], notch=True, positions=[1], widths=.75, sym='', \
+                patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+        if len(data[name+'_no_neg'][1][1]) > 0:
+            bp2 = ax.boxplot(data[name+'_no_neg'][1][1:], notch=True, positions=[2,3,4,5,6], widths=.75, sym='', \
+                patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
         ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
         if len(sig[name]) > 0:
             ax.plot(sig[name],[0.85]*len(sig[name]),'*k')
@@ -206,7 +419,7 @@ def sinksource_fig(data):
 
     return
 
-def roc_fig():
+def roc_fig(data):
     roc_data = read_rocs()
     fig2, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(8,6))
     axes = [ax1,ax2,ax3,ax4]
@@ -214,7 +427,7 @@ def roc_fig():
         name = EXPERIMENTS[i]
         ax = axes[i]
         label=False
-        print('plotting %d',len(roc_data[name][1]))
+        print('plotting %d' % (len(roc_data[name][1])))
         for i in range(len(roc_data[name][1])):
             rec = roc_data[name][1][i][0]
             prec = roc_data[name][1][i][1]
@@ -239,133 +452,11 @@ def roc_fig():
     print('Created '+OUTFILE_DIR+'roc_fig.pdf')
     os.system('pdfcrop '+OUTFILE_DIR+'roc_fig.pdf '+OUTFILE_DIR+'roc_fig.pdf')
 
-def read_data():
-    ## READ DATA
-    print('Processing files...')
-    data = {}
-
-    ## initialize names
-    for disease in EXPERIMENTS:
-        data[disease] = {l:[] for l in LAYERS}
-        data[disease+'_no_neg'] = {l:[] for l in LAYERS}
-        data[disease+'_old_neg'] = {l:[] for l in LAYERS}
-        data[disease+'_rand_neg'] = {l:[] for l in LAYERS}
-        data[disease+'_rand_neg_deg'] = {l:[] for l in LAYERS}
-
-    for layer in LAYERS:
-        for l in LAMBDAS:
-            # build list of (file,name1,name2) tuples
-            to_process = []
-            ## general experiments
-            to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_auc.txt' % (layer,l),'SZ','CM_SZ'))
-            to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_auc.txt' % (layer,l),'ASD','CM_ASD'))
-            
-            if layer == 1:
-                ## no negatives (layer=1 only)
-                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l),'SZ_no_neg','CM_SZ_no_neg'))
-                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_no_neg_auc.txt' % (layer,l),'ASD_no_neg','CM_ASD_no_neg'))
-                ## random negatives (layer 1 only)
-                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource-random_negatives_auc.txt' % (layer,l),'SZ_rand_neg','CM_SZ_rand_neg'))
-                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource-random_negatives_auc.txt' % (layer,l),'ASD_rand_neg','CM_ASD_rand_neg'))
-                ## degree-preserving random negatives (layer 1 only)
-                to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource-random_negatives_degree_auc.txt' % (layer,l),'SZ_rand_neg_deg','CM_SZ_rand_neg_deg'))
-                to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource-random_negatives_degree_auc.txt' % (layer,l),'ASD_rand_neg_deg','CM_ASD_rand_neg_deg'))
-
-                ## old (krishnan et al.) negatives (layer 1 only)
-                to_process.append((OUTFILE_DIR+'SZ_%d-layer_oldnegs_%s-sinksource_auc.txt' % (layer,l),'SZ_old_neg','CM_SZ_old_neg'))
-                to_process.append((OUTFILE_DIR+'ASD_%d-layer_oldnegs_%s-sinksource_auc.txt' % (layer,l),'ASD_old_neg','CM_ASD_old_neg'))
-
-            ## process each file in to_proces
-            for infile,diseasename,cellmotilityname in to_process:
-                #print(diseasename,cellmotilityname,'reading from file',infile)
-                disease,process = file_parser(infile)
-                data[diseasename][layer].append(disease)
-                data[cellmotilityname][layer].append(process)
-    return data
-
-def read_rocs():
-    ## READ DATA
-    print('Processing ROC files...')
-    data = {}
-
-    ## initialize names
-    for disease in EXPERIMENTS:
-        data[disease] = {l:[] for l in LAYERS}
-
-    for layer in LAYERS:
-        for l in ['0']:
-            # build list of (file,name1,name2) tuples
-            to_process = []
-            ## general experiments
-            to_process.append((OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_roccurves.txt' % (layer,l),'SZ','CM_SZ'))
-            to_process.append((OUTFILE_DIR+'ASD_%d-layer_%s-sinksource_roccurves.txt' % (layer,l),'ASD','CM_ASD'))
-            
-            ## process each file in to_proces
-            for infile,diseasename,cellmotilityname in to_process:
-                with open(infile) as fin:
-                    for line in fin:
-                        if line[0] == '#':  # skip header
-                            continue
-                        row = line.strip().split()
-                        d_rec = [int(a) for a in row[1].split(',')]
-                        d_prec = [int(a) for a in row[2].split(',')]
-                        b_rec = [int(a) for a in row[3].split(',')]
-                        b_prec = [int(a) for a in row[4].split(',')]
-
-                        ## normalize to be between 0 and 1.
-                        d_rec = [a/d_rec[-1] for a in d_rec]
-                        d_prec = [a/d_prec[-1] for a in d_prec]
-                        b_rec = [a/b_rec[-1] for a in b_rec]
-                        b_prec = [a/b_prec[-1] for a in b_prec]
-
-                        data[diseasename][layer].append([d_rec,d_prec])
-                        data[cellmotilityname][layer].append([b_rec,b_prec])
-                    print(infile,':',len(data[diseasename][layer]),len(data[cellmotilityname][layer]))
-    return data
-
 #def read_roc_data():
     ## read ROC curve data for all Layer 1 
 
-#Appends AUC values of each positive set to a list and returns the 3 lists 
-def file_parser(auc_file):
-    file=open(auc_file,'r')
-    x=0
-    SZ=[]
-    ASD=[]
-    CM=[]
-    for line in file:
-        if x>0:
-            line=line.strip('\n').split('\t')
-            SZ.append(float(line[0].strip('\''))) #SZ AUCs are always in first column
-            CM.append(float(line[1].strip('\''))) #CM AUCs always in third column
-        x+=1
 
-    means_IRQs = [np.mean(SZ),np.mean(ASD),np.mean(CM),IQR(SZ),IQR(CM)]
-
-    #return SZ, ASD, CM, means_IRQs
-    return SZ, CM
-
-
-def IQR(dist):
-    return [np.percentile(dist, 75) - np.mean(dist), np.mean(dist)-np.percentile(dist, 25)]
-
-def probplot(data):
-    fig1, grid = plt.subplots(ncols=len(EXPERIMENTS), nrows=len(LAMBDAS), figsize=(12,14))
-    for i in range(len(LAMBDAS)):
-        for j in range(len(EXPERIMENTS)):
-            name = EXPERIMENTS[j]
-            stats.probplot(data[name][1][i],plot=grid[i][j])
-            grid[i][j].set_title('QQ Plot: %s $\lambda=%s$' % (name,LAMBDAS[i]))
-
-    plt.tight_layout()
-    plt.savefig(OUTFILE_DIR+'probplot.png')
-    print('Created '+OUTFILE_DIR+'probplot.png')
-
-    plt.savefig(OUTFILE_DIR+'probplot.pdf')
-    print('Created '+OUTFILE_DIR+'probplot.pdf')
-    os.system('pdfcrop '+OUTFILE_DIR+'probplot.pdf '+OUTFILE_DIR+'probplot.pdf')
-    return
-
+####### OLD FIGURES
 def figure_1(data):
 
     with open(OUTFILE_DIR+'sinksource+_constant_statistical_tests.txt', 'w') as out:
