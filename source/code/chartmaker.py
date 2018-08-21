@@ -3,6 +3,7 @@ import numpy as np
 import scipy.stats as stats 
 import sys
 import os 
+import itertools
 
 #SET USE_SD=False to get Error is IRQ, not standard deviation
 USE_SD=True
@@ -55,7 +56,10 @@ def main():
     figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
     '''
 
-    
+    figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
+    figure_2(data)
+    sys.exit()
+
     deg_dist_fig('0',ymax=500)
     deg_dist_fig('0.01',ymax=500)
     deg_dist_fig('0.1',ymax=500)
@@ -69,17 +73,20 @@ def main():
     figure_3_full(data) ## All layers, all lambdas
     sinksource_fig(data)
     roc_fig(data)
-    figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
+    
 
     
+    ss_scatter_fig(500,'0')
+    os.system('mv ../outfiles/ss_scatter_fig_0.pdf ../outfiles/ss_scatter_fig_0_noymax.pdf')
+    os.system('mv ../outfiles/ss_scatter_fig_0.png ../outfiles/ss_scatter_fig_0_noymax.png')
     ss_scatter_fig(500,'0',2000)
     ss_scatter_fig(500,'0.01',2000)
     ss_scatter_fig(500,'0.1',2000)
     ss_scatter_fig(500,'1',2000)
-    ss_scatter_fig(500,'10')
-    ss_scatter_fig(500,'50')
+    ss_scatter_fig(500,'10',2000)
+    ss_scatter_fig(500,'50',2000)
     
-    
+
     return
 
 
@@ -367,6 +374,7 @@ def ss_scatter_fig(num,l,ymax=None):
     os.system('pdfcrop '+OUTFILE_DIR+prefix+'.pdf '+OUTFILE_DIR+prefix+'.pdf')
     return
 
+
 def sinksource_fig(data):
     sig = {} # asterisks
     with open(OUTFILE_DIR+'sinksource_fig.txt', 'w') as out:
@@ -381,8 +389,17 @@ def sinksource_fig(data):
                     sig[disease].append(j+1)
                 else: 
                     res = ''
-                out.write('Welch\'s t-test Lambda=%s (negs vs. no-negs): %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[j],res,t_value,p_value,p_value))
+                out.write('Welch\'s t-test Lambda=%s (negs vs. no-negs): %s\n\tno-neg mean: %.4f\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[j],res,mean(data[disease+'_no_neg'][1][j]),t_value,p_value,p_value))
             out.write('\n')
+        out.write('----- pairs of SS experiments -----\n')
+        for e1,e2 in itertools.combinations(['SZ','CM_SZ','ASD','CM_ASD'],2):
+            print(e1,e2)
+            t_value,p_value = stats.ttest_ind(data[e1][1][0],data[e2][1][0],equal_var=False)
+            if p_value < 0.01:
+                res = 'SIGNIFICANT (two-tailed, 0.01)'
+            else:
+                res = ''
+            out.write('Welch\'s t-test SS (%s vs %s): %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (e1,e2,res,t_value,p_value,p_value))
 
     fig2, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(8,6))
     axes = [ax1,ax2,ax3,ax4]
@@ -520,79 +537,59 @@ def figure_1(data):
     return
 
 def figure_2(data):
-    
-    with open(OUTFILE_DIR+'Neg_vs_NoNeg_statistical_tests.txt', 'w') as out:
-        
-        for disease in ['SZ','CM_SZ','ASD','CM_ASD']:
-            out.write('--- %s ---\n' % (disease))
-            for j in range(len(LAMBDAS)): 
-                # U, p_value = stats.mannwhitneyu(neg_lists[i][j], no_neg_lists[i][j], alternative='two-sided')
-                t_value,p_value = stats.ttest_ind(data[disease][1][j], data[disease+'_no_neg'][1][j], equal_var=False)
-                if t_value > 0 and p_value/2 < 0.01:
-                    res = 'SIGNIFICANT (one-tailed, 0.01)'
-                else: 
-                    res = ''
-                out.write('Welch\'s t-test Lambda=%s (negs vs. no-negs): %s\n\tt-value: %.4f\n\tp-value: %.2e (%.4f)\n' % (LAMBDAS[j],res,t_value,p_value,p_value))
-            out.write('\n')
 
-        out.write('Two-way ANOVA\n')
-        organized_data_1=[data[exp][1] for exp in EXPERIMENTS]
-        organized_data_2=[data[exp+'_no_neg'][1] for exp in EXPERIMENTS]
-        for i in range(len(organized_data_1)):
-            if i == 0:
-                out.write('Schizophrenia\t')
-            if i == 1:
-                out.write('Cell Motility-SZ\t')
-            if i == 2:
-                out.write('ASD\t')
-            if i == 3:
-                out.write('Cell Motility-ASD\t')
-        
-            out.write('\tssq\tdf\tF\tPR(>F)\n')
+    ## SS negative analysis
 
-            two_way_ANOVA_results=two_way_ANOVA(organized_data_1[i], organized_data_2[i])
-            for j in range(len(two_way_ANOVA_results)):
-                if j == 0:
-                    name = 'Including Negatives\t'
-                elif j == 1:
-                    name = 'sinksource constant\t'
-                else:
-                    name = 'Interaction\t'
-                for k in range(len(two_way_ANOVA_results[j])):
-                    name=name+str(two_way_ANOVA_results[j][k])+'\t'
-                name=name+'\n'
-                out.write(name)
-            out.write('\n')
-
-    fig2, ((ax1,ax2),(ax3,ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(8,6))
-    axes = [ax1,ax2,ax3,ax4]
+    fig2, axes = plt.subplots(ncols=4, nrows=1, sharey=True, figsize=(10,4))
     for i in range(len(EXPERIMENTS)):
         name = EXPERIMENTS[i]
         ax = axes[i]
-        bp1 = ax.boxplot(data[name][1], notch=True, positions=[2,7,12,17,22,27], widths=1.5, sym='', \
-            patch_artist=True, boxprops=dict(facecolor='#8193ef'))
-        bp2 = ax.boxplot(data[name+'_no_neg'][1], notch=True, positions=[4,9,14,19,24,29], widths=1.5, sym='', \
-            patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
-        ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
-        
-        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
-        ax.set_xticks([3,8,13,18,23,28])
-        ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
-        ax.set_xlim(0,31)
-        ax.set_ylim(0.5,0.9)
-        ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
-        ax.set_xlabel('$\lambda$',fontsize=LABEL_SIZE)
-        
-        if i == 0:
-            ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
-    
-    plt.tight_layout()
-    plt.savefig(OUTFILE_DIR+'compare_neg_noneg.png')
-    print('Created '+OUTFILE_DIR+'compare_neg_noneg.png')
 
-    plt.savefig(OUTFILE_DIR+'compare_neg_noneg.pdf')
-    print('Created '+OUTFILE_DIR+'compare_neg_noneg.pdf')
-    os.system('pdfcrop '+OUTFILE_DIR+'compare_neg_noneg.pdf '+OUTFILE_DIR+'compare_neg_noneg.pdf')
+        bp1 = ax.boxplot(data[name][1][0], notch=True, positions=[1], widths=.9, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#8193ef'))
+        bp2 = ax.boxplot(data[name+'_old_neg'][1][0], notch=True, positions=[2], widths=.9, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#b0f2c2',color='#3A9A54'))
+        bp3 = ax.boxplot(data[name+'_rand_neg'][1][0], notch=True, positions=[3,], widths=.9, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#eeb5ff',color='#A152B8'))
+        bp4 = ax.boxplot(data[name+'_rand_neg_deg'][1][0], notch=True, positions=[4], widths=.9, sym='', \
+            patch_artist=True, boxprops=dict(facecolor='#FFE888',color='#E1C23E'))
+        ax.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+
+        sig_x = []
+        sig_y = []
+        negs_to_check = [name+'_old_neg',name+'_rand_neg',name+'_rand_neg_deg']
+        for j in range(len(negs_to_check)):
+            t_value,p_value = stats.ttest_ind(data[name][1][0], data[negs_to_check[j]][1][0], equal_var=False)
+            if t_value > 0 and p_value/2 < 0.01:
+                sig_x.append(j+2)
+                sig_y.append(0.85)
+        ax.plot(sig_x,sig_y,'*k')
+
+        for x in [5,10,15,20,25]:
+            ax.plot([x,x],[0.5,0.9],color='lightgrey',alpha=0.5)
+        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
+        ax.set_xticks([])
+        #ax.set_xticklabels(['Curated','Krishnan et al.','Random','Random\n(Deg. Pres.)'])
+        ax.set_xlim(0,5)
+        ax.set_ylim(0.5,0.9)
+        if i==0:
+            ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
+        #ax.set_xlabel('Negative Set',fontsize=LABEL_SIZE)
+        box = ax.get_position()
+        ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+        
+        if i==0:
+            handles = [bp1['boxes'][0], bp2['boxes'][0], bp3['boxes'][0], bp4['boxes'][0]]
+            leg_names = ['Curated Negatives', 'Krishnan et al. Negatives', 'Random Negatives', 'Degree-Preserving\nRandom Negatives']
+            lgd = ax.legend(handles, leg_names, ncol=4, fontsize='small',bbox_to_anchor=(2.3,-.1),loc='center')
+    
+    #plt.tight_layout()
+    plt.savefig(OUTFILE_DIR+'compare_rand_negs_SS.png', bbox_extra_artists=(lgd,axes[0],axes[1],axes[2],axes[3]), bbox_inches='tight',bbox_pad=1)
+    print('Created '+OUTFILE_DIR+'compare_rand_negs_SS.png')
+
+    plt.savefig(OUTFILE_DIR+'compare_rand_negs_SS.pdf', bbox_extra_artists=(lgd,axes[0],axes[1],axes[2],axes[3]), bbox_inches='tight',bbox_pad=1)
+    print('Created '+OUTFILE_DIR+'compare_rand_negs_SS.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+'compare_rand_negs_SS.pdf '+OUTFILE_DIR+'compare_rand_negs_SS.pdf')
 
     return
 
@@ -743,7 +740,7 @@ def figure_2_full(data):
             ax.plot([x,x],[0.5,0.9],color='lightgrey',alpha=0.5)
         ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
         ax.set_xticks([2.5,7.5,12.5,17.5,22.5,27.5])
-        ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
+        ax.set_xticklabels(['SS\n($\lambda$=0)','$\lambda$=0.01','$\lambda$=0.1','$\lambda$=1','$\lambda$=10','$\lambda$=50'])
         ax.set_xlim(0,30)
         ax.set_ylim(0.5,0.9)
         ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
