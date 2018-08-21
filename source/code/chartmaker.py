@@ -56,9 +56,11 @@ def main():
     figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
     '''
 
+
+    full_ss_scatter_fig(None,'0')
+    sys.exit()
     figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
     figure_2(data)
-    sys.exit()
 
     deg_dist_fig('0',ymax=500)
     deg_dist_fig('0.01',ymax=500)
@@ -67,18 +69,16 @@ def main():
     deg_dist_fig('10',ymax=500)
     deg_dist_fig('50',ymax=500)
     
-
-
     probplot(data)  ## to make sure that t-test is OK
     figure_3_full(data) ## All layers, all lambdas
     sinksource_fig(data)
     roc_fig(data)
-    
 
-    
-    ss_scatter_fig(500,'0')
-    os.system('mv ../outfiles/ss_scatter_fig_0.pdf ../outfiles/ss_scatter_fig_0_noymax.pdf')
-    os.system('mv ../outfiles/ss_scatter_fig_0.png ../outfiles/ss_scatter_fig_0_noymax.png')
+
+    full_ss_scatter_fig(None,'0')
+    full_ss_scatter_fig(None,'1')
+
+    ss_scatter_fig(500,'0')    
     ss_scatter_fig(500,'0',2000)
     ss_scatter_fig(500,'0.01',2000)
     ss_scatter_fig(500,'0.1',2000)
@@ -352,10 +352,12 @@ def ss_scatter_fig(num,l,ymax=None):
         ax = axes[i]
         ax.scatter(range(len(data[name])),data[name], alpha=0.2, color=[.7, .7, .7], label=None)
         ax.plot(range(len(avg[name])),avg[name], color='k', label=None)
-        ax.set_title(NAMES[name]+'\n$\lambda=%s$' % (l),fontsize=TITLE_SIZE)
-        #ax.set_xlim(.5,6.5)
+        ax.set_xlim(0,num)
         if ymax:
             ax.set_ylim(0,ymax)
+            ax.set_title(NAMES[name]+'\n$\lambda=%s$' % (l),fontsize=TITLE_SIZE)
+        else:
+            ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
         ax.set_ylabel('Degree',fontsize=LABEL_SIZE)
         ax.set_xlabel('Rank',fontsize=LABEL_SIZE)
         if num > 200:
@@ -365,7 +367,158 @@ def ss_scatter_fig(num,l,ymax=None):
         #    ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
     
     plt.tight_layout()
-    prefix = 'ss_scatter_fig_%s' % (l.replace('.','pt'))
+    if ymax:
+        prefix = 'ss_scatter_fig_%s' % (l.replace('.','pt'))
+    else:
+        prefix = 'ss_scatter_fig_%s_noymax' % (l.replace('.','pt'))
+
+    plt.savefig(OUTFILE_DIR+prefix+'.png')
+    print('Created '+OUTFILE_DIR+prefix+'.png')
+
+    plt.savefig(OUTFILE_DIR+prefix+'.pdf')
+    print('Created '+OUTFILE_DIR+prefix+'.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+prefix+'.pdf '+OUTFILE_DIR+prefix+'.pdf')
+    return
+
+def full_ss_scatter_fig(num,l,ymax=None):
+    data = {ex:[] for ex in EXPERIMENTS}
+    avg = {ex:[] for ex in EXPERIMENTS}
+    label = {ex:[] for ex in EXPERIMENTS}
+    alpha=15
+
+    infile = OUTFILE_DIR+'SZ_1-layer_%s-sinksource_combined_output.txt' % (l)
+    with open(infile) as fin:
+        disease = []
+        process = []
+        label_d = []
+        label_p = []
+        for line in fin:
+            if line[0] == '#':
+                continue
+            row = line.strip().split()
+            disease.append([float(row[3]),int(row[8])])
+            process.append([float(row[5]),int(row[8])])
+            label_d.append([float(row[3]),row[2]])
+            label_p.append([float(row[5]),row[4]])
+        disease.sort(reverse=True,key=lambda x: x[0])
+        process.sort(reverse=True,key=lambda x: x[0])
+        label_d.sort(reverse=True,key=lambda x: x[0])
+        label_p.sort(reverse=True,key=lambda x: x[0])
+        print(infile,disease[1:10])
+        if not num:
+            num = len(disease)
+        data['SZ'] = [disease[i][1] for i in range(num)]
+        data['CM_SZ'] = [process[i][1] for i in range(num)]
+        label['SZ'] = [label_d[i][1] for i in range(num)]
+        label['CM_SZ'] = [label_p[i][1] for i in range(num)]
+        avg['SZ'] = [0]*(len(data['SZ'])-alpha)
+        avg['CM_SZ'] = [0]*(len(data['CM_SZ'])-alpha)
+        for i in range(len(data['SZ'])-alpha):
+            avg['SZ'][i] = sum(data['SZ'][i:i+alpha])/alpha
+        for i in range(len(data['SZ'])-alpha):
+            avg['CM_SZ'][i] = sum(data['CM_SZ'][i:i+alpha])/alpha
+
+    infile = OUTFILE_DIR+'ASD_1-layer_%s-sinksource_combined_output.txt' % (l)
+    with open(infile) as fin:
+        disease = []
+        process = []
+        label_d = []
+        label_p = []
+        for line in fin:
+            if line[0] == '#':
+                continue
+            row = line.strip().split()
+            disease.append([float(row[3]),int(row[8])])
+            process.append([float(row[5]),int(row[8])])
+            label_d.append([float(row[3]),row[2]])
+            label_p.append([float(row[5]),row[4]])
+        disease.sort(reverse=True,key=lambda x: x[0])
+        process.sort(reverse=True,key=lambda x: x[0])
+        label_d.sort(reverse=True,key=lambda x: x[0])
+        label_p.sort(reverse=True,key=lambda x: x[0])
+        if not num:
+            num = len(disease)
+        data['ASD'] = [disease[i][1] for i in range(num)]
+        data['CM_ASD'] = [process[i][1] for i in range(num)]
+        label['ASD'] = [label_d[i][1] for i in range(num)]
+        label['CM_ASD'] = [label_p[i][1] for i in range(num)]
+        avg['ASD'] = [0]*(len(data['ASD'])-alpha)
+        avg['CM_ASD'] = [0]*(len(data['CM_ASD'])-alpha)
+        for i in range(len(data['ASD'])-alpha):
+            avg['ASD'][i] = sum(data['ASD'][i:i+alpha])/alpha
+        for i in range(len(data['ASD'])-alpha):
+            avg['CM_ASD'][i] = sum(data['CM_ASD'][i:i+alpha])/alpha
+
+    fig2, ((ax1,ax2,ax3,ax4)) = plt.subplots(ncols=4, nrows=1, figsize=(12,3))
+    axes = [ax1,ax2,ax3,ax4]
+    scatter_colors = {'Unlabeled':[.7,.7,.7],'Positive':[0,0,.7],'Negative':[.7,0,0]}
+    for i in range(len(EXPERIMENTS)):
+        name = EXPERIMENTS[i]
+        ax = axes[i]
+        for this_label in ['Positive','Negative','Unlabeled']:
+            x = [j for j in range(len(data[name])) if label[name][j]==this_label]
+            y = [data[name][j] for j in range(len(data[name])) if label[name][j]==this_label]
+            if len(x)>0:
+                ax.scatter(x,y, alpha=0.2, color=scatter_colors[this_label], label=this_label)
+        ax.plot(range(len(avg[name])),avg[name], color='k', label=None)
+        ax.set_xlim(0,num)
+        if ymax:
+            ax.set_ylim(0,ymax)
+            ax.set_title(NAMES[name]+'\n$\lambda=%s$' % (l),fontsize=TITLE_SIZE)
+        else:
+            ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
+        ax.set_ylabel('Degree',fontsize=LABEL_SIZE)
+        ax.set_xlabel('Rank',fontsize=LABEL_SIZE)
+
+        if i==0:
+            ax.legend(loc='best',fontsize='small')
+        #if i == 0:
+        #    ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
+    
+    plt.tight_layout()
+    if ymax:
+        prefix = 'full_ss_scatter_fig_%s' % (l.replace('.','pt'))
+    else:
+        prefix = 'full_ss_scatter_fig_%s_noymax' % (l.replace('.','pt'))
+
+    plt.savefig(OUTFILE_DIR+prefix+'.png')
+    print('Created '+OUTFILE_DIR+prefix+'.png')
+
+    plt.savefig(OUTFILE_DIR+prefix+'.pdf')
+    print('Created '+OUTFILE_DIR+prefix+'.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+prefix+'.pdf '+OUTFILE_DIR+prefix+'.pdf')
+
+
+    fig2, ax = plt.subplots(ncols=1, nrows=1, figsize=(5,4))
+    scatter_colors = {'Unlabeled':[.7,.7,.7],'Positive':[0,0,.7],'Negative':[.7,0,0]}
+    for i in [0]:
+        name = 'SZ'
+        for this_label in ['Positive','Negative','Unlabeled']:
+            x = [j for j in range(len(data[name])) if label[name][j]==this_label]
+            y = [data[name][j] for j in range(len(data[name])) if label[name][j]==this_label]
+            if len(x)>0:
+                ax.scatter(x,y, alpha=0.2, color=scatter_colors[this_label], label=this_label)
+        ax.plot(range(len(avg[name])),avg[name], color='k', label=None)
+        ax.set_ylim(0,3500)
+        ax.set_xlim(0,num)
+        if ymax:
+            ax.set_title(NAMES[name]+'\n$\lambda=%s$' % (l),fontsize=TITLE_SIZE)
+        else:
+            ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
+        ax.set_ylabel('Degree',fontsize=LABEL_SIZE)
+        ax.set_xlabel('Rank',fontsize=LABEL_SIZE)
+
+        if i==0:
+            ax.legend(loc='best',fontsize='small')
+        #if i == 0:
+        #    ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
+    
+    plt.tight_layout()
+    if ymax:
+        prefix = 'full_SZ_ss_scatter_fig_%s' % (l.replace('.','pt'))
+    else:
+        prefix = 'full_SZ_ss_scatter_fig_%s_noymax' % (l.replace('.','pt'))
+
     plt.savefig(OUTFILE_DIR+prefix+'.png')
     print('Created '+OUTFILE_DIR+prefix+'.png')
 
