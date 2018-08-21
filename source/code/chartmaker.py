@@ -56,19 +56,19 @@ def main():
     figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
     '''
 
-    figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
-    figure_2(data)
-    sys.exit()
-
     deg_dist_fig('0',ymax=500)
     deg_dist_fig('0.01',ymax=500)
     deg_dist_fig('0.1',ymax=500)
     deg_dist_fig('1',ymax=500)
     deg_dist_fig('10',ymax=500)
     deg_dist_fig('50',ymax=500)
+    sys.exit()
+
+
     
 
-
+    figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
+    figure_2(data)
     probplot(data)  ## to make sure that t-test is OK
     figure_3_full(data) ## All layers, all lambdas
     sinksource_fig(data)
@@ -263,21 +263,22 @@ def deg_dist_fig(l,ymax=None):
         disease.sort(reverse=True,key=lambda x: x[0])
         data['ASD'] = [disease[i][1] for i in range(len(pos['ASD']))]
 
-    fig2, ((ax1,ax2,ax3)) = plt.subplots(ncols=3, nrows=1, figsize=(12,3))
+    fig2, ((ax1,ax2,ax3)) = plt.subplots(ncols=3, nrows=1, figsize=(10,3))
     axes = [ax1,ax2,ax3]
     for i in range(len(['SZ','ASD','CM'])):
         name = ['SZ','ASD','CM'][i]
         print(name,len(data[name]),len(pos[name]),sum(data[name]),sum(pos[name]))
         ax = axes[i]
         ax.hist(pos[name],bins=range(0,3500,100), color='k',edgecolor='k', linewidth=1.2,label='Positives (avg=%.2f)' % (sum(pos[name])/len(pos[name])))#, alpha=0.2)#, color=[.7, .7, .7], label=None)
-        ax.hist(data[name],bins=range(0,3500,100), color='#A6DBF7', alpha=0.8, rwidth=0.7,edgecolor='k', linewidth=1.2, label='Pseudo SS $\lambda=%s$ (avg=%.2f)' % (l,sum(data[name])/len(data[name])))
-        ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
+        ax.hist(data[name],bins=range(0,3500,100), color='#A6DBF7', alpha=0.8, rwidth=0.7,edgecolor='k', linewidth=1.2, label='Pseudo SS (avg=%.2f)' % (sum(data[name])/len(data[name])))
+        ax.set_title(NAMES[name] +'\n$\lambda=%s$' % (l),fontsize=TITLE_SIZE)
         #ax.set_xlim(.5,6.5)
-        ax.set_ylabel('Degree',fontsize=LABEL_SIZE)
-        ax.set_xlabel('Count',fontsize=LABEL_SIZE)
+        ax.set_ylabel('Count',fontsize=LABEL_SIZE)
+        ax.set_xlabel('Degree',fontsize=LABEL_SIZE)
         
         if ymax:
             ax.set_ylim(0,ymax)
+        ax.legend(loc='best',fontsize=TICK_SIZE)
         #if i == 0:
         #    ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
     
