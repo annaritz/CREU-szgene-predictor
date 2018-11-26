@@ -41,11 +41,11 @@ def read_edge_file_multi(graph, layers):
                 node_names = set() # node_names will contain all the copies of this node.
                 # create and add the prime node
                 node_names.add(node+'_prime')
-                graph.add_node(node+'_prime', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=layers)
+                graph.add_node(node+'_prime', prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=float(layers))
                 for layer in range(layers): 
                     # for every layer, create and add the layer node.
                     node_names.add(node+'_'+str(layer))
-                    graph.add_node(node+'_'+str(layer), prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1)
+                    graph.add_node(node+'_'+str(layer), prev_score=0.5, score=0.5, label='Unlabeled', untouched=True, weighted_degree=1.0)
                     # also add the edge from this layer's node to the prime node.
                     graph.add_edge(node+'_'+str(layer), node+'_prime', weight=1.0)
 
@@ -63,7 +63,7 @@ def read_edge_file_multi(graph, layers):
             # add the edge weights to the weighted degree attr.
             graph.nodes[node0]['weighted_degree'] += weight_dict[edge] #get edge weight 
             graph.nodes[node1]['weighted_degree'] += weight_dict[edge]
-            
+
 
     #At the end, remove the old nodes, which have now been replaced with their layer duplicates + prime nodes
     #Edges are removed when nodes are removed
@@ -71,7 +71,7 @@ def read_edge_file_multi(graph, layers):
     for old_node in seen_nodes:
         graph.remove_node(old_node)
     
-    print('The multi-layer network contains %d edges and %d nodes' % (graph.number_of_edges(), graph.number_of_nodes()))
+    # print('The graph contains %d edges and %d nodes' % (graph.number_of_edges(), graph.number_of_nodes()))
 
     return multi_layer_dict
 
@@ -211,6 +211,22 @@ def partitionCurated(original_curated,graph,verbose,layers):
         ## Once a layer is specified, append this to the curated positive node name.
         ## This "places" the positive in a particular layer.
         curated.add(labeled_List[i]+'_'+str(0))
+        # print('\n')
+        # print(len(graph[labeled_List[i]+'_'+str(0)]), 'layer degree')
+        # print(graph[labeled_List[i]+'_prime'], 'prime neighbors')
+        # print(graph.nodes[labeled_List[i]+'_'+str(0)]['weighted_degree'], 'weighted layer degree')
+        # print(graph.nodes[labeled_List[i]+'_prime']['weighted_degree'], 'weighted prime degree')
+        # print(graph.edges[labeled_List[i]+'_'+str(0),labeled_List[i]+'_prime']['weight'], 'edge weight')
+        # print('transmorgify')
+        # graph.edges[labeled_List[i]+'_'+str(0),labeled_List[i]+'_prime']['weight'] = 0.1
+        # graph.nodes[labeled_List[i]+'_'+str(0)]['weighted_degree'] = graph.nodes[labeled_List[i]+'_'+str(0)]['weighted_degree'] - 0.9
+        # graph.nodes[labeled_List[i]+'_prime']['weighted_degree'] = graph.nodes[labeled_List[i]+'_prime']['weighted_degree'] - 0
+        # print(len(graph[labeled_List[i]+'_'+str(0)]), 'layer degree')
+        # print(graph[labeled_List[i]+'_prime'], 'prime neighbors')
+        # print(graph.nodes[labeled_List[i]+'_'+str(0)]['weighted_degree'], 'weighted layer degree')
+        # print(graph.nodes[labeled_List[i]+'_prime']['weighted_degree'], 'weighted prime degree')
+        # print(graph.edges[labeled_List[i]+'_'+str(0),labeled_List[i]+'_prime']['weight'], 'edge weight')
+
 
     #print('%d of %d nodes are in graph from file %s' % (len(labeled_set),len(curated_set),filename))
     return curated

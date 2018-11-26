@@ -67,13 +67,15 @@ def matrixLearnSinkSource(G,pos,neg,epsilon,timesteps,verbose, sinksource_consta
     c = [0]*len(unlabeled_list)
     for i in range(len(unlabeled_list)):
         v = unlabeled_list[i]
+        prime = False
+        if v[-6:] == '_prime':
+            prime = True
         for neighbor, datadict in G.adj[v].items():
             if neighbor not in unlabeled: # it is labeled
                 if neighbor in pos:
                     c[i] += datadict['weight']
                 else: # neighbor in negative; label is 0 so nothing is added.
                     pass
-
         c[i] = float(c[i])/(G.nodes[v]['weighted_degree']+sinksource_constant)
 
     #Make initial f vector.  This is a value of 0.5 for all unlabeled nodes.
@@ -116,7 +118,9 @@ def matrixLearnSinkSource(G,pos,neg,epsilon,timesteps,verbose, sinksource_consta
         predictions[n] = 0
     for i in range(len(unlabeled_list)):
 
+
         predictions[unlabeled_list[i]] = f[i]
+
 
 
 

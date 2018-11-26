@@ -115,7 +115,7 @@ def parse_arguments(argv):
         type='int',metavar='INT',default=50,\
         help='number of cross validation iterations to compute AUC (default=50).')
     group.add_option('-l', '--layers',\
-        type='int', default=2,\
+        type='int', default=1,\
         help='Run the experiments for disease and biological process with n nodes per gene. Each of the gene\'s nodes are connected to a node that represents the score for the gene. Positives are distributed among these layers. Reducing the nodes to 1 eliminates the process')
     group.add_option('-c', '--sinksource_constant',\
         type='float',metavar='FLOAT',default=None,\
@@ -203,11 +203,11 @@ def main(argv):
                 blacklist.update(overlap_set)
 
             if biological_process_positives.intersection(negatives):
-                overlap_set = biological_process_positives.intersection(negatives)
-                print('WARNING: %d genes are biological process positives and negatives. Ignoring.' % (len(overlap_set)))
-                negatives = negatives.difference(overlap_set)
+                overlap_set_2 = biological_process_positives.intersection(negatives)
+                print('WARNING: %d genes are biological process positives and negatives. Ignoring.' % (len(overlap_set_2)))
+                negatives = negatives.difference(overlap_set_2)
                 # biological_process_positives = biological_process_positives.difference(overlap_set)
-                blacklist.update(overlap_set)
+                blacklist.update(overlap_set_2)
 
             print('%d genes have had their negative labels removed because they were in both positive and negative sets.' % (len(blacklist)))
             # for node in blacklist:
@@ -252,15 +252,15 @@ def main(argv):
         print('\nRunning Learning Algorithms...')
        
         print('Disease predictions...')
-        statsfile = opts.outprefix + str(opts.layers) + 'layers_disease_stats.txt'
-        outfile = opts.outprefix + str(opts.layers) + 'layers_disease_output.txt'
+        statsfile = opts.outprefix + '_disease_stats.txt'
+        outfile = opts.outprefix + '_disease_output.txt'
         name = 'disease'
         d_times,d_changes,d_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,disease_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)
 
         print('Biological process predictions...')
-        statsfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_stats.txt'
-        outfile = opts.outprefix + str(opts.layers) + 'layers_biological_process_output.txt'
+        statsfile = opts.outprefix + '_biological_process_stats.txt'
+        outfile = opts.outprefix + '_biological_process_output.txt'
         name = 'process'
         b_times,b_changes,b_predictions = learners.learn(opts.outprefix,outfile,statsfile,genemap,G,biological_process_positives,negatives,\
             opts.epsilon,opts.timesteps,opts.iterative_update,opts.verbose,opts.force,opts.sinksource_constant,opts.layers,name,opts.sinksource_method,write=True)
