@@ -40,5 +40,12 @@ does a single run with the sinksource+ method with a constant of 1. It changes t
 ## GIANT Network
 The GIANT networks are tissue specific functional interactomes built from a naive bayes classifier. The classifier uses protein interaction, expression, and coexpression data to determine the probability that a tissue specific functional interaction occurs between 2 genes.
 
+## Cell Motility Positive Set
+
+The set of cell motility positives was created by downloading genes from the KEGG database. The genes were downloaded from five cell motility pathways: the cell adhesion molecule (CAM) pathway, focal adhesion kinase (FAK) pathway, ErbB signaling pathway, regulation of actin cytoskeleton pathway, and tight junction pathway.
+
+Kanehisa, Furumichi, M., Tanabe, M., Sato, Y., and Morishima, K.; KEGG: new perspectives on genomes, pathways, diseases and drugs. Nucleic Acids Res. 45, D353-D361 (2017). 
+Kanehisa, M., Sato, Y., Kawashima, M., Furumichi, M., and Tanabe, M.; KEGG as a reference resource for gene and protein annotation. Nucleic Acids Res. 44, D457-D462 (2016). 
+Kanehisa, M. and Goto, S.; KEGG: Kyoto Encyclopedia of Genes and Genomes. Nucleic Acids Res. 28, 27-30 (2000). 
 
 
