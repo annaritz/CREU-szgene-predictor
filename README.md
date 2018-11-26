@@ -20,6 +20,24 @@ For a disease and a phenotype of interest, this method identifies genes that are
 * '--sinksource_method': Run the sinksource+ algorithm instead of sinksource. This attaches a negatively labeled node to every single other unlabeled node, which reduces the value of nodes that have very few edges.
 * '-c' OR '--sinksource_constant': When run with sinksource+, change the value of the edges connecting all the nodes to the sink negative.
 * '--single': Run single experiments for disease and biological process and computes score. Also generates figures of results and formats a LaTeX table.
+* '-out': Changes the outfile prefix
 
 Other arguments can be found with -help.
+
+## Output Files
+* prefix_disease_output.txt: scores of unlabeled genes based on association with disease genes
+* prefix_process_output.txt: scores of unlabeled genes based on association with cellular phenotype genes
+* prefix_combined_output.txt: scores of unlabeled genes based on association with disease genes and cellular phenotype genes
+* prefix_disease_stats.txt: time between iterations when calculating scores of unlabeled genes based on association with disease genes
+* prefix_process_stats.txt: time between iterations when calculating scores of unlabeled genes based on association with cellular phenotype genes
+
+## Toy Example
+
+python3 predict.py --single --sinksource_method -c 1 -o schizo_motility
+
+does a single run with the sinksource+ method with a constant of 1. It changes the outfile prefix to -o schizo_motility
+
+
+
+
 
