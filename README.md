@@ -37,7 +37,8 @@ python3 predict.py --single --sinksource_method -c 1 -o schizo_motility
 
 does a single run with the sinksource+ method with a constant of 1. It changes the outfile prefix to -o schizo_motility
 
-
+## GIANT Network
+The GIANT networks are tissue specific functional interactomes built from a naive bayes classifier. The classifier uses protein interaction, expression, and coexpression data to determine the probability that a tissue specific functional interaction occurs between 2 genes.
 
 
 
