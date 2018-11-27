@@ -50,8 +50,19 @@ def main():
     figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
     '''
     
-    figure_3_full(data) ## All layers, all lambdas
+    full_ss_scatter_fig(None,'0')
+    full_ss_scatter_fig(None,'1')
     sys.exit()
+
+    ss_scatter_fig_mult_layers(500,'0',2000)
+    ss_scatter_fig_mult_layers(500,'0.01',2000)
+    ss_scatter_fig_mult_layers(500,'0.1',2000)
+    ss_scatter_fig_mult_layers(500,'1',2000)
+    ss_scatter_fig_mult_layers(500,'10',2000)
+    ss_scatter_fig_mult_layers(500,'50',2000)
+    
+    figure_3_full(data) ## All layers, all lambdas
+    
     
     deg_dist_fig('0',ymax=500)
     deg_dist_fig('0.01',ymax=500)
@@ -68,8 +79,6 @@ def main():
     sinksource_fig(data)
     roc_fig(data)
 
-    full_ss_scatter_fig(None,'0')
-    full_ss_scatter_fig(None,'1')
 
     ss_scatter_fig(500,'0')    
     ss_scatter_fig(500,'0',2000)
@@ -287,6 +296,63 @@ def deg_dist_fig(l,ymax=None):
     os.system('pdfcrop '+OUTFILE_DIR+prefix+'.pdf '+OUTFILE_DIR+prefix+'.pdf')
     return
 
+def ss_scatter_fig_mult_layers(num,l,ymax=None):
+    data = {1:[],2:[],3:[]}
+    avg = {1:[],2:[],3:[]}
+    alpha=15
+
+
+    for layer in [1,2,3]:
+        infile = OUTFILE_DIR+'SZ_%d-layer_%s-sinksource_combined_output.txt' % (layer,l)
+        with open(infile) as fin:
+            disease = []
+            for line in fin:
+                if line[0] == '#':
+                    continue
+                row = line.strip().split()
+                if row[2] == 'Unlabeled':
+                    disease.append([float(row[3]),int(row[8])])
+            disease.sort(reverse=True,key=lambda x: x[0])
+            print(infile,disease[1:10])
+            data[layer] = [disease[i][1] for i in range(num)]
+            avg[layer] = [0]*(len(data[layer])-alpha)
+            for i in range(len(data[layer])-alpha):
+                avg[layer][i] = sum(data[layer][i:i+alpha])/alpha
+
+    fig2, ((ax1,ax2,ax3)) = plt.subplots(ncols=3, nrows=1, figsize=(9,3))
+    axes = [ax1,ax2,ax3]
+    for i in [1,2,3]:
+        name = 'Layer %d' % (i)
+        ax = axes[i-1]
+        ax.scatter(range(len(data[i])),data[i], alpha=0.2, color=[.7, .7, .7], label=None)
+        ax.plot(range(len(avg[i])),avg[i], color='k', label=None)
+        ax.set_xlim(0,num)
+        if ymax:
+            ax.set_ylim(0,ymax)
+            ax.set_title('%s ($\lambda=%s$)\nFirst 100 Avg: %.2f' % (name,l,sum(data[i][:100])/100),fontsize=TITLE_SIZE)
+        else:
+            ax.set_title(name,fontsize=TITLE_SIZE)
+        ax.set_ylabel('Degree',fontsize=LABEL_SIZE)
+        ax.set_xlabel('Rank',fontsize=LABEL_SIZE)
+        if num > 200:
+            print(name,'Average over first 100:',sum(data[i][:100])/100)
+        
+        #if i == 0:
+        #    ax.legend([bp1['boxes'][0], bp2['boxes'][0]], ['With Negatives', 'Without Negatives'], loc='best', fontsize=TICK_SIZE)
+    
+    plt.tight_layout()
+    if ymax:
+        prefix = 'ss_scatter_fig_multi_layer_%s' % (l.replace('.','pt'))
+    else:
+        prefix = 'ss_scatter_fig_multi_layer_%s_noymax' % (l.replace('.','pt'))
+
+    plt.savefig(OUTFILE_DIR+prefix+'.png')
+    print('Created '+OUTFILE_DIR+prefix+'.png')
+
+    plt.savefig(OUTFILE_DIR+prefix+'.pdf')
+    print('Created '+OUTFILE_DIR+prefix+'.pdf')
+    os.system('pdfcrop '+OUTFILE_DIR+prefix+'.pdf '+OUTFILE_DIR+prefix+'.pdf')
+    return
 
 def ss_scatter_fig(num,l,ymax=None):
     data = {ex:[] for ex in EXPERIMENTS}
@@ -445,7 +511,7 @@ def full_ss_scatter_fig(num,l,ymax=None):
         for i in range(len(data['ASD'])-alpha):
             avg['CM_ASD'][i] = sum(data['CM_ASD'][i:i+alpha])/alpha
 
-    fig2, ((ax1,ax2,ax3,ax4)) = plt.subplots(ncols=4, nrows=1, figsize=(12,3))
+    fig2, ((ax1,ax2,ax3,ax4)) = plt.subplots(ncols=4, nrows=1, figsize=(20,4))
     axes = [ax1,ax2,ax3,ax4]
     scatter_colors = {'Unlabeled':[.7,.7,.7],'Positive':[0,0,.7],'Negative':[.7,0,0]}
     for i in range(len(EXPERIMENTS)):
@@ -460,9 +526,9 @@ def full_ss_scatter_fig(num,l,ymax=None):
         ax.set_xlim(0,num)
         if ymax:
             ax.set_ylim(0,ymax)
-            ax.set_title(NAMES[name]+'\n$\lambda=%s$' % (l),fontsize=TITLE_SIZE)
+            ax.set_title(NAMES[name]+'\n$\lambda=%s$' % (l),fontsize=18)
         else:
-            ax.set_title(NAMES[name],fontsize=TITLE_SIZE)
+            ax.set_title(NAMES[name],fontsize=18)
         ax.set_ylabel('Degree',fontsize=LABEL_SIZE)
         ax.set_xlabel('Rank',fontsize=LABEL_SIZE)
 
