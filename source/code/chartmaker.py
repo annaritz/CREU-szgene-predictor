@@ -32,17 +32,12 @@ def main():
     ## read all the files at the beginning.
     data = read_data()
 
-    
-
     '''
     OLD FIGURES (before removing the multilayer stuff...)
     figure_1(data) ## Layer=1, varying lambda
     figure_2(data) ## Negs. vs. NoNegs, Layer=1, varying lambda
     figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree, Layer=1, varying lambda
-    
-    
     figure_3_full(data) ## All layers, all lambdas
-
     ## get best inds
     best_lambda_inds = {} #indices of highest-average lambda values for each experiment.
     for name in EXPERIMENTS:
@@ -52,13 +47,12 @@ def main():
             for i in range(len(LAMBDAS)):
                 if i == 0 or mean(data[name][layer][best_lambda_inds[name][layer]]) < to_check[i]:
                     best_lambda_inds[name][layer] = i
-    
     figure_3(data,best_lambda_inds) ## All layers, best lambda for each layer/experiment.
     '''
-
-
-
-
+    
+    figure_3_full(data) ## All layers, all lambdas
+    sys.exit()
+    
     deg_dist_fig('0',ymax=500)
     deg_dist_fig('0.01',ymax=500)
     deg_dist_fig('0.1',ymax=500)
@@ -70,10 +64,9 @@ def main():
     figure_2(data)
 
     probplot(data)  ## to make sure that t-test is OK
-    figure_3_full(data) ## All layers, all lambdas
+    
     sinksource_fig(data)
     roc_fig(data)
-
 
     full_ss_scatter_fig(None,'0')
     full_ss_scatter_fig(None,'1')
@@ -85,6 +78,8 @@ def main():
     ss_scatter_fig(500,'1',2000)
     ss_scatter_fig(500,'10',2000)
     ss_scatter_fig(500,'50',2000)
+    
+
     
 
     return
@@ -1081,7 +1076,7 @@ def figure_3_full(data):
 
         ax.set_xticks([4,11,18,25,32,39])
         ax.set_xticklabels(['0','0.01','0.1','1','10','50'])
-        ax.set_ylim(0.5,0.9)
+        ax.set_ylim(0.5,1.0)
         ax.set_xlim(0,43)
         ax.set_ylabel('AUC',fontsize=LABEL_SIZE)
         ax.set_xlabel('$\lambda$',fontsize=LABEL_SIZE)
