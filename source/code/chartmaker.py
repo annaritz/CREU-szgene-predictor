@@ -175,7 +175,7 @@ def read_rocs():
 
 #Appends AUC values of each positive set to a list and returns the 3 lists 
 def file_parser(auc_file):
-    
+    print(auc_file)
     if not os.path.isfile(auc_file):
         print('ERROR: File %s does not exist.' % (auc_file))
         return [],[]
@@ -1066,6 +1066,7 @@ def figure_3_full(data):
     for i in range(len(EXPERIMENTS)):
         name = EXPERIMENTS[i]
         ax = axes[i]
+
         bp1 = ax.boxplot(data[name][1], notch=True, positions=[2,9,16,23,30,37], \
             widths=1.5, sym='', patch_artist=True, boxprops=dict(facecolor='#8193ef'))
         bp2 = ax.boxplot(data[name][2], notch=True, positions=[4,11,18,25,32,39], \
