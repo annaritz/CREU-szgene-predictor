@@ -65,7 +65,6 @@ def main():
     deg_dist_fig('1',ymax=500)
     deg_dist_fig('10',ymax=500)
     deg_dist_fig('50',ymax=500)
-    sys.exit()
     
     figure_2_full(data) ## Negs vs. NoNegs vs. RandNegs vs. RandNegsPreserveDegree vs. KrishnanNegs, Layer=1, varying lambda
     figure_2(data)
