@@ -1,7 +1,12 @@
 # CREU-szgene-predictor
 
-## Network-Based Prediction of Polygenic Disease Genes Involved in Cell Motility
+This is the code base for the following paper:
 
+M. Bern, A. King, D. A. Applewhite, and A. Ritz. [Network-based prediction of polygenic disease genes involved in cell motility](https://bmcbioinformatics.biomedcentral.com/track/pdf/10.1186/s12859-019-2834-1). _BMC_Bioinformatics_ 20: 313 (2019). 
+
+It was an outcome of a [Collaborative REU at Reed College supported by CRA-W](https://cra.org/cra-w/creu/), and was presented at the Fifth International Workshop on Computational Network Biology: Modeling, Analysis and Control ([CNB-MAC 2018](https://cnbmac.org/)) in Washington, D.C., in 2018. 
+
+## Network-Based Prediction of Polygenic Disease Genes Involved in Cell Motility
 For a disease and a phenotype of interest, this method identifies genes that are functionally associated with both the disease and the phenotype. This method incorporates the functional interactome GIANT to assess functional similarity between genes. We assign scores to genes based on their functional association with user-curated genes known to be involved with the disease and then assign scores to genes based on their functional association with user-curated genes known to be involved with the phenotype. The output is a ranked list of genes based on their involvement with the disease.
 
 ## Installation Instructions
